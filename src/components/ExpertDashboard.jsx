@@ -1,8 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import "./ExpertDashboard.css";
-
-const EXPERT_CLIENTS_STORAGE_KEY = "microassist_expert_clients";
-const EXPERT_HISTORY_STORAGE_KEY = "microassist_expert_history";
 
 const FILTERS = [
   { key: "all", label: "Tous" },
@@ -93,38 +90,8 @@ function getStatusLabel(status) {
   }
 }
 
-function getSuggestedStatus(revenueInput, nextActionInput) {
-  const normalizedRevenue = String(revenueInput || "")
-    .trim()
-    .replace(/\s/g, "")
-    .replace(",", ".");
-  const revenueValue = Number(normalizedRevenue);
-  const nextAction = String(nextActionInput || "").toLowerCase();
-
-  if (nextAction.includes("retard")) {
-    return "late";
-  }
-
-  if (!Number.isNaN(revenueValue) && revenueValue >= 10000) {
-    return "tva_risk";
-  }
-
-  if (!Number.isNaN(revenueValue) && revenueValue >= 7000) {
-    return "alert";
-  }
-
-  return "ok";
-}
-
 export default function ExpertDashboard() {
-  const [clients, setClients] = useState(() => {
-    try {
-      const raw = localStorage.getItem(EXPERT_CLIENTS_STORAGE_KEY);
-      return raw ? JSON.parse(raw) : mockClients;
-    } catch {
-      return mockClients;
-    }
-  });
+  const [clients, setClients] = useState(mockClients);
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -132,22 +99,7 @@ export default function ExpertDashboard() {
   const [reminderType, setReminderType] = useState("declaration");
   const [reminderMessage, setReminderMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [clientHistory, setClientHistory] = useState(() => {
-    try {
-      const raw = localStorage.getItem(EXPERT_HISTORY_STORAGE_KEY);
-
-      if (!raw) {
-        return [];
-      }
-
-      return JSON.parse(raw).map((event) => ({
-        ...event,
-        date: new Date(event.date),
-      }));
-    } catch {
-      return [];
-    }
-  });
+  const [clientHistory, setClientHistory] = useState([]);
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const [addClientError, setAddClientError] = useState("");
   const [noteClientId, setNoteClientId] = useState(null);
@@ -217,29 +169,6 @@ export default function ExpertDashboard() {
       return matchesFilter && matchesSearch;
     });
   }, [activeFilter, clients, searchQuery]);
-  const suggestedStatus = useMemo(
-    () => getSuggestedStatus(newClientForm.revenue, newClientForm.nextAction),
-    [newClientForm.nextAction, newClientForm.revenue],
-  );
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(EXPERT_CLIENTS_STORAGE_KEY, JSON.stringify(clients));
-    } catch {
-      // Ignore localStorage issues in the expert prototype.
-    }
-  }, [clients]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        EXPERT_HISTORY_STORAGE_KEY,
-        JSON.stringify(clientHistory),
-      );
-    } catch {
-      // Ignore localStorage issues in the expert prototype.
-    }
-  }, [clientHistory]);
 
   function buildReminderMessage(client) {
     if (!client) return "";
@@ -413,27 +342,6 @@ export default function ExpertDashboard() {
     closeNoteModal();
   }
 
-  function handleDeleteClient(client) {
-    if (!client) return;
-
-    const shouldDelete = window.confirm("Supprimer ce client du prototype ?");
-
-    if (!shouldDelete) {
-      return;
-    }
-
-    setClients((currentClients) =>
-      currentClients.filter((currentClient) => currentClient.id !== client.id),
-    );
-    setClientHistory((currentHistory) =>
-      currentHistory.filter((event) => event.clientId !== client.id),
-    );
-    setReminderClientId((currentId) => (currentId === client.id ? null : currentId));
-    setNoteClientId((currentId) => (currentId === client.id ? null : currentId));
-    setSelectedClientId((currentId) => (currentId === client.id ? null : currentId));
-    setSuccessMessage(`Client supprimé : ${client.name}`);
-  }
-
   if (selectedClient) {
     return (
       <section className="expertDashboard">
@@ -441,29 +349,16 @@ export default function ExpertDashboard() {
           Microassist Expert aide les professionnels à suivre plusieurs
           micro-entrepreneurs, repérer les risques et éviter les oublis côté
           client.
-          <div className="expertBannerHint">
-            Mode prototype : les données expert sont enregistrées localement
-            dans ce navigateur.
-          </div>
         </div>
 
         <div className="expertDetail">
-          <div className="expertDetailActions">
-            <button
-              type="button"
-              className="btn btnGhost btnSmall"
-              onClick={() => setSelectedClientId(null)}
-            >
-              Retour à la liste
-            </button>
-            <button
-              type="button"
-              className="btn btnGhost btnSmall expertDangerButton"
-              onClick={() => handleDeleteClient(selectedClient)}
-            >
-              Supprimer client
-            </button>
-          </div>
+          <button
+            type="button"
+            className="btn btnGhost btnSmall"
+            onClick={() => setSelectedClientId(null)}
+          >
+            Retour à la liste
+          </button>
 
           <div className="expertDetailCard">
             <div className="expertDetailHeader">
@@ -556,10 +451,6 @@ export default function ExpertDashboard() {
         Microassist Expert aide les professionnels à suivre plusieurs
         micro-entrepreneurs, repérer les risques et éviter les oublis côté
         client.
-        <div className="expertBannerHint">
-          Mode prototype : les données expert sont enregistrées localement dans
-          ce navigateur.
-        </div>
       </div>
 
       <div className="expertDashboard__header">
@@ -680,13 +571,6 @@ export default function ExpertDashboard() {
                 onClick={() => openNoteModal(client)}
               >
                 Ajouter note
-              </button>
-              <button
-                type="button"
-                className="btn btnGhost btnSmall expertDangerButton"
-                onClick={() => handleDeleteClient(client)}
-              >
-                Supprimer client
               </button>
             </div>
           </article>
@@ -868,18 +752,6 @@ export default function ExpertDashboard() {
                 <option value="tva_risk">Risque TVA</option>
                 <option value="alert">Alerte</option>
               </select>
-              <div className="expertModalHelperRow">
-                <span className="expertModalHelperText">
-                  Statut suggéré : {getStatusLabel(suggestedStatus)}
-                </span>
-                <button
-                  type="button"
-                  className="expertModalHelperAction"
-                  onClick={() => handleNewClientChange("status", suggestedStatus)}
-                >
-                  Appliquer le statut suggéré
-                </button>
-              </div>
             </div>
 
             {addClientError && (
