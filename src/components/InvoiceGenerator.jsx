@@ -1,6 +1,16 @@
 import { useState } from "react";
-import { supabase } from "../lib/supabase.js";
 import jsPDF from "jspdf";
+import {
+  FACTURX_NOT_TRANSMITTED_NOTE,
+  FACTURX_PREPARATION_LABEL,
+  PDP_ROADMAP_NOTE,
+  TVA_EXEMPTION_MENTION,
+  VAT_MODES,
+  calculateVatRate,
+  createFacturXReadyInvoiceDraft,
+  downloadTextFile,
+  generateFacturXXml,
+} from "../utils/facturx.js";
 
 const SELLER_NAME =
   import.meta.env.VITE_INVOICE_SELLER_NAME || "Microassist";
@@ -8,7 +18,7 @@ const SELLER_ADDRESS =
   import.meta.env.VITE_INVOICE_SELLER_ADDRESS || "Adresse a completer";
 const SELLER_EMAIL = import.meta.env.VITE_INVOICE_SELLER_EMAIL || "";
 const SELLER_SIRET = import.meta.env.VITE_INVOICE_SELLER_SIRET || "";
-const TVA_MENTION = "TVA non applicable, art. 293 B du CGI";
+const SELLER_VAT_NUMBER = import.meta.env.VITE_INVOICE_SELLER_VAT_NUMBER || "";
 const LATE_PENALTY_MENTION =
   "Penalites de retard : taux legal en vigueur apres la date d'echeance.";
 const FLAT_FEE_MENTION =
@@ -41,6 +51,162 @@ function pad(value, length = 2) {
   return String(value).padStart(length, "0");
 }
 
+function formatInvoiceAmount(amount) {
+  return `${Number(amount || 0).toLocaleString("fr-FR")} €`;
+}
+
+function getSafeFilenamePart(value) {
+  return String(value || "facture")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+}
+
+export function generateB2CInvoicePdf(invoice, { userEmail = "" } = {}) {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const number = invoice.invoiceNumber || invoice.invoice_number || "FACTURE";
+  const line = invoice.lines?.[0] || {
+    description: invoice.description || "Prestation",
+    quantity: 1,
+    unitPrice: invoice.amount || 0,
+    vatRate: 0,
+    totalHT: invoice.amount || 0,
+    totalTVA: 0,
+    totalTTC: invoice.amount || 0,
+  };
+  const totals = invoice.totals || {
+    totalHT: invoice.amount || 0,
+    totalTVA: 0,
+    totalTTC: invoice.amount || 0,
+  };
+  const seller = invoice.seller || {
+    name: SELLER_NAME,
+    address: SELLER_ADDRESS,
+    siret: SELLER_SIRET,
+    vatNumber: SELLER_VAT_NUMBER,
+    email: SELLER_EMAIL || userEmail,
+  };
+  const buyer = invoice.buyer || {
+    name: invoice.client_name || "",
+    address: invoice.client_address || "",
+    siret: "",
+    vatNumber: "",
+    email: invoice.client_email || "",
+  };
+
+  doc.setFillColor(91, 33, 182);
+  doc.rect(0, 0, pageWidth, 42, "F");
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(22);
+  doc.setFont("helvetica", "bold");
+  doc.text("FACTURE", 20, 18);
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text(`N° ${number}`, 20, 28);
+  doc.text(`Date : ${formatDateFr(invoice.issueDate || invoice.invoice_date)}`, 20, 35);
+  doc.text(FACTURX_PREPARATION_LABEL, 20, 40);
+
+  doc.setTextColor(30, 27, 75);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("Émetteur", 20, 58);
+
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(55, 65, 81);
+  doc.setFontSize(10);
+  doc.text(seller.name || SELLER_NAME, 20, 66);
+  doc.text(seller.email || SELLER_EMAIL || userEmail || "Email non renseigne", 20, 73);
+  doc.text(doc.splitTextToSize(seller.address || SELLER_ADDRESS, 78), 20, 80);
+  if (seller.siret) doc.text(`SIRET : ${seller.siret}`, 20, 96);
+  if (seller.vatNumber) doc.text(`TVA : ${seller.vatNumber}`, 20, 102);
+
+  doc.setTextColor(30, 27, 75);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("Client", 120, 58);
+
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(55, 65, 81);
+  doc.setFontSize(10);
+  doc.text(buyer.name || "—", 120, 66);
+  if (buyer.address) doc.text(doc.splitTextToSize(buyer.address, 68), 120, 73);
+  if (buyer.email) doc.text(buyer.email, 120, 88);
+  if (buyer.siret) doc.text(`SIRET : ${buyer.siret}`, 120, 96);
+  if (buyer.vatNumber) doc.text(`TVA : ${buyer.vatNumber}`, 120, 102);
+
+  doc.setDrawColor(229, 231, 235);
+  doc.setLineWidth(0.5);
+  doc.line(20, 112, pageWidth - 20, 112);
+
+  doc.setFillColor(245, 243, 255);
+  doc.rect(20, 118, pageWidth - 40, 10, "F");
+
+  doc.setTextColor(91, 33, 182);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text("Prestation", 25, 125);
+  doc.text("Qté", 98, 125);
+  doc.text("PU HT", 116, 125);
+  doc.text("TVA", 142, 125);
+  doc.text("Total TTC", pageWidth - 48, 125);
+
+  doc.setTextColor(55, 65, 81);
+  doc.setFont("helvetica", "normal");
+  const descLines = doc.splitTextToSize(line.description || "Prestation", 68);
+  doc.text(descLines, 25, 139);
+  doc.text(String(line.quantity || 0), 98, 139);
+  doc.text(formatInvoiceAmount(line.unitPrice), 116, 139);
+  doc.text(`${line.vatRate || 0}%`, 142, 139);
+  doc.text(formatInvoiceAmount(line.totalTTC), pageWidth - 48, 139);
+
+  const tableBottom = Math.max(160, 139 + descLines.length * 6);
+
+  doc.setDrawColor(229, 231, 235);
+  doc.line(20, tableBottom + 5, pageWidth - 20, tableBottom + 5);
+
+  doc.setTextColor(55, 65, 81);
+  doc.setFontSize(10);
+  doc.text("Total HT", pageWidth - 82, tableBottom + 16);
+  doc.text(formatInvoiceAmount(totals.totalHT), pageWidth - 44, tableBottom + 16);
+  doc.text("TVA", pageWidth - 82, tableBottom + 24);
+  doc.text(formatInvoiceAmount(totals.totalTVA), pageWidth - 44, tableBottom + 24);
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFillColor(91, 33, 182);
+  doc.rect(pageWidth - 88, tableBottom + 32, 68, 14, "F");
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("TOTAL TTC", pageWidth - 84, tableBottom + 41);
+  doc.text(formatInvoiceAmount(totals.totalTTC), pageWidth - 50, tableBottom + 41);
+
+  doc.setTextColor(107, 114, 128);
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "normal");
+  if (invoice.vatExemptionReason) {
+    doc.text(invoice.vatExemptionReason, 20, tableBottom + 18);
+  }
+  doc.text(`Date d'échéance : ${formatDateFr(invoice.dueDate || invoice.due_date)}`, 20, tableBottom + 28);
+  doc.text(FACTURX_NOT_TRANSMITTED_NOTE, 20, tableBottom + 38);
+
+  doc.setFillColor(245, 243, 255);
+  doc.rect(0, 268, pageWidth, 29, "F");
+  doc.setTextColor(91, 33, 182);
+  doc.setFontSize(7.5);
+  doc.text(LATE_PENALTY_MENTION, pageWidth / 2, 278, { align: "center" });
+  doc.text(FLAT_FEE_MENTION, pageWidth / 2, 284, { align: "center" });
+  doc.setFontSize(8.5);
+  doc.text("Microassist - Assistant fiscal pour micro-entrepreneurs", pageWidth / 2, 291, {
+    align: "center",
+  });
+
+  doc.save(`facture-${getSafeFilenamePart(number)}.pdf`);
+}
+
 const today = formatDateInput(new Date());
 
 const DEFAULT_FORM = {
@@ -48,25 +214,17 @@ const DEFAULT_FORM = {
   client_address: "",
   client_email: "",
   description: "",
-  amount: "",
+  quantity: "1",
+  unit_price: "",
+  vat_mode: VAT_MODES.exempt,
+  buyer_siret: "",
+  seller_siret: SELLER_SIRET,
   invoice_date: today,
   due_date: addDaysToDate(today, 30),
 };
 
-function getSellerTvaMention(fiscalProfile) {
-  if (
-    fiscalProfile?.tva_mode === "franchise_en_base" ||
-    !fiscalProfile?.tva_mode
-  ) {
-    return TVA_MENTION;
-  }
-
-  return "TVA applicable selon le regime fiscal en vigueur.";
-}
-
 export default function InvoiceGenerator({
   user,
-  fiscalProfile,
   onClose,
   onSaved,
 }) {
@@ -85,36 +243,6 @@ export default function InvoiceGenerator({
     });
   }
 
-async function generateInvoiceNumber() {
-    const year = new Date().getFullYear();
-    const prefix = `FAC-${year}-`;
-
-    const { data, error } = await supabase
-      .from("invoices")
-      .select("invoice_number")
-      .eq("user_id", user.id)
-      .like("invoice_number", `${prefix}%`)
-      .order("invoice_number", { ascending: false })
-      .limit(50);
-
-    if (error) {
-      throw error;
-    }
-
-    const maxSequence = (data || []).reduce((max, invoice) => {
-      const invoiceNumber = String(invoice?.invoice_number || "");
-      const match = invoiceNumber.match(
-        new RegExp(`^FAC-${year}-(\\d{4})$`),
-      );
-
-      if (!match) return max;
-
-      return Math.max(max, Number(match[1]));
-    }, 0);
-
-    return `${prefix}${pad(maxSequence + 1, 4)}`;
-  }
-
   function generateGuestInvoiceNumber() {
     const now = new Date();
     const year = now.getFullYear();
@@ -125,11 +253,20 @@ async function generateInvoiceNumber() {
   }
 
   function getNormalizedAmount() {
-    return Number(String(form.amount || "0").replace(",", "."));
+    return getNormalizedQuantity() * getNormalizedUnitPrice();
+  }
+
+  function getNormalizedQuantity() {
+    return Number(String(form.quantity || "0").replace(",", "."));
+  }
+
+  function getNormalizedUnitPrice() {
+    return Number(String(form.unit_price || "0").replace(",", "."));
   }
 
   function validateForm() {
-    const amount = getNormalizedAmount();
+    const quantity = getNormalizedQuantity();
+    const unitPrice = getNormalizedUnitPrice();
 
     if (!form.client_name.trim()) {
       return "Le nom du client est obligatoire.";
@@ -139,8 +276,12 @@ async function generateInvoiceNumber() {
       return "La prestation est obligatoire.";
     }
 
-    if (!amount || amount <= 0) {
-      return "Le montant HT doit être supérieur à 0 €.";
+    if (!quantity || quantity <= 0) {
+      return "La quantité doit être supérieure à 0.";
+    }
+
+    if (!unitPrice || unitPrice <= 0) {
+      return "Le prix unitaire HT doit être supérieur à 0 €.";
     }
 
     if (!form.invoice_date) {
@@ -181,44 +322,34 @@ async function generateInvoiceNumber() {
     setSaving(true);
 
     try {
-      const isGuest = !user?.id;
-      const number = isGuest
-        ? generateGuestInvoiceNumber()
-        : await generateInvoiceNumber();
-      const amount = getNormalizedAmount();
+      const number = generateGuestInvoiceNumber();
+      const invoice = buildStructuredInvoice(number);
 
-      const payload = {
-        user_id: user?.id ?? null,
-        invoice_number: number,
-        client_name: form.client_name.trim(),
-        client_address: form.client_address.trim(),
-        client_email: form.client_email.trim(),
-        description: form.description.trim(),
-        amount,
-        invoice_date: form.invoice_date,
-        due_date: form.due_date,
-        status: "sent",
-      };
-
-      if (!isGuest) {
-        const { error } = await supabase.from("invoices").insert(payload);
-
-        if (error) throw error;
-      }
-
-      generatePDF(number, payload);
+      generateB2CInvoicePdf(invoice, { userEmail: user?.email });
+      downloadTextFile(
+        `facturx-draft-${number}.xml`,
+        generateFacturXXml(invoice),
+      );
 
       if (onSaved) {
         onSaved({
-          savedToSupabase: !isGuest,
+          // FUTURE: persist invoices after invoice schema migration.
+          savedToSupabase: false,
           invoice: {
-            id: isGuest ? `guest-${Date.now()}` : number,
-            ...payload,
-            localOnly: isGuest,
+            ...invoice,
+            invoice_number: invoice.invoiceNumber,
+            client_name: invoice.buyer.name,
+            client_address: invoice.buyer.address,
+            client_email: invoice.buyer.email,
+            description: invoice.lines[0]?.description || "",
+            amount: invoice.totals.totalTTC,
+            invoice_date: invoice.issueDate,
+            due_date: invoice.dueDate,
+            status: "facturx_draft",
+            localOnly: true,
           },
-          message: isGuest
-            ? "Facture téléchargée. Connecte-toi pour la retrouver dans ton historique."
-            : "Facture enregistrée ✅",
+          message:
+            "Facture préparée en brouillon Factur-X. PDF et XML ont été téléchargés.",
         });
       }
     } catch (err) {
@@ -229,149 +360,31 @@ async function generateInvoiceNumber() {
     }
   }
 
-  function generatePDF(number, data) {
-    const doc = new jsPDF();
-    const amount = Number(data.amount || 0);
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const sellerEmail = SELLER_EMAIL || user?.email || "Email non renseigne";
-    const sellerTvaMention = getSellerTvaMention(fiscalProfile);
-
-    // Header
-    doc.setFillColor(91, 33, 182);
-    doc.rect(0, 0, pageWidth, 40, "F");
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.setFont("helvetica", "bold");
-    doc.text("FACTURE", 20, 18);
-
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "normal");
-    doc.text(`N° ${number}`, 20, 28);
-    doc.text(`Date : ${formatDateFr(data.invoice_date)}`, 20, 35);
-
-    // Emetteur
-    doc.setTextColor(30, 27, 75);
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.text("Émetteur", 20, 55);
-
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(55, 65, 81);
-    doc.setFontSize(10);
-    doc.text(SELLER_NAME, 20, 63);
-    doc.setFillColor(255, 255, 255);
-    doc.rect(20, 64, 95, 10, "F");
-    doc.setTextColor(55, 65, 81);
-    doc.text(sellerEmail, 20, 70);
-    const sellerAddressLines = doc.splitTextToSize(SELLER_ADDRESS, 80);
-    doc.text(sellerAddressLines, 20, 77);
-    const sellerInfoY = 77 + sellerAddressLines.length * 6 + 8;
-    if (SELLER_SIRET) {
-      doc.text(`SIRET : ${SELLER_SIRET}`, 20, sellerInfoY);
-    }
-    doc.setFillColor(255, 255, 255);
-    doc.rect(20, sellerInfoY + 1, 95, 8, "F");
-    doc.setTextColor(55, 65, 81);
-    doc.text(sellerTvaMention, 20, sellerInfoY + 7);
-    doc.text("TVA non applicable — Art. 293 B du CGI", 20, 84);
-
-    doc.setFillColor(255, 255, 255);
-    doc.rect(20, 80, 95, 8, "F");
-    doc.setTextColor(55, 65, 81);
-    doc.text(sellerTvaMention, 20, sellerInfoY + 7);
-
-    // Client
-    doc.setTextColor(30, 27, 75);
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.text("Client", 120, 55);
-
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(55, 65, 81);
-    doc.setFontSize(10);
-    doc.text(data.client_name || "—", 120, 63);
-
-    let clientY = 70;
-
-    if (data.client_address) {
-      const lines = doc.splitTextToSize(data.client_address, 70);
-      doc.text(lines, 120, clientY);
-      clientY += lines.length * 6 + 2;
-    }
-
-    if (data.client_email) {
-      doc.text(data.client_email, 120, clientY);
-    }
-
-    // Separator
-    doc.setDrawColor(229, 231, 235);
-    doc.setLineWidth(0.5);
-    doc.line(20, 100, pageWidth - 20, 100);
-
-    // Table header
-    doc.setFillColor(245, 243, 255);
-    doc.rect(20, 105, pageWidth - 40, 10, "F");
-
-    doc.setTextColor(91, 33, 182);
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text("Prestation", 25, 112);
-    doc.text("Montant HT", pageWidth - 55, 112);
-
-    // Table row
-    doc.setTextColor(55, 65, 81);
-    doc.setFont("helvetica", "normal");
-    const descLines = doc.splitTextToSize(data.description || "Prestation", 115);
-    doc.text(descLines, 25, 125);
-    doc.text(`${amount.toLocaleString("fr-FR")} €`, pageWidth - 55, 125);
-
-    const tableBottom = Math.max(140, 125 + descLines.length * 6);
-
-    // Total box
-    doc.setDrawColor(229, 231, 235);
-    doc.line(20, tableBottom + 5, pageWidth - 20, tableBottom + 5);
-
-    doc.setFillColor(91, 33, 182);
-    doc.rect(pageWidth - 85, tableBottom + 12, 65, 14, "F");
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("TOTAL TTC", pageWidth - 80, tableBottom + 21);
-    doc.text(`${amount.toLocaleString("fr-FR")} €`, pageWidth - 52, tableBottom + 21);
-
-    // Legal mentions
-    doc.setTextColor(107, 114, 128);
-    doc.setFontSize(7.5);
-    doc.setFont("helvetica", "normal");
-    doc.text(sellerTvaMention, 20, tableBottom + 42);
-    doc.text(`Date d'échéance : ${formatDateFr(data.due_date)}`, 20, tableBottom + 50);
-
-    // Footer
-    doc.setFillColor(245, 243, 255);
-    doc.rect(0, 268, pageWidth, 29, "F");
-
-    doc.setTextColor(91, 33, 182);
-    doc.setFontSize(9);
-    doc.text("Microassist — Assistant fiscal pour micro-entrepreneurs", pageWidth / 2, 283, {
-      align: "center",
+  function buildStructuredInvoice(number) {
+    return createFacturXReadyInvoiceDraft({
+      id: `local-${Date.now()}`,
+      invoiceNumber: number,
+      issueDate: form.invoice_date,
+      dueDate: form.due_date,
+      seller: {
+        name: SELLER_NAME,
+        address: SELLER_ADDRESS,
+        siret: form.seller_siret.trim(),
+        vatNumber: SELLER_VAT_NUMBER,
+        email: SELLER_EMAIL || user?.email || "",
+      },
+      buyer: {
+        name: form.client_name.trim(),
+        address: form.client_address.trim(),
+        siret: form.buyer_siret.trim(),
+        vatNumber: "",
+        email: form.client_email.trim(),
+      },
+      description: form.description.trim(),
+      quantity: getNormalizedQuantity(),
+      unitPrice: getNormalizedUnitPrice(),
+      vatMode: form.vat_mode,
     });
-    doc.text("microassist.fr", pageWidth / 2, 290, { align: "center" });
-    doc.setFillColor(245, 243, 255);
-    doc.rect(0, 268, pageWidth, 29, "F");
-    doc.setTextColor(91, 33, 182);
-    doc.setFontSize(7.5);
-    doc.text(LATE_PENALTY_MENTION, pageWidth / 2, 278, {
-      align: "center",
-    });
-    doc.text(FLAT_FEE_MENTION, pageWidth / 2, 284, { align: "center" });
-    doc.setFontSize(8.5);
-    doc.text("Microassist - Assistant fiscal pour micro-entrepreneurs", pageWidth / 2, 291, {
-      align: "center",
-    });
-
-    doc.save(`facture-${number}.pdf`);
   }
 
   const amount = getNormalizedAmount();
@@ -443,14 +456,58 @@ async function generateInvoiceNumber() {
           </label>
 
           <label className="field">
-            <span>Montant HT (€) *</span>
+            <span>Quantité *</span>
             <input
               type="number"
               min="0.01"
               step="0.01"
-              value={form.amount}
-              onChange={(e) => handleChange("amount", e.target.value)}
+              value={form.quantity}
+              onChange={(e) => handleChange("quantity", e.target.value)}
+              placeholder="Ex : 1"
+            />
+          </label>
+
+          <label className="field">
+            <span>Prix unitaire HT (€) *</span>
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={form.unit_price}
+              onChange={(e) => handleChange("unit_price", e.target.value)}
               placeholder="Ex : 500"
+            />
+          </label>
+
+          <label className="field fieldFull">
+            <span>Mode TVA</span>
+            <select
+              value={form.vat_mode}
+              onChange={(e) => handleChange("vat_mode", e.target.value)}
+            >
+              <option value={VAT_MODES.exempt}>{TVA_EXEMPTION_MENTION}</option>
+              <option value={VAT_MODES.standard}>TVA standard</option>
+              <option value={VAT_MODES.later}>À compléter plus tard</option>
+            </select>
+          </label>
+
+          <label className="field">
+            <span>SIRET acheteur</span>
+            <input
+              type="text"
+              value={form.buyer_siret}
+              onChange={(e) => handleChange("buyer_siret", e.target.value)}
+              placeholder="Optionnel"
+            />
+          </label>
+
+          <label className="field">
+            <span>SIRET vendeur</span>
+            <input
+              type="text"
+              value={form.seller_siret}
+              onChange={(e) => handleChange("seller_siret", e.target.value)}
+              placeholder="Optionnel"
             />
           </label>
 
@@ -485,15 +542,33 @@ async function generateInvoiceNumber() {
 
             <div className="previewRow">
               <span>TVA</span>
-              <strong>Non applicable (Art. 293 B du CGI)</strong>
+              <strong>
+                {form.vat_mode === VAT_MODES.standard
+                  ? `${(amount * (calculateVatRate(form.vat_mode) / 100)).toLocaleString("fr-FR")} €`
+                  : form.vat_mode === VAT_MODES.later
+                    ? "À compléter plus tard"
+                    : "Non applicable (Art. 293 B du CGI)"}
+              </strong>
             </div>
 
             <div className="previewRow">
               <span>Total à payer</span>
-              <strong>{amount.toLocaleString("fr-FR")} €</strong>
+              <strong>
+                {(amount + amount * (calculateVatRate(form.vat_mode) / 100)).toLocaleString("fr-FR")} €
+              </strong>
             </div>
           </div>
         )}
+
+        <div className="revenuePreview" style={{ marginTop: 12 }}>
+          <div className="previewTitle">{FACTURX_PREPARATION_LABEL}</div>
+          <p className="muted" style={{ margin: "6px 0 0" }}>
+            {FACTURX_NOT_TRANSMITTED_NOTE}
+          </p>
+          <p className="muted" style={{ margin: "6px 0 0" }}>
+            {PDP_ROADMAP_NOTE}
+          </p>
+        </div>
 
         <div
           className="miniActions"
@@ -515,7 +590,7 @@ async function generateInvoiceNumber() {
             disabled={saving}
             type="button"
           >
-            {saving ? "Enregistrement..." : "Créer et télécharger la facture"}
+            {saving ? "Préparation..." : "Créer et télécharger PDF + XML"}
           </button>
         </div>
       </div>

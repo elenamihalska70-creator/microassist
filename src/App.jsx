@@ -16,7 +16,15 @@ import { showConsoleSignature } from "./consoleSignature.js";
 import { useAuth } from "./context/AuthContext.jsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import InvoiceGenerator from "./components/InvoiceGenerator.jsx";
+import InvoiceGenerator, {
+  generateB2CInvoicePdf,
+} from "./components/InvoiceGenerator.jsx";
+import {
+  FACTURX_PREPARATION_LABEL,
+  PDP_ROADMAP_NOTE,
+  downloadTextFile,
+  generateFacturXXml,
+} from "./utils/facturx.js";
 import { PRICING_LIMITS } from "./config/pricing.js";
 import { ACCESS_MATRIX, getAccessProfile } from "./config/accessMatrix.js";
 import PricingPage from "./components/PricingPage.jsx";
@@ -346,6 +354,31 @@ const FULL_RESET_LOCAL_STORAGE_KEYS = [
   PROFILE_CONFLICT_STRATEGY_KEY,
 ];
 const MIN_REALISTIC_FISCAL_DATE = "2000-01-01";
+
+function getInvoiceDisplayAmount(invoice) {
+  return Number(invoice?.totals?.totalTTC ?? invoice?.amount ?? 0);
+}
+
+function getInvoiceDisplayNumber(invoice) {
+  return invoice?.invoiceNumber || invoice?.invoice_number || invoice?.id || "Facture";
+}
+
+function getInvoiceDisplayDate(invoice) {
+  return invoice?.issueDate || invoice?.invoice_date || "";
+}
+
+function isFacturXDraftInvoice(invoice) {
+  return invoice?.formatStatus === "facturx_ready_draft";
+}
+
+function downloadInvoiceXmlDraft(invoice) {
+  if (!isFacturXDraftInvoice(invoice)) return;
+
+  downloadTextFile(
+    `facturx-draft-${getInvoiceDisplayNumber(invoice)}.xml`,
+    generateFacturXXml(invoice),
+  );
+}
 // ... константы ...
 function labelFromOptions(stepKey, value) {
   const configStep = FISCAL_STEPS.find((s) => s.key === stepKey);
@@ -3346,7 +3379,10 @@ const refreshSubscriptionRecord = useCallback(async () => {
         try {
           const invoicesToMigrate = JSON.parse(localGuestInvoices);
           if (Array.isArray(invoicesToMigrate) && invoicesToMigrate.length > 0) {
-            const payload = invoicesToMigrate.map((invoice) => ({
+            const legacyInvoicesToMigrate = invoicesToMigrate.filter(
+              (invoice) => !isFacturXDraftInvoice(invoice),
+            );
+            const payload = legacyInvoicesToMigrate.map((invoice) => ({
               user_id: user.id,
               invoice_number: invoice.invoice_number,
               client_name: invoice.client_name || "",
@@ -3359,14 +3395,18 @@ const refreshSubscriptionRecord = useCallback(async () => {
               status: invoice.status || "sent",
             }));
 
-            const { error } = await supabase.from("invoices").insert(payload);
+            if (payload.length === 0) {
+              console.log("Factures Factur-X locales conservées sans migration.");
+            } else {
+              const { error } = await supabase.from("invoices").insert(payload);
 
-            if (error) {
-              throw error;
+              if (error) {
+                throw error;
+              }
+
+              migrated = true;
+              console.log("✅ Factures invité migrées:", payload.length);
             }
-
-            migrated = true;
-            console.log("✅ Factures invité migrées:", invoicesToMigrate.length);
           }
         } catch (e) {
           console.error("Erreur migration factures:", e);
@@ -3417,13 +3457,33 @@ const refreshSubscriptionRecord = useCallback(async () => {
       }
 
       if (migrated) {
+        const preservedFacturxInvoices = (() => {
+          try {
+            const parsed = JSON.parse(
+              localStorage.getItem(GUEST_INVOICES_KEY) || "[]",
+            );
+            return Array.isArray(parsed)
+              ? parsed.filter((invoice) => isFacturXDraftInvoice(invoice))
+              : [];
+          } catch {
+            return [];
+          }
+        })();
         clearLocalStorageKeys([
           LS_KEY,
           GUEST_REVENUES_KEY,
           GUEST_INVOICES_KEY,
           REMINDER_PREFS_KEY,
         ]);
-        setGuestInvoices([]);
+        if (preservedFacturxInvoices.length > 0) {
+          localStorage.setItem(
+            GUEST_INVOICES_KEY,
+            JSON.stringify(preservedFacturxInvoices),
+          );
+          setGuestInvoices(preservedFacturxInvoices);
+        } else {
+          setGuestInvoices([]);
+        }
         setHasDraft(false);
         setLastSavedAt(null);
         setRestoredAt(null);
@@ -4685,7 +4745,7 @@ useEffect(() => {
 
     return hasPersistedLocalPrefs || hasPersistedProfilePrefs;
   }, [fiscalProfile]);
-  const visibleInvoices = user ? invoices : guestInvoices;
+  const visibleInvoices = user ? [...guestInvoices, ...invoices] : guestInvoices;
   const dashboardChecklistItems = useMemo(
     () => [
       {
@@ -12432,6 +12492,9 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                         ? `${invoiceSectionSummary.unpaidCount} impayée${invoiceSectionSummary.unpaidCount > 1 ? "s" : ""}`
                         : "Aucun impayé"}
                     </p>
+                    <p className="dashboardSectionSubtitle">
+                      {PDP_ROADMAP_NOTE}
+                    </p>
                   </div>
                   <div className="journalFilters dashboardSectionActions">
                     <button
@@ -12515,10 +12578,10 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                       <div key={invoice.id} className="revenueItem">
                         <div className="revenueMain">
                           <div className="revenueAmount">
-                            {Number(invoice.amount).toLocaleString("fr-FR")} €
+                            {getInvoiceDisplayAmount(invoice).toLocaleString("fr-FR")} €
                           </div>
                           <div className="revenueDate">
-                            {invoice.invoice_number}
+                            {getInvoiceDisplayNumber(invoice)}
                           </div>
                         </div>
                         <div className="revenueMeta">
@@ -12537,7 +12600,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                             <div>
                               <strong>Date :</strong>{" "}
                               {new Date(
-                                `${invoice.invoice_date}T00:00:00`,
+                                `${getInvoiceDisplayDate(invoice)}T00:00:00`,
                               ).toLocaleDateString("fr-FR", {
                                 day: "2-digit",
                                 month: "long",
@@ -12545,23 +12608,55 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                               })}
                             </div>
                           )}
+                          {isFacturXDraftInvoice(invoice) && (
+                            <div>
+                              <strong>Statut :</strong> Factur-X brouillon
+                            </div>
+                          )}
+                          {isFacturXDraftInvoice(invoice) && (
+                            <div>{FACTURX_PREPARATION_LABEL}</div>
+                          )}
                         </div>
                         <div className="revenueActions">
                           <span
                             className={`badge ${
-                              invoice.localOnly
+                              isFacturXDraftInvoice(invoice)
+                                ? "badgeGray"
+                                : invoice.localOnly
                                 ? "badgeGray"
                                 : invoice.status === "sent"
                                   ? "badgeGreen"
                                   : "badgeGray"
                             }`}
                           >
-                            {invoice.localOnly
+                            {isFacturXDraftInvoice(invoice)
+                              ? "Factur-X brouillon"
+                              : invoice.localOnly
                               ? "Locale • non enregistrée"
                               : invoice.status === "sent"
                                 ? "✅ Envoyée"
                                 : "📝 Brouillon"}
                           </span>
+                          <button
+                            className="btn btnActionSecondary btnSmall"
+                            type="button"
+                            onClick={() =>
+                              generateB2CInvoicePdf(invoice, {
+                                userEmail: user?.email || "",
+                              })
+                            }
+                          >
+                            PDF
+                          </button>
+                          {isFacturXDraftInvoice(invoice) && (
+                            <button
+                              className="btn btnActionSecondary btnSmall"
+                              type="button"
+                              onClick={() => downloadInvoiceXmlDraft(invoice)}
+                            >
+                              XML
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -13734,23 +13829,26 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               setInvoiceNotice(message || "Facture enregistrée ✅");
             } else if (invoice) {
               trackEvent("invoice_create", {
-                source: "guest",
+                source: user ? "authenticated_local_facturx" : "guest",
                 totalRevenues: revenues.length,
                 invoiceCount: visibleInvoices.length + 1,
               });
               showSuccessToast(
-                "✅ Facture créée. Tu peux maintenant suivre les paiements.",
+                "✅ Facture préparée. PDF et XML sont disponibles.",
                 4000,
               );
               setGuestInvoices((prev) => {
                 const next = [invoice, ...prev];
+                // FUTURE: persist invoices after invoice schema migration.
                 localStorage.setItem(GUEST_INVOICES_KEY, JSON.stringify(next));
                 return next;
               });
               setInvoiceNotice({
-                title: "Facture téléchargée ✅",
-                body: "Connecte-toi pour la retrouver dans ton historique.",
-                cta: "auth",
+                title: "Facture préparée ✅",
+                body:
+                  message ||
+                  "Préparation Factur-X locale : PDF et XML peuvent être téléchargés depuis la liste.",
+                cta: user ? null : "auth",
               });
             }
             setTimeout(() => setInvoiceNotice(null), savedToSupabase ? 2500 : 5000);
