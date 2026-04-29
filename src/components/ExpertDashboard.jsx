@@ -1,5 +1,24 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import jsPDF from "jspdf";
+import {
+  FACTURX_NOT_TRANSMITTED_NOTE,
+  FACTURX_PREPARATION_LABEL,
+  PDP_ROADMAP_NOTE,
+  TVA_EXEMPTION_MENTION,
+  VAT_MODES,
+  createFacturXReadyInvoiceDraft,
+  downloadTextFile,
+  generateFacturXXml,
+} from "../utils/facturx.js";
 import "./ExpertDashboard.css";
+
+const EXPERT_CLIENTS_STORAGE_KEY = "microassist_expert_clients";
+const EXPERT_HISTORY_STORAGE_KEY = "microassist_expert_history";
+const SELLER_NAME = import.meta.env.VITE_INVOICE_SELLER_NAME || "Microassist Expert";
+const SELLER_ADDRESS =
+  import.meta.env.VITE_INVOICE_SELLER_ADDRESS || "Adresse vendeur à compléter";
+const SELLER_EMAIL = import.meta.env.VITE_INVOICE_SELLER_EMAIL || "";
+const SELLER_VAT_NUMBER = import.meta.env.VITE_INVOICE_SELLER_VAT_NUMBER || "";
 
 const FILTERS = [
   { key: "all", label: "Tous" },
@@ -22,6 +41,7 @@ const mockClients = [
       "Vérifier la prochaine échéance URSSAF",
       "Préparer le suivi mensuel",
     ],
+    invoices: [],
   },
   {
     id: 2,
@@ -35,6 +55,7 @@ const mockClients = [
       "Contrôler le seuil TVA",
       "Préparer un point client sur la facturation",
     ],
+    invoices: [],
   },
   {
     id: 3,
@@ -48,6 +69,7 @@ const mockClients = [
       "Régulariser la déclaration",
       "Envoyer un rappel client",
     ],
+    invoices: [],
   },
   {
     id: 4,
@@ -61,6 +83,7 @@ const mockClients = [
       "Préparer l’échéance CFE",
       "Vérifier les charges estimées",
     ],
+    invoices: [],
   },
   {
     id: 5,
@@ -74,8 +97,233 @@ const mockClients = [
       "Vérifier la ventilation vente / service",
       "Contrôler les charges estimées",
     ],
+    invoices: [],
   },
 ];
+
+function getTodayInputDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function addDaysToDate(dateString, days = 30) {
+  const base = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(base.getTime())) return "";
+  base.setDate(base.getDate() + days);
+  return base.toISOString().slice(0, 10);
+}
+
+function normalizeExpertClients(clients) {
+  if (!Array.isArray(clients)) return mockClients;
+
+  return clients.map((client) => ({
+    ...client,
+    invoices: Array.isArray(client.invoices) ? client.invoices : [],
+  }));
+}
+
+function loadExpertClients() {
+  try {
+    const saved = window.localStorage?.getItem(EXPERT_CLIENTS_STORAGE_KEY);
+    return saved ? normalizeExpertClients(JSON.parse(saved)) : mockClients;
+  } catch {
+    return mockClients;
+  }
+}
+
+function loadExpertHistory() {
+  try {
+    const saved = window.localStorage?.getItem(EXPERT_HISTORY_STORAGE_KEY);
+    const parsed = saved ? JSON.parse(saved) : [];
+
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.map((event) => ({
+      ...event,
+      date: event.date ? new Date(event.date) : new Date(),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function formatInvoiceDate(date) {
+  if (!date) return "Date non renseignée";
+
+  const parsedDate = new Date(`${date}T00:00:00`);
+
+  if (Number.isNaN(parsedDate.getTime())) return "Date non renseignée";
+
+  return parsedDate.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function formatInvoiceAmount(amount) {
+  return `${Number(amount || 0).toLocaleString("fr-FR")} €`;
+}
+
+function getInvoiceTotal(invoice) {
+  if (invoice?.totals?.totalTTC !== undefined) return invoice.totals.totalTTC;
+  if (invoice?.amount !== undefined) return invoice.amount;
+  return 0;
+}
+
+function getInvoiceDate(invoice) {
+  return invoice?.issueDate || invoice?.date || "";
+}
+
+function getInvoiceNumber(invoice) {
+  return invoice?.invoiceNumber || `EXP-${invoice.id}`;
+}
+
+function isFacturXDraft(invoice) {
+  return invoice?.formatStatus === "facturx_ready_draft";
+}
+
+function getStatusLabels(invoice) {
+  return Array.isArray(invoice?.statuses) && invoice.statuses.length > 0
+    ? invoice.statuses
+    : ["Brouillon", "PDF généré", "Transmission PDP non activée"];
+}
+
+function getSafeFilenamePart(value) {
+  return String(value || "client")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+}
+
+function downloadExpertInvoiceXml(invoice) {
+  if (!isFacturXDraft(invoice)) return;
+
+  downloadTextFile(
+    `facturx-draft-${getSafeFilenamePart(getInvoiceNumber(invoice))}.xml`,
+    generateFacturXXml(invoice),
+  );
+}
+
+function generateExpertInvoicePdf(client, invoice) {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const invoiceNumber = getInvoiceNumber(invoice);
+  const total = Number(getInvoiceTotal(invoice) || 0);
+  const line = invoice.lines?.[0] || {
+    description: invoice.description || "Prestation",
+    quantity: 1,
+    unitPrice: invoice.amount || 0,
+    vatRate: 0,
+    totalHT: invoice.amount || 0,
+    totalTVA: 0,
+    totalTTC: invoice.amount || 0,
+  };
+  const buyerName = invoice.buyer?.name || client.name || "Client";
+  const seller = invoice.seller || {};
+  const buyer = invoice.buyer || {};
+
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, pageWidth, 42, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  doc.text("FACTURE", 20, 18);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`N° ${invoiceNumber}`, 20, 29);
+  doc.text(FACTURX_PREPARATION_LABEL, 20, 36);
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Émetteur", 20, 58);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(seller.name || SELLER_NAME, 20, 68);
+  doc.text(doc.splitTextToSize(seller.address || SELLER_ADDRESS, 76), 20, 75);
+  if (seller.siret) doc.text(`SIRET : ${seller.siret}`, 20, 90);
+  if (seller.vatNumber) doc.text(`TVA : ${seller.vatNumber}`, 20, 96);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Client", 116, 58);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(buyerName, 116, 68);
+  if (buyer.address) doc.text(doc.splitTextToSize(buyer.address, 72), 116, 75);
+  if (buyer.siret) doc.text(`SIRET : ${buyer.siret}`, 116, 90);
+  if (buyer.vatNumber) doc.text(`TVA : ${buyer.vatNumber}`, 116, 96);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Date", 20, 110);
+  doc.setFont("helvetica", "normal");
+  doc.text(formatInvoiceDate(getInvoiceDate(invoice)), 45, 110);
+  doc.setFont("helvetica", "bold");
+  doc.text("Échéance", 116, 110);
+  doc.setFont("helvetica", "normal");
+  doc.text(formatInvoiceDate(invoice.dueDate), 145, 110);
+
+  doc.setDrawColor(226, 232, 240);
+  doc.line(20, 122, pageWidth - 20, 122);
+
+  doc.setFillColor(248, 250, 252);
+  doc.rect(20, 132, pageWidth - 40, 14, "F");
+  doc.setTextColor(71, 85, 105);
+  doc.setFont("helvetica", "bold");
+  doc.text("Description", 26, 141);
+  doc.text("Qté", 104, 141);
+  doc.text("PU HT", 124, 141);
+  doc.text("TVA", 150, 141);
+  doc.text("Total TTC", pageWidth - 42, 141);
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFont("helvetica", "normal");
+  const descriptionLines = doc.splitTextToSize(
+    line.description || "Prestation",
+    70,
+  );
+  doc.text(descriptionLines, 26, 158);
+  doc.text(String(line.quantity || 0), 104, 158);
+  doc.text(formatInvoiceAmount(line.unitPrice), 124, 158);
+  doc.text(`${line.vatRate || 0}%`, 150, 158);
+  doc.text(formatInvoiceAmount(line.totalTTC ?? total), pageWidth - 42, 158);
+
+  const totalY = Math.max(182, 158 + descriptionLines.length * 6);
+  doc.setDrawColor(226, 232, 240);
+  doc.line(20, totalY, pageWidth - 20, totalY);
+
+  doc.setFontSize(10);
+  doc.setTextColor(71, 85, 105);
+  doc.text("Total HT", pageWidth - 82, totalY + 12);
+  doc.text(formatInvoiceAmount(invoice.totals?.totalHT ?? line.totalHT), pageWidth - 42, totalY + 12);
+  doc.text("TVA", pageWidth - 82, totalY + 20);
+  doc.text(formatInvoiceAmount(invoice.totals?.totalTVA ?? line.totalTVA), pageWidth - 42, totalY + 20);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(13);
+  doc.text("Total TTC", pageWidth - 82, totalY + 32);
+  doc.text(formatInvoiceAmount(total), pageWidth - 42, totalY + 32);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  if (invoice.vatExemptionReason) {
+    doc.text(invoice.vatExemptionReason, 20, totalY + 18);
+  }
+  doc.text(invoice.paymentTerms || "Conditions de paiement à compléter", 20, totalY + 28);
+  doc.text(FACTURX_NOT_TRANSMITTED_NOTE, 20, totalY + 40);
+
+  doc.setFillColor(248, 250, 252);
+  doc.rect(0, pageHeight - 27, pageWidth, 27, "F");
+  doc.setTextColor(71, 85, 105);
+  doc.setFontSize(9);
+  doc.text("Microassist Expert", pageWidth / 2, pageHeight - 11, { align: "center" });
+
+  doc.save(`facture-${getSafeFilenamePart(buyerName)}-${getSafeFilenamePart(invoiceNumber)}.pdf`);
+}
 
 function getStatusLabel(status) {
   switch (status) {
@@ -91,7 +339,7 @@ function getStatusLabel(status) {
 }
 
 export default function ExpertDashboard() {
-  const [clients, setClients] = useState(mockClients);
+  const [clients, setClients] = useState(loadExpertClients);
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -99,12 +347,24 @@ export default function ExpertDashboard() {
   const [reminderType, setReminderType] = useState("declaration");
   const [reminderMessage, setReminderMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [clientHistory, setClientHistory] = useState([]);
+  const [clientHistory, setClientHistory] = useState(loadExpertHistory);
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const [addClientError, setAddClientError] = useState("");
   const [noteClientId, setNoteClientId] = useState(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteError, setNoteError] = useState("");
+  const [invoiceClientId, setInvoiceClientId] = useState(null);
+  const [invoiceForm, setInvoiceForm] = useState({
+    clientName: "",
+    description: "",
+    quantity: "1",
+    unitPrice: "",
+    vatMode: VAT_MODES.exempt,
+    dueDate: addDaysToDate(getTodayInputDate(), 30),
+    buyerSiret: "",
+    sellerSiret: "",
+  });
+  const [invoiceError, setInvoiceError] = useState("");
   const [newClientForm, setNewClientForm] = useState({
     name: "",
     activity: "",
@@ -125,11 +385,20 @@ export default function ExpertDashboard() {
     () => clients.find((client) => client.id === noteClientId) || null,
     [clients, noteClientId],
   );
+  const invoiceClient = useMemo(
+    () => clients.find((client) => client.id === invoiceClientId) || null,
+    [clients, invoiceClientId],
+  );
   const selectedClientHistory = useMemo(() => {
     if (!selectedClient) return [];
 
     return clientHistory.filter((event) => event.clientId === selectedClient.id);
   }, [clientHistory, selectedClient]);
+  const selectedClientInvoices = useMemo(() => {
+    if (!selectedClient) return [];
+
+    return Array.isArray(selectedClient.invoices) ? selectedClient.invoices : [];
+  }, [selectedClient]);
   const selectedClientNotes = useMemo(() => {
     if (!selectedClient) return [];
 
@@ -170,6 +439,29 @@ export default function ExpertDashboard() {
     });
   }, [activeFilter, clients, searchQuery]);
 
+  useEffect(() => {
+    try {
+      // FUTURE: persist invoices after invoice schema migration.
+      window.localStorage?.setItem(
+        EXPERT_CLIENTS_STORAGE_KEY,
+        JSON.stringify(clients),
+      );
+    } catch {
+      // Local persistence is best-effort for the expert prototype.
+    }
+  }, [clients]);
+
+  useEffect(() => {
+    try {
+      window.localStorage?.setItem(
+        EXPERT_HISTORY_STORAGE_KEY,
+        JSON.stringify(clientHistory),
+      );
+    } catch {
+      // Local persistence is best-effort for the expert prototype.
+    }
+  }, [clientHistory]);
+
   function buildReminderMessage(client) {
     if (!client) return "";
 
@@ -198,6 +490,47 @@ export default function ExpertDashboard() {
     setNoteClientId(null);
     setNoteDraft("");
     setNoteError("");
+  }
+
+  function openInvoiceModal(client) {
+    setInvoiceClientId(client.id);
+    setInvoiceError("");
+    setInvoiceForm({
+      clientName: client.name,
+      description: "",
+      quantity: "1",
+      unitPrice: "",
+      vatMode: VAT_MODES.exempt,
+      dueDate: addDaysToDate(getTodayInputDate(), 30),
+      buyerSiret: "",
+      sellerSiret: "",
+    });
+  }
+
+  function closeInvoiceModal() {
+    setInvoiceClientId(null);
+    setInvoiceError("");
+    setInvoiceForm({
+      clientName: "",
+      description: "",
+      quantity: "1",
+      unitPrice: "",
+      vatMode: VAT_MODES.exempt,
+      dueDate: addDaysToDate(getTodayInputDate(), 30),
+      buyerSiret: "",
+      sellerSiret: "",
+    });
+  }
+
+  function handleInvoiceFormChange(field, value) {
+    setInvoiceForm((currentForm) => ({
+      ...currentForm,
+      [field]: value,
+    }));
+
+    if (invoiceError) {
+      setInvoiceError("");
+    }
   }
 
   function openAddClientModal() {
@@ -266,6 +599,7 @@ export default function ExpertDashboard() {
         "Préparer la prochaine action",
       ],
       notes: "Dossier ajouté manuellement dans le prototype expert.",
+      invoices: [],
     };
 
     setClients((currentClients) => [nextClient, ...currentClients]);
@@ -342,6 +676,108 @@ export default function ExpertDashboard() {
     closeNoteModal();
   }
 
+  function handleCreateInvoice() {
+    if (!invoiceClient) return;
+
+    const description = invoiceForm.description.trim();
+    const normalizedQuantity = String(invoiceForm.quantity || "")
+      .trim()
+      .replace(/\s/g, "")
+      .replace(",", ".");
+    const normalizedUnitPrice = String(invoiceForm.unitPrice || "")
+      .trim()
+      .replace(/\s/g, "")
+      .replace(",", ".");
+    const quantity = Number(normalizedQuantity);
+    const unitPrice = Number(normalizedUnitPrice);
+
+    if (!invoiceForm.clientName.trim()) {
+      setInvoiceError("Le nom du client est requis.");
+      return;
+    }
+
+    if (!description) {
+      setInvoiceError("La description est requise.");
+      return;
+    }
+
+    if (!normalizedQuantity || Number.isNaN(quantity) || quantity <= 0) {
+      setInvoiceError("La quantité doit être un nombre positif.");
+      return;
+    }
+
+    if (!normalizedUnitPrice || Number.isNaN(unitPrice) || unitPrice <= 0) {
+      setInvoiceError("Le prix unitaire doit être un nombre positif.");
+      return;
+    }
+
+    if (!invoiceForm.dueDate) {
+      setInvoiceError("La date d’échéance est requise.");
+      return;
+    }
+
+    const id = Date.now();
+    const issueDate = getTodayInputDate();
+    const invoice = createFacturXReadyInvoiceDraft({
+      id,
+      invoiceNumber: `EXP-${new Date().getFullYear()}-${String(id).slice(-6)}`,
+      issueDate,
+      dueDate: invoiceForm.dueDate,
+      seller: {
+        name: SELLER_NAME,
+        address: SELLER_ADDRESS,
+        siret: invoiceForm.sellerSiret.trim(),
+        vatNumber: SELLER_VAT_NUMBER,
+        email: SELLER_EMAIL,
+      },
+      buyer: {
+        name: invoiceForm.clientName.trim(),
+        address: "Adresse acheteur à compléter",
+        siret: invoiceForm.buyerSiret.trim(),
+        vatNumber: "",
+        email: "",
+      },
+      description,
+      quantity,
+      unitPrice,
+      vatMode: invoiceForm.vatMode,
+    });
+
+    const pdfClient = {
+      ...invoiceClient,
+      name: invoiceForm.clientName.trim(),
+    };
+
+    setClients((currentClients) =>
+      currentClients.map((client) =>
+        client.id === invoiceClient.id
+          ? {
+              ...client,
+              invoices: [invoice, ...(client.invoices || [])],
+            }
+          : client,
+      ),
+    );
+
+    setClientHistory((currentHistory) => [
+      {
+        clientId: invoiceClient.id,
+        type: "invoice",
+        label: "Facture préparée",
+        detail: formatInvoiceAmount(invoice.totals.totalTTC),
+        date: new Date(),
+      },
+      ...currentHistory,
+    ]);
+
+    generateExpertInvoicePdf(pdfClient, invoice);
+    downloadExpertInvoiceXml(invoice);
+    setSuccessMessage(
+      `Facture préparée : ${formatInvoiceAmount(invoice.totals.totalTTC)}`,
+    );
+    closeInvoiceModal();
+  }
+
   if (selectedClient) {
     return (
       <section className="expertDashboard">
@@ -415,6 +851,74 @@ export default function ExpertDashboard() {
             </div>
 
             <div className="expertPanelBlock">
+              <div className="expertPanelHeader">
+                <div>
+                  <h3>Factures</h3>
+                  <p className="expertPanelNote">{PDP_ROADMAP_NOTE}</p>
+                </div>
+                <button
+                  type="button"
+                  className="btn btnPrimary btnSmall"
+                  onClick={() => openInvoiceModal(selectedClient)}
+                >
+                  Créer une facture
+                </button>
+              </div>
+
+              {selectedClientInvoices.length === 0 ? (
+                <p className="expertHistoryEmpty">
+                  Aucune facture pour ce client.
+                </p>
+              ) : (
+                <ul className="expertInvoiceList">
+                  {selectedClientInvoices.map((invoice) => (
+                    <li key={invoice.id} className="expertInvoiceItem">
+                      <div>
+                        <span className="expertInvoiceDate">
+                          {formatInvoiceDate(getInvoiceDate(invoice))}
+                        </span>
+                        <strong>{formatInvoiceAmount(getInvoiceTotal(invoice))}</strong>
+                        <span className="expertInvoiceMeta">
+                          {getInvoiceNumber(invoice)}
+                        </span>
+                        <span className="expertInvoiceMeta">
+                          {FACTURX_PREPARATION_LABEL}
+                        </span>
+                        <div className="expertStatusList">
+                          {getStatusLabels(invoice).map((status) => (
+                            <span key={status} className="expertStatusPill">
+                              {status}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="expertInvoiceActions">
+                        <button
+                          type="button"
+                          className="btn btnGhost btnSmall"
+                          onClick={() =>
+                            generateExpertInvoicePdf(selectedClient, invoice)
+                          }
+                        >
+                          Télécharger PDF
+                        </button>
+                        {isFacturXDraft(invoice) && (
+                          <button
+                            type="button"
+                            className="btn btnGhost btnSmall"
+                            onClick={() => downloadExpertInvoiceXml(invoice)}
+                          >
+                            Télécharger XML
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="expertPanelBlock">
               <h3>Historique des actions</h3>
               {selectedClientHistory.length === 0 ? (
                 <p className="expertHistoryEmpty">Aucune action pour ce client.</p>
@@ -432,7 +936,9 @@ export default function ExpertDashboard() {
                         })}
                       </span>
                       <span className="expertHistoryText">
-                        {event.label} ({event.detail})
+                        {event.type === "invoice"
+                          ? `${event.label} : ${event.detail}`
+                          : `${event.label} (${event.detail})`}
                       </span>
                     </li>
                   ))}
@@ -441,6 +947,191 @@ export default function ExpertDashboard() {
             </div>
           </div>
         </div>
+
+        {successMessage && (
+          <div className="expertToast" role="status" aria-live="polite">
+            <span>{successMessage}</span>
+            <button
+              type="button"
+              className="expertToastClose"
+              onClick={() => setSuccessMessage("")}
+              aria-label="Fermer le message"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {invoiceClient && (
+          <div className="expertModalOverlay" role="presentation">
+            <div
+              className="expertModalCard"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="expert-invoice-title"
+            >
+              <div className="expertModalHeader">
+                <div>
+                  <h3 id="expert-invoice-title">Créer une facture</h3>
+                  <p className="expertModalSubtitle">
+                    {FACTURX_PREPARATION_LABEL}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn btnGhost btnSmall"
+                  onClick={closeInvoiceModal}
+                >
+                  Fermer
+                </button>
+              </div>
+
+              <div className="expertModalField">
+                <label htmlFor="expert-invoice-client-name">Client</label>
+                <input
+                  id="expert-invoice-client-name"
+                  type="text"
+                  className="expertModalInput"
+                  value={invoiceForm.clientName}
+                  onChange={(event) =>
+                    handleInvoiceFormChange("clientName", event.target.value)
+                  }
+                />
+              </div>
+
+              <div className="expertModalField">
+                <label htmlFor="expert-invoice-description">Description</label>
+                <input
+                  id="expert-invoice-description"
+                  type="text"
+                  className="expertModalInput"
+                  value={invoiceForm.description}
+                  onChange={(event) =>
+                    handleInvoiceFormChange("description", event.target.value)
+                  }
+                />
+              </div>
+
+              <div className="expertModalField">
+                <label htmlFor="expert-invoice-quantity">Quantité</label>
+                <input
+                  id="expert-invoice-quantity"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  className="expertModalInput"
+                  value={invoiceForm.quantity}
+                  onChange={(event) =>
+                    handleInvoiceFormChange("quantity", event.target.value)
+                  }
+                />
+              </div>
+
+              <div className="expertModalField">
+                <label htmlFor="expert-invoice-unit-price">Prix unitaire HT (€)</label>
+                <input
+                  id="expert-invoice-unit-price"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  className="expertModalInput"
+                  value={invoiceForm.unitPrice}
+                  onChange={(event) =>
+                    handleInvoiceFormChange("unitPrice", event.target.value)
+                  }
+                />
+              </div>
+
+              <div className="expertModalField">
+                <label htmlFor="expert-invoice-vat-mode">Mode TVA</label>
+                <select
+                  id="expert-invoice-vat-mode"
+                  className="expertModalSelect"
+                  value={invoiceForm.vatMode}
+                  onChange={(event) =>
+                    handleInvoiceFormChange("vatMode", event.target.value)
+                  }
+                >
+                  <option value={VAT_MODES.exempt}>
+                    {TVA_EXEMPTION_MENTION}
+                  </option>
+                  <option value={VAT_MODES.standard}>TVA standard</option>
+                  <option value={VAT_MODES.later}>À compléter plus tard</option>
+                </select>
+              </div>
+
+              <div className="expertModalField">
+                <label htmlFor="expert-invoice-due-date">Date d’échéance</label>
+                <input
+                  id="expert-invoice-due-date"
+                  type="date"
+                  className="expertModalInput"
+                  value={invoiceForm.dueDate}
+                  onChange={(event) =>
+                    handleInvoiceFormChange("dueDate", event.target.value)
+                  }
+                />
+              </div>
+
+              <div className="expertModalField">
+                <label htmlFor="expert-invoice-buyer-siret">
+                  SIRET acheteur (optionnel)
+                </label>
+                <input
+                  id="expert-invoice-buyer-siret"
+                  type="text"
+                  className="expertModalInput"
+                  value={invoiceForm.buyerSiret}
+                  onChange={(event) =>
+                    handleInvoiceFormChange("buyerSiret", event.target.value)
+                  }
+                />
+              </div>
+
+              <div className="expertModalField">
+                <label htmlFor="expert-invoice-seller-siret">
+                  SIRET vendeur (optionnel)
+                </label>
+                <input
+                  id="expert-invoice-seller-siret"
+                  type="text"
+                  className="expertModalInput"
+                  value={invoiceForm.sellerSiret}
+                  onChange={(event) =>
+                    handleInvoiceFormChange("sellerSiret", event.target.value)
+                  }
+                />
+              </div>
+
+              <div className="expertFacturxNotice">
+                {FACTURX_NOT_TRANSMITTED_NOTE}
+              </div>
+
+              {invoiceError && (
+                <div className="expertModalError" role="alert">
+                  {invoiceError}
+                </div>
+              )}
+
+              <div className="expertModalActions">
+                <button
+                  type="button"
+                  className="btn btnGhost btnSmall"
+                  onClick={closeInvoiceModal}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  className="btn btnPrimary btnSmall"
+                  onClick={handleCreateInvoice}
+                >
+                  Préparer PDF + XML
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     );
   }

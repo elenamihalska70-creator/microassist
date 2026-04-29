@@ -12220,6 +12220,10 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               >
                 {exportHelperText}
               </div>
+              <div className="dashboardHelperText">
+                Saisie manuelle pour le moment. Connexion automatique (URSSAF/API)
+                prévue dans une prochaine version.
+              </div>
               {renderBetaMicroFeedbackCard("revenues")}
 
               {filteredRevenues.length === 0 ? (

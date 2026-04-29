@@ -428,6 +428,25 @@
   color: #0f172a;
 }
 
+.expertPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.expertPanelHeader h3 {
+  margin: 0;
+}
+
+.expertPanelNote {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
 .expertPanelBlock p {
   margin: 0;
   color: #334155;
@@ -458,6 +477,85 @@
   border: 1px solid #e2e8f0;
   color: #334155;
   line-height: 1.5;
+}
+
+.expertInvoiceList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.expertInvoiceItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
+.expertInvoiceItem > div {
+  display: grid;
+  gap: 4px;
+}
+
+.expertInvoiceActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.expertInvoiceDate {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.expertInvoiceMeta {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.expertInvoiceItem strong {
+  color: #0f172a;
+  font-size: 17px;
+}
+
+.expertStatusList {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.expertStatusPill {
+  width: fit-content;
+  border-radius: 999px;
+  border: 1px solid #dbe4ee;
+  background: #f8fafc;
+  color: #475569;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.expertFacturxNotice {
+  margin: 2px 0 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 600;
 }
 
 .expertHistoryEmpty {
