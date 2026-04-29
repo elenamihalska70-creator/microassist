@@ -590,7 +590,7 @@ export default function InvoiceGenerator({
             disabled={saving}
             type="button"
           >
-            {saving ? "Préparation..." : "Créer et télécharger PDF + XML"}
+            {saving ? "Préparation..." : "Créer facture compatible 2026"}
           </button>
         </div>
       </div>

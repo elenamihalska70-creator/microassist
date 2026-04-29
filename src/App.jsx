@@ -13847,7 +13847,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 title: "Facture préparée ✅",
                 body:
                   message ||
-                  "Préparation Factur-X locale : PDF et XML peuvent être téléchargés depuis la liste.",
+                  "Facture électronique prête : PDF et XML peuvent être téléchargés depuis la liste.",
                 cta: user ? null : "auth",
               });
             }

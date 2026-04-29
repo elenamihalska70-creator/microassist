@@ -1,11 +1,11 @@
 export const FACTURX_PREPARATION_LABEL =
-  "Préparation Factur-X — transmission PDP prévue dans une prochaine version.";
+  "Facture électronique prête (Factur-X) — transmission via plateforme agréée prévue dans une prochaine version.";
 
 export const FACTURX_NOT_TRANSMITTED_NOTE =
-  "Préparation Factur-X — ce document n’est pas encore transmis via une plateforme agréée.";
+  "Ce document contient un brouillon Factur-X. Il n’est pas encore transmis automatiquement via une plateforme agréée.";
 
 export const PDP_ROADMAP_NOTE =
-  "Connexion à une plateforme agréée prévue dans une prochaine version.";
+  "La connexion à une plateforme agréée sera ajoutée dans une prochaine version.";
 
 export const TVA_EXEMPTION_MENTION =
   "TVA non applicable, art. 293 B du CGI";
