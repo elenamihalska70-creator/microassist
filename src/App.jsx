@@ -5446,7 +5446,7 @@ useEffect(() => {
   const dashboardEmptyDataMessage = hasRevenueData
     ? ""
     : "Ajoute ton premier revenu";
-  const dashboardQuietPlaceholder = "—";
+  const dashboardQuietPlaceholder = "À compléter";
   const dashboardRevenueDisplay = hasRevenueData
     ? getDisplayValue(currentMonthTotal, "money")
     : cockpitEstimate.isProvisional
@@ -12375,6 +12375,49 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 </section>
               )}
 
+              {(hasProfileCore || simpleAssistantProfile) && (
+                <section className="dashboardQuickActions" aria-label="Actions rapides">
+                  <div className="dashboardQuickActionsIntro">
+                    <span>Actions rapides</span>
+                    <p>Les 3 gestes utiles pour garder ton suivi à jour.</p>
+                  </div>
+                  <div className="dashboardQuickActionsList">
+                    <button
+                      className="btn btnActionPrimary btnSmall"
+                      type="button"
+                      onClick={handleOpenRevenuePopup}
+                    >
+                      + Ajouter un revenu
+                    </button>
+                    <button
+                      className="btn btnActionUtility btnSmall"
+                      type="button"
+                      onClick={handleOpenInvoiceGenerator}
+                    >
+                      Créer une facture
+                    </button>
+                    {revenues.length > 0 ? (
+                      <a
+                        className="btn btnActionSecondary btnSmall"
+                        href="https://www.autoentrepreneur.urssaf.fr/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Déclarer URSSAF
+                      </a>
+                    ) : (
+                      <button
+                        className="btn btnActionSecondary btnSmall"
+                        type="button"
+                        onClick={() => openExplanationModal("urssaf")}
+                      >
+                        Déclarer URSSAF
+                      </button>
+                    )}
+                  </div>
+                </section>
+              )}
+
               {!hasDeclarationReminderActive && (
                 <div className="dashboardDeclarationReminderCard dashboardOrderReminder">
                   <div>
@@ -14273,8 +14316,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                       Partager mon suivi avec un conseiller
                     </h3>
                     <p className="dashboardSectionSubtitle">
-                      Envoie un aperçu simple de ta situation pour obtenir un avis
-                      ou de l’aide.
+                      Envoie un résumé clair de ta situation à une personne qui peut t’aider.
                     </p>
                   </div>
                   <div className="dashboardSectionActions">

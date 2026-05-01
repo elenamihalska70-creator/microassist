@@ -412,8 +412,12 @@ section[id] {
   order: -124;
 }
 
-.dashboardCard > .dashboardOrderReminder {
+.dashboardCard > .dashboardQuickActions {
   order: -123;
+}
+
+.dashboardCard > .dashboardOrderReminder {
+  order: -122;
 }
 
 .dashboardCard > .dashboardOrderSituation {
@@ -531,6 +535,46 @@ section[id] {
   color: #475569;
   font-size: 13px;
   font-weight: 700;
+}
+
+.dashboardQuickActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: -4px 0 14px;
+  padding: 16px;
+  border: 1px solid #cfe8d8;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f8fcfa 0%, #ffffff 100%);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.035);
+}
+
+.dashboardQuickActionsIntro {
+  min-width: 0;
+}
+
+.dashboardQuickActionsIntro span {
+  display: block;
+  color: #0f172a;
+  font-size: 15px;
+  line-height: 1.3;
+  font-weight: 800;
+}
+
+.dashboardQuickActionsIntro p {
+  margin: 3px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.dashboardQuickActionsList {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .dashboardInlineLink {
@@ -802,7 +846,21 @@ section[id] {
 
 .dashboardAdvisorShareCard {
   border-color: #cfe8d8;
-  background: linear-gradient(180deg, #f5faf8 0%, #ffffff 100%);
+  background: linear-gradient(180deg, #f3fbf7 0%, #ffffff 100%);
+}
+
+.dashboardAdvisorShareCard .dashboardSectionHeader {
+  align-items: center;
+}
+
+.dashboardAdvisorShareCard .dashboardSectionSubtitle {
+  max-width: 560px;
+  color: #475569;
+  font-size: 14px;
+}
+
+.dashboardAdvisorShareCard .dashboardSectionActions {
+  align-self: center;
 }
 
 .expertViewPage {
@@ -957,6 +1015,20 @@ section[id] {
   .dashboardNumbersGrid,
   .dashboardPriorityDetails {
     grid-template-columns: 1fr;
+  }
+
+  .dashboardQuickActions {
+    align-items: stretch;
+    display: grid;
+    gap: 12px;
+  }
+
+  .dashboardQuickActionsList {
+    justify-content: stretch;
+  }
+
+  .dashboardQuickActionsList .btn {
+    flex: 1 1 150px;
   }
 
   .expertViewGrid {
@@ -1787,8 +1859,8 @@ section[id] {
 
 .dashboardSignalStack {
   display: grid;
-  gap: 14px;
-  margin: 0 0 18px;
+  gap: 10px;
+  margin: 4px 0 16px;
 }
 
 .dashboardSignalStack > * {
@@ -1810,11 +1882,11 @@ section[id] {
 
 .dashboardChecklistCard {
   margin: 0 0 16px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.78);
   border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03);
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.02);
 }
 
 .dashboardChecklistList {
@@ -1863,20 +1935,20 @@ section[id] {
 
 .dashboardRecommendationCard {
   margin: 0 0 16px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.82);
   border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03);
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.02);
 }
 
 .dashboardLearningCard {
   margin: 0 0 16px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.8);
   border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03);
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.02);
 }
 
 .dashboardLearningProgress {
@@ -1973,22 +2045,22 @@ section[id] {
 
 .dashboardWeeklyRecapCard {
   margin: 0 0 16px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.82);
   border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03);
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.02);
 }
 
 .dashboardWeeklyRecapGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .dashboardWeeklyRecapItem {
   min-width: 0;
-  padding: 12px;
+  padding: 10px;
   border-radius: 14px;
   background: rgba(248, 250, 252, 0.92);
   border: 1px solid rgba(148, 163, 184, 0.16);
@@ -2001,8 +2073,8 @@ section[id] {
 }
 
 .dashboardWeeklyRecapValue {
-  margin-top: 6px;
-  font-size: 16px;
+  margin-top: 4px;
+  font-size: 15px;
   line-height: 1.3;
   font-weight: 700;
   color: #0f172a;
@@ -2179,12 +2251,12 @@ section[id] {
 }
 
 .fiscalScoreCard {
-  margin: 18px 0 16px;
-  padding: 16px 18px;
+  margin: 14px 0 14px;
+  padding: 14px 16px;
   border-radius: 18px;
   border: 1px solid rgba(15, 23, 42, 0.07);
   background: #ffffff;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.035);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.025);
 }
 
 .fiscalScoreHeader h3 {
@@ -2202,8 +2274,8 @@ section[id] {
 }
 
 .fiscalScoreValue {
-  margin-top: 10px;
-  font-size: 34px;
+  margin-top: 8px;
+  font-size: 30px;
   font-weight: 800;
   line-height: 1.05;
   color: #0f172a;
@@ -2255,13 +2327,13 @@ section[id] {
 }
 
 .dashboardSectionZone {
-  margin-top: 22px;
-  padding: 22px;
+  margin-top: 16px;
+  padding: 20px;
   border-radius: 20px;
   border: 1px solid transparent;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.62),
-    0 12px 28px rgba(15, 23, 42, 0.035);
+    0 10px 24px rgba(15, 23, 42, 0.03);
 }
 
 .dashboardSectionZoneLavender {
@@ -2933,7 +3005,7 @@ section[id] {
   margin-top: 8px;
 }
 .smartPrioritiesEngine {
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .discoveryBanner {
@@ -2973,8 +3045,8 @@ section[id] {
 
 .priorityCard {
   border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
   border: 1px solid rgba(15, 23, 42, 0.08);
 }
 
@@ -2998,14 +3070,14 @@ section[id] {
 
 .priorityMessage {
   color: #334155;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   line-height: 1.5;
 }
 
 .priorityLockCard {
   border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
   background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
   border: 1px dashed rgba(99, 102, 241, 0.28);
 }
