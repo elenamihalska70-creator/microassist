@@ -20,7 +20,7 @@ export const FISCAL_STEPS = [
     question: "Quelle est ton activité principale ?",
     options: [
       { value: "services", label: "💻 Services" },
-      { value: "vente", label: "🛒 Vente" },
+      { value: "commerce", label: "🛒 Commerce" },
       { value: "mixte", label: "🎨 Mixte" },
     ],
     help: "Les obligations et les taux de cotisation varient selon ton activité.",

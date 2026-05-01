@@ -2,7 +2,7 @@
 
 function getRate(activityType) {
   if (activityType === "services") return 0.22;
-  if (activityType === "vente") return 0.123;
+  if (activityType === "commerce") return 0.123;
   if (activityType === "mixte") return 0.18;
   return 0;
 }
@@ -177,7 +177,7 @@ export function computeObligations(answers = {}) {
 
   if (answers.activity_type === "services") {
     tvaThreshold = 36800;
-  } else if (answers.activity_type === "vente") {
+  } else if (answers.activity_type === "commerce") {
     tvaThreshold = 91900;
   } else if (answers.activity_type === "mixte") {
     tvaThreshold = 36800;
