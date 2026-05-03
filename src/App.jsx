@@ -35,7 +35,6 @@ import ExpertDashboard from "./components/ExpertDashboard";
 // Добавьте после других констант:
 const LS_KEY = "microassist_v1";
 const LS_VERSION = 1;
-const UI_KEY = "microassist_ui_sections";
 const CHART_KEY = "microassist_show_chart";
 const GUEST_REVENUES_KEY = "revenues_guest";
 const GUEST_INVOICES_KEY = "guest_invoices";
@@ -156,14 +155,6 @@ const EXPLANATION_CONTENT = {
     link: "https://www.service-public.fr/professionnels-entreprises/vosdroits/F21746",
     linkLabel: "En savoir plus sur service-public.fr",
   },
-};
-const DEFAULT_VISIBLE_SECTIONS = {
-  about: true,
-  services: true,
-  howItWorks: true,
-  roadmap: true,
-  security: true,
-  feedback: true,
 };
 const PENDING_AUTH_SUCCESS_KEY = "microassist_pending_auth_success";
 const DEFAULT_REMINDER_PREFS = {
@@ -446,7 +437,6 @@ const FULL_RESET_LOCAL_STORAGE_KEYS = [
   DASHBOARD_REMINDERS_DISMISSED_KEY,
   DASHBOARD_SECTIONS_KEY,
   CHART_KEY,
-  UI_KEY,
   PENDING_AUTH_SUCCESS_KEY,
   PROFILE_CONFLICT_STRATEGY_KEY,
 ];
@@ -2770,7 +2760,6 @@ useEffect(() => {
   const securityRef = useRef(null);
   const heroRef = useRef(null);
   const servicesRef = useRef(null);
-  const howItWorksRef = useRef(null);
   const fiscalRef = useRef(null);
   const revenusRef = useRef(null);
   const facturesRef = useRef(null);
@@ -2990,18 +2979,6 @@ useEffect(() => {
     note: "",
   });
   const [showRevenueDetails, setShowRevenueDetails] = useState(false); // ✅ ДОБАВИТЬ
-
-  // Состояния для отображения
-  const [visibleSections, setVisibleSections] = useState(() => {
-    try {
-      const raw = localStorage.getItem(UI_KEY);
-      return raw
-        ? { ...DEFAULT_VISIBLE_SECTIONS, ...JSON.parse(raw) }
-        : DEFAULT_VISIBLE_SECTIONS;
-    } catch {
-      return DEFAULT_VISIBLE_SECTIONS;
-    }
-  });
 
   const [showChart, setShowChart] = useState(() => {
     try {
@@ -4562,24 +4539,8 @@ useEffect(() => {
     });
   }
 
-  function hideSection(key) {
-    setVisibleSections((prev) => ({
-      ...prev,
-      [key]: false,
-    }));
-  }
-
-  function showAllSections() {
-    setVisibleSections(DEFAULT_VISIBLE_SECTIONS);
-  }
-
   function openSecuritySection() {
     setFocusMode(false);
-
-    setVisibleSections((prev) => ({
-      ...prev,
-      security: true,
-    }));
 
     setTimeout(() => {
       securityRef.current?.scrollIntoView({
@@ -4667,10 +4628,6 @@ useEffect(() => {
       setHydrated(true);
     }
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem(UI_KEY, JSON.stringify(visibleSections));
-  }, [visibleSections]);
 
   useEffect(() => {
     try {
@@ -8671,7 +8628,6 @@ function clearLocalStorageKeys(keys) {
       FIRST_REVENUE_ONBOARDING_SEEN_KEY,
       BETA_MICRO_FEEDBACK_KEY,
       CHART_KEY,
-      UI_KEY,
     ]);
 
     for (let index = 0; index < localStorage.length; index += 1) {
@@ -8871,7 +8827,6 @@ useEffect(() => {
       resetDashboardState();
       resetAssistantSession();
       setAppView("assistant");
-      setVisibleSections(DEFAULT_VISIBLE_SECTIONS);
 
       if (!user) {
         setHydrated(true);
@@ -8940,7 +8895,6 @@ useEffect(() => {
     setDashboardTopNudgeDismissedType("");
     setDashboardChecklistCollapsed(false);
     setDashboardSections(DEFAULT_DASHBOARD_SECTIONS);
-    setVisibleSections(DEFAULT_VISIBLE_SECTIONS);
     setShowFirstRevenueOnboarding(false);
     resetDashboardState();
     resetAssistantSession();
@@ -9805,29 +9759,14 @@ async function handleExportPDFWithLimit() {
       return;
     }
 
-    const sectionKeyMap = {
-      home: null,
-      howItWorks: "howItWorks",
-      services: "services",
-    };
-
-    const visibleKey = sectionKeyMap[section];
-
-    if (visibleKey) {
-      setVisibleSections((prev) => ({
-        ...prev,
-        [visibleKey]: true,
-      }));
-    }
-
     setAppView("landing");
     setFocusMode(false);
 
     setTimeout(() => {
       const refs = {
         home: heroRef,
-        howItWorks: howItWorksRef,
         services: servicesRef,
+        security: securityRef,
       };
 
       refs[section]?.current?.scrollIntoView({
@@ -11115,7 +11054,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               <button
                 type="button"
                 className="navLink"
-                onClick={() => goToLandingSection("howItWorks")}
+                onClick={() => goToLandingSection("services")}
               >
                 Services
               </button>
@@ -11299,23 +11238,22 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
             <section id="home" ref={heroRef} className="card hero heroSaaS">
               <div className="heroGrid">
                 <div className="heroLeft">
-                  <div className="heroBadge">🟣 MVP en test</div>
-
+                  <div className="heroBadge">MVP en test</div>
                   <div className="heroProductName">Microassist</div>
-                  <div className="heroCategory">
-                    Assistant fiscal pour micro-entrepreneurs
-                  </div>
-                  <h1>Ne rate plus jamais une déclaration URSSAF</h1>
+                  <h1>
+                    Ne rate plus jamais une déclaration URSSAF
+                    <br />
+                    et sache combien mettre de côté chaque mois
+                  </h1>
 
                   <div className="heroLead">
                     <p>
-                      Microassist te dit quoi faire et quand agir, pour éviter
-                      les pénalités et les mauvaises surprises.
+                      Assistant fiscal simple pour micro-entrepreneurs.
                     </p>
                   </div>
 
                   <p className="assistantIntro">
-                    Sans inscription • Simple • En 2 minutes
+                    Accès libre pendant la phase de test. Aucun paiement demandé.
                   </p>
 
                   <div className="heroActions">
@@ -11336,73 +11274,57 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
                     <button
                       className="btn btnGhost"
-                      onClick={() => {
-                        track("landing_auth_cta_clicked", { source: "hero" });
-                        openAuthModal("login");
-                      }}
+                      onClick={handleOpenInvoiceGenerator}
                       type="button"
                     >
-                      Connexion
+                      Créer une facture
                     </button>
 
-                    <button
-                      className="btn btnGhost"
-                      onClick={openSecuritySection}
-                      type="button"
-                    >
-                      Sécurité
-                    </button>
                   </div>
                 </div>
 
                 <div className="heroRight">
                   <div className="heroPanel">
-                    <div className="heroPanelTitle">Ce que tu obtiens</div>
-
-                    <div className="heroKpis">
-                      <div className="kpi">
-                        <div className="kpiLabel">Échéance</div>
-                        <div className="kpiValue">
-                          Mensuelle / Trimestrielle
-                        </div>
-                      </div>
-
-                      <div className="kpi">
-                        <div className="kpiLabel">À prévoir</div>
-                        <div className="kpiValue">Montant estimé</div>
-                      </div>
-
-                      <div className="kpi">
-                        <div className="kpiLabel">TVA</div>
-                        <div className="kpiValue">OK / Vigilance</div>
-                      </div>
-
-<div className="kpi">
-  <div className="kpiLabel">ACRE</div>
-  <div className="kpiValue">
-    Taux réduit automatique selon la date
-  </div>
-</div>
-
-<div className="kpi">
-  <div className="kpiLabel">CFE</div>
-  <div className="kpiValue">
-    Prévision dès la 2e année
-  </div>
-</div>
-
-                      <div className="kpi">
-                        <div className="kpiLabel">Action</div>
-                        <div className="kpiValue">Étape suivante claire</div>
-                      </div>
-                    </div>
-
-                    <div className="heroTrust">
-                      <span>🔒 Sécurisé</span>
-                      <span>🧠 Clair</span>
-                      <span>⚡ Rapide</span>
-                    </div>
+                    <div className="heroPanelTitle">Suivi simple</div>
+                    <p className="muted" style={{ margin: 0 }}>
+                      Revenus, charges, factures et TVA au même endroit.
+                    </p>
                   </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {!focusMode && appView === "landing" && (
+            <section ref={servicesRef} className="card">
+              <div className="sectionHead">
+                <h2>Pour qui ?</h2>
+              </div>
+              <ul className="roadmaplist">
+                <li>Micro-entrepreneurs débutants</li>
+                <li>Freelances perdus avec l’administratif</li>
+                <li>Indépendants qui veulent éviter les erreurs URSSAF et TVA</li>
+              </ul>
+            </section>
+          )}
+
+          {!focusMode && appView === "landing" && (
+            <section className="card">
+              <div className="sectionHead">
+                <h2>Ce que tu obtiens</h2>
+              </div>
+              <div className="heroKpis">
+                <div className="kpi">
+                  <div className="kpiLabel">URSSAF</div>
+                  <div className="kpiValue">Échéance et montant à prévoir</div>
+                </div>
+                <div className="kpi">
+                  <div className="kpiLabel">Factures</div>
+                  <div className="kpiValue">PDF prêt et suivi de paiement</div>
+                </div>
+                <div className="kpi">
+                  <div className="kpiLabel">TVA</div>
+                  <div className="kpiValue">Vigilance claire</div>
                 </div>
               </div>
             </section>
@@ -11414,7 +11336,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 <div>
                   <h2>Tarifs & accès</h2>
                   <p className="muted" style={{ margin: "6px 0 0" }}>
-                    Choisis le niveau d’accompagnement qui te convient, sans te compliquer la vie.
+                    Accès gratuit pendant la phase de test. Aucun paiement demandé.
                   </p>
                 </div>
               </div>
@@ -11480,201 +11402,25 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
           )}
 
           {!focusMode && appView === "landing" && (
-            <div className="sectionTools">
-              <button
-                className="btn btnGhost btnSmall"
-                type="button"
-                onClick={showAllSections}
-              >
-                Afficher toutes les sections
-              </button>
-            </div>
-          )}
-
-          {!focusMode && appView === "landing" && visibleSections.about && (
-            <section className="card">
+            <section ref={securityRef} className="card">
               <div className="sectionHead">
-                <h2>À propos de Microassist</h2>
-                <button
-                  className="iconBtn"
-                  type="button"
-                  onClick={() => hideSection("about")}
-                  aria-label="Masquer cette section"
-                >
-                  ✕
-                </button>
+                <h2>🔒 Sécurité</h2>
               </div>
 
-              <p>
-                Microassist t’aide à comprendre tes charges, tes échéances et ta TVA
-                sans passer par un outil comptable lourd.
-              </p>
-
-              <p>
-                Le but : savoir quoi vérifier maintenant et quoi préparer ensuite.
-              </p>
-            </section>
-          )}
-
-          {!focusMode && appView === "landing" && visibleSections.services && (
-            <section id="services" className="card">
-              <div className="sectionHead">
-                <h2>Ce que tu peux faire</h2>
-                <button
-                  className="iconBtn"
-                  type="button"
-                  onClick={() => hideSection("services")}
-                  aria-label="Masquer cette section"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <ul className="roadmaplist">
-                <li>💰 Estimer ce que tu dois mettre de côté</li>
-                <li>📅 Voir la prochaine échéance utile</li>
-                <li>🧾 Suivre ta TVA sans jargon</li>
-                <li>📈 Enregistrer revenus et factures au même endroit</li>
-              </ul>
-
-              <div className="einvoicingMarketingCard">
-                <div className="einvoicingBadge">
-                  Préparé pour la réforme 2026
+              <div className="securityGrid">
+                <div className="securityItem">
+                  <strong>Données protégées</strong>
+                  <p className="muted">Ton espace reste personnel.</p>
                 </div>
-                <h3>Facturation prête pour 2026</h3>
-                <p>
-                  Créez vos factures, téléchargez le PDF et préparez
-                  progressivement votre passage à la facture électronique.
-                </p>
-                <button
-                  className="btn btnActionPrimary btnSmall"
-                  type="button"
-                  onClick={handleOpenInvoiceGenerator}
-                >
-                  Créer une facture
-                </button>
-              </div>
-            </section>
-          )}
-
-          {!focusMode && appView === "landing" && visibleSections.howItWorks && (
-            <section ref={howItWorksRef} className="card">
-              <div className="sectionHead">
-                <h2>Comment ça marche</h2>
-                <button
-                  className="iconBtn"
-                  type="button"
-                  onClick={() => hideSection("howItWorks")}
-                  aria-label="Masquer cette section"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="steps">
-                <div className="step">
-                  <strong>1. Tu réponds à quelques questions</strong>
-                  <p>
-                    Ton activité et ton rythme de déclaration sont pris en compte.
-                  </p>
+                <div className="securityItem">
+                  <strong>Aucun paiement demandé</strong>
+                  <p className="muted">Pas de carte bancaire pendant le test.</p>
                 </div>
-
-                <div className="step">
-                  <strong>2. Tu obtiens des repères clairs</strong>
-                  <p>Charges, TVA et échéances apparaissent simplement.</p>
-                </div>
-
-                <div className="step">
-                  <strong>3. Tu suis ton activité simplement</strong>
-                  <p>
-                    Ajoute tes revenus et garde le cap mois après mois.
-                  </p>
+                <div className="securityItem">
+                  <strong>Pas de déclaration automatique</strong>
+                  <p className="muted">Tu gardes la main sur URSSAF et impôts.</p>
                 </div>
               </div>
-            </section>
-          )}
-
-          {!focusMode && appView === "landing" && visibleSections.roadmap && (
-            <section id="prochainement" className="card">
-              <div className="sectionHead">
-                <h2>Fonctionnalités à venir</h2>
-                <button
-                  className="iconBtn"
-                  type="button"
-                  onClick={() => hideSection("roadmap")}
-                  aria-label="Masquer cette section"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <h3 style={{ marginTop: 12 }}>✅ Microassist aujourd’hui</h3>
-              <p className="assistantIntro" style={{ marginTop: 12 }}>
-                Microassist t’aide déjà à mieux comprendre et anticiper tes obligations.
-              </p>
-              <ul className="roadmaplist">
-                <li>✔ Estimation des charges</li>
-                <li>✔ Alertes email avant échéance</li>
-                <li>✔ Suivi TVA, ACRE et CFE</li>
-                <li>✔ Smart Priorités pour savoir quoi faire en premier</li>
-                <li>✔ Export PDF / CSV</li>
-              </ul>
-
-              <p className="assistantIntro" style={{ marginTop: 16 }}>
-                Microassist évolue en 3 niveaux d’accompagnement : d’abord comprendre,
-                ensuite anticiper, puis automatiser.
-              </p>
-
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  marginTop: 6,
-                  marginBottom: 6,
-                  padding: "6px 10px",
-                  borderRadius: 999,
-                  background: "#fff7ed",
-                  color: "#9a3412",
-                  fontSize: 12,
-                  fontWeight: 700,
-                }}
-              >
-                ✨ En préparation
-              </div>
-
-              <h3 style={{ marginTop: 12 }}>🚧 Offre avancée à venir</h3>
-              <p className="assistantIntro" style={{ marginTop: 12 }}>
-                Microassist prépare un niveau d’accompagnement plus avancé pour aller plus loin.
-              </p>
-              <ul className="roadmaplist">
-                <li>✔ Rappels SMS urgents</li>
-                <li>✔ Aide à l’automatisation des déclarations</li>
-                <li>✔ Documents générés automatiquement</li>
-                <li>✔ Suivi plus précis de ton activité</li>
-              </ul>
-
-              <button
-                className="btn btnGhost"
-                type="button"
-                onClick={() => openPremiumModal("future_advanced_features")}
-              >
-                Être informée de cette offre
-              </button>
-
-              <h3 style={{ marginTop: 18 }}>Pourquoi ces fonctionnalités arrivent plus tard</h3>
-              <p className="assistantIntro" style={{ marginTop: 12 }}>
-                Certaines fonctionnalités demandent plus de validation et de sécurité.
-              </p>
-              <ul className="roadmaplist">
-                <li>la fiabilité des calculs</li>
-                <li>la protection des données</li>
-                <li>une expérience simple et claire</li>
-              </ul>
-
-              <p className="assistantIntro" style={{ marginTop: 16 }}>
-                Tu seras informée dès que ces fonctionnalités seront disponibles.
-              </p>
             </section>
           )}
 
@@ -15037,60 +14783,6 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               )}
             </section>
           ) : null}
-
-          {!focusMode && appView === "landing" && visibleSections.security && (
-            <section ref={securityRef} className="card">
-              <div className="sectionHead">
-                <h2>🔒 Sécurité & confidentialité</h2>
-                <button
-                  className="iconBtn"
-                  type="button"
-                  onClick={() => hideSection("security")}
-                  aria-label="Masquer cette section"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="securityGrid">
-                <div className="securityItem">
-                  <strong>🔐 Accès sécurisé</strong>
-                  <p className="muted">
-                    Connexion par email et mot de passe.
-                  </p>
-                </div>
-
-                <div className="securityItem">
-                  <strong>🛡️ Données protégées</strong>
-                  <p className="muted">
-                    Tes données restent dans un espace personnel protégé.
-                  </p>
-                </div>
-
-                <div className="securityItem">
-                  <strong>💳 Aucune donnée bancaire</strong>
-                  <p className="muted">
-                    Aucune carte bancaire ni IBAN ne sont demandés.
-                  </p>
-                </div>
-
-                <div className="securityItem">
-                  <strong>
-                    🚫 Pas d’accès direct aux services administratifs
-                  </strong>
-                  <p className="muted">
-                    Microassist ne déclare rien à ta place auprès de l’URSSAF ou des impôts.
-                  </p>
-                </div>
-              </div>
-
-              <div className="securityNoteBox">
-                <p>
-                  Microassist donne des repères pratiques. Il ne remplace pas un expert-comptable.
-                </p>
-              </div>
-            </section>
-)}
 
           </>
         )}
