@@ -49,6 +49,7 @@ const EXPERT_VIEW_DEMO_KEY = "microassist_expert_view_demo";
 const FIRST_REVENUE_ONBOARDING_SEEN_KEY =
   "microassist_first_revenue_onboarding_seen";
 const BETA_MICRO_FEEDBACK_KEY = "microassist_beta_micro_feedback";
+const ANONYMOUS_VISITOR_ID_KEY = "microassist_anonymous_visitor_id";
 const EMAIL_EVENT_KEY_PREFIX = "microassist_email_event_";
 const BETA_SEEN_KEY = "beta_seen";
 const PROFILE_CONFLICT_STRATEGY_KEY = "microassist_profile_conflict_strategy";
@@ -904,6 +905,23 @@ function appendAnalyticsEntry({
   console.log(logPrefix, entry);
 }
 
+function getAnonymousVisitorId() {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const existing = window.localStorage?.getItem(ANONYMOUS_VISITOR_ID_KEY);
+    if (existing) return existing;
+
+    const nextId =
+      window.crypto?.randomUUID?.() ||
+      `visitor_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    window.localStorage?.setItem(ANONYMOUS_VISITOR_ID_KEY, nextId);
+    return nextId;
+  } catch {
+    return null;
+  }
+}
+
 function debugLog(...args) {
   if (import.meta.env.DEV) {
     console.info(...args);
@@ -1419,7 +1437,7 @@ function buildTrialEndingEmailPayload({ email, trialEndsAt }) {
         ? `Fin de l’essai : ${trialEndLabel}.`
         : "La fin de ton essai approche.",
       "",
-      "Active Premium pour continuer avec cet accompagnement : 5€/mois.",
+      "Les rappels avancés seront proposés progressivement après la phase de test.",
       "",
       "À très vite,",
       "Microassist",
@@ -1769,17 +1787,21 @@ function trackPremiumEvent(source = "unknown", action = "modal_open") {
   });
 }
 
-function trackEvent(name, payload = {}) {
+// Temporary beta tracking. Later this can be connected to Supabase or analytics.
+function trackEvent(eventName, payload = {}) {
   const entry = {
-    name,
+    eventName,
+    anonymousVisitorId: getAnonymousVisitorId(),
     timestamp: new Date().toISOString(),
+    appView: null,
+    userId: null,
     ...payload,
   };
 
   appendAnalyticsEntry({
     entry,
     storageKey: "microassist_analytics_events",
-    logPrefix: "[microassist:event]",
+    logPrefix: `[microassist:event] ${eventName}`,
     globalLogKey: "__microassistEventLog",
   });
 }
@@ -2717,6 +2739,10 @@ useEffect(() => {
   const servicesRef = useRef(null);
   const howItWorksRef = useRef(null);
   const fiscalRef = useRef(null);
+  const revenusRef = useRef(null);
+  const facturesRef = useRef(null);
+  const analyseRef = useRef(null);
+  const prioritesRef = useRef(null);
   const chartRef = useRef(null);
   const deepLinkViewPendingRef = useRef(getDeepLinkViewFromQuery());
   const viewLabel =
@@ -2725,6 +2751,17 @@ useEffect(() => {
       : appView === "assistant"
         ? "Profil fiscal"
         : "Espace fiscal";
+
+  const trackBetaEvent = useCallback(
+    (eventName, payload = {}) => {
+      trackEvent(eventName, {
+        appView,
+        userId: user?.id || null,
+        ...payload,
+      });
+    },
+    [appView, user?.id],
+  );
 
   const goToView = useCallback((nextView, options = {}) => {
     const { push = true, focus = false } = options;
@@ -2738,6 +2775,18 @@ useEffect(() => {
   goToView("pricing", { focus: false });
   window.scrollTo({ top: 0, behavior: "smooth" });
 }, [goToView]);
+
+  useEffect(() => {
+    if (appView === "landing") {
+      trackBetaEvent("landing_view", { source: "app_view" });
+    }
+    if (appView === "assistant") {
+      trackBetaEvent("profile_view", { source: "app_view" });
+    }
+    if (appView === "dashboard") {
+      trackBetaEvent("dashboard_view", { source: "app_view" });
+    }
+  }, [appView, trackBetaEvent]);
 
   const goToDashboard = useCallback((options = {}) => {
     const { scroll = true } = options;
@@ -2800,6 +2849,11 @@ useEffect(() => {
 
     return !localStorage.getItem(BETA_SEEN_KEY);
   });
+  useEffect(() => {
+    if (showBetaNotice) {
+      trackBetaEvent("beta_modal_seen", { source: "beta_notice" });
+    }
+  }, [showBetaNotice, trackBetaEvent]);
   const [simpleAssistantProfile, setSimpleAssistantProfile] = useState(() =>
     readSimpleAssistantProfile(),
   );
@@ -2813,6 +2867,7 @@ useEffect(() => {
   const [tvaConfigDraft, setTvaConfigDraft] = useState(
     () => normalizeTvaConfigStatus(readSimpleAssistantProfile()?.tva_status),
   );
+  const [isEditingTVA, setIsEditingTVA] = useState(false);
   const [showCGU, setShowCGU] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showInvoiceGenerator, setShowInvoiceGenerator] = useState(false);
@@ -2873,8 +2928,11 @@ useEffect(() => {
   const [showCashImpactModal, setShowCashImpactModal] = useState(false);
   const [showTVADiagnosticModal, setShowTVADiagnosticModal] = useState(false);
   const openExplanationModal = useCallback((type) => {
+    if (type === "urssaf") {
+      trackBetaEvent("urssaf_info_opened", { source: "explanation_modal" });
+    }
     setExplanationModalType(type);
-  }, []);
+  }, [trackBetaEvent]);
   const closeExplanationModal = useCallback(() => {
     setExplanationModalType(null);
   }, []);
@@ -2926,10 +2984,13 @@ useEffect(() => {
   };
 
   const openAuthModal = useCallback((mode = "signup") => {
+    if (mode === "signup") {
+      trackBetaEvent("signup_clicked", { source: "auth_modal" });
+    }
     setAuthInitialMode(mode);
     setIsRecoveryFlow(mode === "recovery");
     setAuthOpen(true);
-  }, []);
+  }, [trackBetaEvent]);
 
 const closeAuthModal = useCallback((reason = "unknown") => {
   console.log("[AUTH CLOSE]", {
@@ -4036,7 +4097,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
 
         if (!silent) {
           showSaveNotice(
-            "📦 Vos données locales ont été sauvegardées dans votre espace !",
+            "Ton profil est sauvegardé dans ton espace.",
             3000,
           );
         }
@@ -5062,7 +5123,7 @@ useEffect(() => {
       : "Bonjour 👋";
   const trustBadgeLabel = user
     ? "🔒 Profil, revenus et historique sécurisés dans ton espace"
-    : "🖥️ Sans compte, tes données restent sur cet appareil. Elles peuvent être perdues.";
+    : "🖥️ Test sans compte : données conservées sur cet appareil.";
   const connectedAccountLabel = user?.email?.trim() || "";
   const fiscalProfilePageMode = hasProfileCore
     ? assistantEditMode
@@ -5303,15 +5364,44 @@ useEffect(() => {
   ]);
   const profileConfirmationTvaLabel = useMemo(() => {
     const starterTvaStatus = normalizeTvaConfigStatus(
-      simpleAssistantProfile?.tva_status,
+      simpleAssistantProfile?.tva_status ||
+        answers.tva_status ||
+        dashboardAnswers.tva_status,
     );
 
     if (starterTvaStatus !== "unknown") {
       return getTvaConfigLabel(starterTvaStatus);
     }
 
-    return normalizedTvaStatusLabel || "À confirmer";
-  }, [normalizedTvaStatusLabel, simpleAssistantProfile?.tva_status]);
+    return "À confirmer";
+  }, [
+    answers.tva_status,
+    dashboardAnswers.tva_status,
+    simpleAssistantProfile?.tva_status,
+  ]);
+  const savedTvaValue = useMemo(() => {
+    const normalizedStatus = normalizeTvaConfigStatus(
+      simpleAssistantProfile?.tva_status ||
+        answers.tva_status ||
+        dashboardAnswers.tva_status,
+    );
+    const isExplicitlyConfigured =
+      simpleAssistantProfile?.tva_configured === true ||
+      normalizedStatus === "franchise" ||
+      normalizedStatus === "active";
+
+    return isExplicitlyConfigured ? normalizedStatus : "";
+  }, [
+    answers.tva_status,
+    dashboardAnswers.tva_status,
+    simpleAssistantProfile?.tva_configured,
+    simpleAssistantProfile?.tva_status,
+  ]);
+  const savedTvaLabel = savedTvaValue
+    ? savedTvaValue === "unknown"
+      ? "À confirmer"
+      : getTvaConfigLabel(savedTvaValue)
+    : "";
   const confidenceHelperText = dashboardConfidence.label;
   const dashboardMilestone = useMemo(() => {
     if (revenues.length >= 10) {
@@ -5955,9 +6045,9 @@ useEffect(() => {
 
     if (billingUiState === "trial_active") {
       return {
-        title: "Essai Premium actif",
-        text: "Ton compte te permet déjà de retrouver ton espace. Pendant l’essai, découvre tranquillement ce que Premium ajoute au quotidien.",
-        cta: "Voir Premium",
+        title: "Phase de test active",
+        text: "Ton compte te permet déjà de retrouver ton espace. Les rappels email restent accessibles gratuitement pendant la phase de test.",
+        cta: "Gérer mes rappels",
         onClick: () => openPremiumModal("dashboard_next_step_trial"),
       };
     }
@@ -6026,12 +6116,12 @@ useEffect(() => {
     }
 
     if (billingUiState === "trial_active") {
-      return dashboardNextStep?.cta === "Voir Premium"
+      return dashboardNextStep?.cta === "Gérer mes rappels"
         ? null
         : {
-            title: "Pendant ton essai",
-            text: "Teste surtout les exports et l’historique pour voir si Premium t’aide vraiment dans ton suivi.",
-            cta: "Voir Premium",
+            title: "Pendant la phase de test",
+            text: "Teste les rappels email, les exports et l’historique avant l’arrivée des options avancées.",
+            cta: "Gérer mes rappels",
             onClick: () => openPremiumModal("dashboard_recommendation_premium"),
           };
     }
@@ -6749,45 +6839,45 @@ useEffect
     switch (billingUiState) {
       case "guest":
         return {
-          line1: "✨ Crée ton compte",
-          line2: "Teste Microassist localement, sans créer de compte.",
-          line3: "Sans compte, tes données restent sur cet appareil. Elles peuvent être perdues.",
+          line1: "✨ Tester sans compte",
+          line2: "Tu peux tester Microassist sans créer de compte.",
+          line3: "Tes données restent sur cet appareil.",
           cta: "Créer mon compte",
         };
       case "trial_active":
         return {
-          line1: `⏳ Essai Premium actif${trialDaysLeft !== null ? ` • ${trialDaysLeft} jour${trialDaysLeft > 1 ? "s" : ""} restant${trialDaysLeft > 1 ? "s" : ""}` : ""}`,
-          line2: "Commence gratuitement. Ton compte te permet déjà de retrouver ton espace.",
+          line1: "⏳ Phase de test active",
+          line2:
+            "Ton compte te permet déjà de retrouver ton espace et tes rappels email.",
           line3: trialEndsAtLabel
-            ? `Passe à Premium si tu veux aller plus loin. Fin de l’essai le ${trialEndsAtLabel}.`
-            : "Passe à Premium si tu veux aller plus loin.",
-          cta: "Voir Premium",
+            ? `Les SMS et rappels avancés arriveront plus tard en Premium. Test ouvert jusqu’au ${trialEndsAtLabel}.`
+            : "SMS et rappels avancés bientôt en Premium.",
+          cta: "Gérer mes rappels",
         };
       case "trial_expired":
         return {
-          line1: "🔓 Essai Premium expiré",
+          line1: "🔓 Phase de test active",
           line2:
             "Ton espace reste disponible gratuitement : revenus, factures, exports et suivi de base.",
           line3:
-            "Premium te permet de recevoir les alertes automatiques et de voir toutes tes Smart Priorités.",
-          cta: "Activer Premium • 5 €/mois",
+            "SMS et rappels avancés bientôt en Premium.",
+          cta: "Activer les rappels automatiques",
         };
       case "premium_active":
         return {
           line1: "⭐ Premium actif",
           line2: "Ton espace est synchronisé et Premium débloque les options avancées.",
           line3: "",
-          cta: "Voir Premium",
+          cta: "Gérer mes rappels",
         };
       case "registered_free":
       default:
         return {
-          line1: "⭐ Premium disponible",
+          line1: "⭐ Rappels en phase de test",
           line2:
             "Ton espace reste disponible gratuitement : revenus, factures, exports et suivi de base.",
-          line3:
-            "Premium te permet de recevoir les alertes automatiques et de voir toutes tes Smart Priorités.",
-          cta: "Voir Premium",
+          line3: "SMS et rappels avancés bientôt en Premium.",
+          cta: "Gérer mes rappels",
         };
     }
   }, [billingUiState, isQaPremium, trialDaysLeft, trialEndsAtLabel]);
@@ -6941,18 +7031,18 @@ useEffect
 
     switch (normalizedSource) {
       case "tva_exceeded":
-        return "Voir mes options Premium";
+        return "Voir les options à venir";
       case "declaration_urgent":
-        return "Activer Premium";
+        return "Activer les rappels automatiques";
       case "multiple_priorities":
       case "smart_priorities_lock":
-        return "Activer les alertes Premium";
+        return "Activer les rappels automatiques";
       case "early_access_ending":
-        return "Garder l’accès complet";
+        return "Garder mes rappels actifs";
       case "post_early_access":
-        return "Retrouver Premium";
+        return "Gérer mes rappels";
       default:
-        return "Découvrir Premium";
+        return "Découvrir les rappels avancés";
     }
   }, [premiumModalSource]);
   const premiumModalBenefits = useMemo(
@@ -7040,12 +7130,19 @@ useEffect
   const premiumBannerButtonLabel = premiumBannerContent.cta;
   const handleBillingBannerAction = useCallback(() => {
     if (billingUiState === "guest") {
+      trackBetaEvent("save_follow_clicked", { source: "dashboard_top" });
       openAuthModal("signup");
       return;
     }
 
     openPremiumModal(premiumContextualCTA?.source || "dashboard_top");
-  }, [billingUiState, openAuthModal, openPremiumModal, premiumContextualCTA?.source]);
+  }, [
+    billingUiState,
+    openAuthModal,
+    openPremiumModal,
+    premiumContextualCTA?.source,
+    trackBetaEvent,
+  ]);
   useEffect(() => {
     if (billingUiState === "guest" || billingUiState === "premium_active") {
       return;
@@ -8307,6 +8404,7 @@ function handleOpenRevenuePopup() {
     return;
   }
 
+  trackBetaEvent("add_revenue_clicked", { source: "open_revenue_form" });
   setShowAddRevenue(true);
 }
 
@@ -8321,6 +8419,7 @@ function handleOpenInvoiceGenerator() {
   }
 
   // Keep every invoice entry point behind the same premium gate.
+  trackBetaEvent("invoice_modal_opened", { source: "invoice_entry_point" });
   setShowInvoiceGenerator(true);
 }
 
@@ -8694,6 +8793,7 @@ useEffect(() => {
     resetDashboardState();
     resetAssistantSession();
     setAppView("assistant");
+    trackBetaEvent("onboarding_started", { source: "reset" });
     setShowSimpleOnboarding(true);
     setSimpleOnboardingStep(0);
     setSimpleOnboardingDraft({
@@ -8884,6 +8984,10 @@ useEffect(() => {
     }
 
     await refreshRevenues();
+    trackBetaEvent("revenue_created", {
+      source: user ? "authenticated" : "guest",
+      totalRevenues: revenues.length + 1,
+    });
     trackEvent("revenue_add", {
       source: user ? "authenticated" : "guest",
       totalRevenues: revenues.length + 1,
@@ -8951,6 +9055,10 @@ useEffect(() => {
 
       setShowAddRevenue(false);
       resetRevenueForm();
+      trackBetaEvent("revenue_created", {
+        source: "guest",
+        totalRevenues: updatedRevenues.length,
+      });
       trackEvent("revenue_add", {
         source: "guest",
         totalRevenues: updatedRevenues.length,
@@ -9632,6 +9740,7 @@ const closeFutureAdvancedModal = useCallback((sourceOverride) => {
 function openPremiumModal(source = "unknown") {
   const triggerType = normalizePremiumTriggerType(source);
   const trackingSource = normalizePremiumTrackingSource(triggerType);
+  trackBetaEvent("premium_clicked", { source: trackingSource });
   trackEvent("premium_cta_click", { source: trackingSource });
   trackPremiumEvent(triggerType, "modal_open");
   track("pricing_modal_opened", { source: triggerType });
@@ -9949,6 +10058,12 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
       ),
       acre_start_date: normalizeDateValue(sourceAnswers?.acre_start_date || ""),
       declaration_frequency: sourceAnswers?.declaration_frequency || "",
+      tva_status: normalizeTvaConfigStatus(
+        sourceAnswers?.tva_status ||
+          simpleAssistantProfile?.tva_status ||
+          dashboardAnswers?.tva_status ||
+          "unknown",
+      ),
     };
   }
 
@@ -9971,6 +10086,14 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
   }
 
   function handleSaveProfileFieldEdit() {
+    if (selectedProfileField === "tva") {
+      const nextValue = normalizeTvaConfigStatus(profileEditDraft.tva_status);
+      setAssistantFieldError("");
+      saveTvaConfigValue(nextValue);
+      finishSelectiveEdit();
+      return;
+    }
+
     const nextAnswers = sanitizeFiscalAnswers({
       ...answers,
       activity_type:
@@ -10040,6 +10163,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
   }
 
   function handleEditProfile() {
+    trackBetaEvent("profile_view", { source: "edit_profile" });
     setAppView("assistant");
     setAssistantEditMode(true);
     setAssistantCollapsed(false);
@@ -10100,6 +10224,25 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
   }
 
   function openSelectiveEditStep(stepKey) {
+    if (stepKey === "tva") {
+      setAssistantEditMode(true);
+      setProfileEditMode("edit_step");
+      setSelectedProfileField("tva");
+      setProfileEditDraft(buildProfileEditDraftFromAnswers(answers));
+      setAssistantCollapsed(false);
+      setHelpOpen(false);
+      setAssistantFieldError("");
+      setInput("");
+
+      setTimeout(() => {
+        assistantRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 120);
+      return;
+    }
+
     const firstStepKey =
       stepKey === "dates" ? "business_start_date" : stepKey;
     const targetStepIndex = getIndexByKey(firstStepKey);
@@ -10172,6 +10315,18 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
   }
 
   function handleSimpleOnboardingOptionSelect(field, value) {
+    if (field === "activity_type") {
+      trackBetaEvent("onboarding_activity_selected", {
+        source: "simple_onboarding",
+        value,
+      });
+    }
+    if (field === "declaration_frequency") {
+      trackBetaEvent("onboarding_declaration_selected", {
+        source: "simple_onboarding",
+        value,
+      });
+    }
     handleSimpleOnboardingChange(field, value);
 
     if (simpleOnboardingAdvanceTimeoutRef.current) {
@@ -10228,6 +10383,11 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
       return;
     }
 
+    trackBetaEvent(skipRevenue || rawRevenue === "" ? "onboarding_ca_skipped" : "onboarding_ca_filled", {
+      source: "simple_onboarding",
+      hasRevenueEstimate: revenue !== null,
+    });
+
     console.log("ONBOARDING FINAL ACTIVITY", finalActivity);
     const nextProfile = {
       activity_type: finalActivity,
@@ -10265,6 +10425,10 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     }
     setAssistantEditMode(false);
     setAssistantCollapsed(false);
+    trackBetaEvent("onboarding_completed", {
+      source: "simple_onboarding",
+      dataQuality: nextProfile.data_quality,
+    });
     goToView("assistant", { push: true, focus: true });
     window.setTimeout(() => {
       assistantRef.current?.scrollIntoView({
@@ -10319,6 +10483,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
   }
 
   function openSimpleOnboardingEdit() {
+    trackBetaEvent("onboarding_started", { source: "edit_profile" });
     setSimpleOnboardingDraft({
       activity_type: normalizeActivityType(
         simpleAssistantProfile?.activity_type || "services",
@@ -10344,8 +10509,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     setTvaConfigDraft(nextValue);
   }
 
-  function handleSaveTvaConfig() {
-    const normalizedTvaConfigDraft = normalizeTvaConfigStatus(tvaConfigDraft);
+  function saveTvaConfigValue(value) {
+    const normalizedTvaConfigDraft = normalizeTvaConfigStatus(value);
     console.log("TVA CONFIG SAVED", normalizedTvaConfigDraft);
     const nextProfile = {
       ...(simpleAssistantProfile || {}),
@@ -10362,6 +10527,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
         simpleAssistantProfile?.monthly_revenue ??
         null,
       tva_status: normalizedTvaConfigDraft,
+      tva_configured: true,
       updated_at: new Date().toISOString(),
     };
 
@@ -10377,9 +10543,17 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
       "TVA configurée. Tes alertes et factures seront adaptées.",
       3000,
     );
+    setIsEditingTVA(false);
+  }
+
+  function handleSaveTvaConfig() {
+    saveTvaConfigValue(tvaConfigDraft);
   }
 
   async function handleCopyExpertShareLink() {
+    trackBetaEvent("share_with_advisor_clicked", {
+      source: "dashboard_advisor_share",
+    });
     const shareUrl = `${window.location.origin}/expert-view?demo=1`;
 
     try {
@@ -10520,6 +10694,12 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               style={{ marginTop: "12px" }}
               onClick={() => {
                 localStorage.setItem(BETA_SEEN_KEY, "1");
+                trackBetaEvent("beta_modal_started", { source: "beta_notice" });
+                if (showSimpleOnboarding) {
+                  trackBetaEvent("onboarding_started", {
+                    source: "beta_notice",
+                  });
+                }
                 setShowBetaNotice(false);
               }}
             >
@@ -11051,11 +11231,11 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 <div className="pricingAccessCard pricingAccessCardPremium">
                   <div className="pricingAccessBadge">Le plus complet</div>
                   <div className="pricingAccessTop">
-                    <div className="pricingAccessTitle">Premium</div>
-                    <div className="pricingAccessPrice">5€ / mois</div>
+                    <div className="pricingAccessTitle">SMS et rappels avancés</div>
+                    <div className="pricingAccessPrice">Bientôt Premium</div>
                   </div>
                   <ul className="pricingAccessList">
-                    <li>Alertes SMS</li>
+                    <li>SMS et rappels avancés bientôt en Premium</li>
                     <li>Rappels URSSAF</li>
                     <li>Alerte TVA / ACRE / CFE</li>
                     <li>Historique illimité</li>
@@ -11067,7 +11247,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                     type="button"
                     onClick={() => handleOpenSaveModal("pricing_access_block")}
                   >
-                    Découvrir Premium
+                    Découvrir les options à venir
                   </button>
                 </div>
               </div>
@@ -11589,46 +11769,69 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                         className="assistantSummaryBox tvaProfileConfigBox"
                         style={{ marginTop: 14, scrollMarginTop: 100 }}
                       >
-                        <div className="dashboardSectionHeader" style={{ marginBottom: 10 }}>
-                          <div className="dashboardSectionHeaderMain">
-                            <h3>TVA</h3>
-                            <p className="muted" style={{ marginTop: 6 }}>
-                              Choisis le statut le plus proche de ta situation.
-                            </p>
-                          </div>
-                          <button
-                            className="btn btnActionUtility btnSmall"
-                            type="button"
-                            onClick={() => openExplanationModal("tva")}
-                          >
-                            Comprendre la TVA
-                          </button>
-                        </div>
-                        <div className="choiceRow" style={{ marginTop: 12 }}>
-                          {TVA_CONFIG_OPTIONS.map((option) => (
+                        {!savedTvaValue || isEditingTVA ? (
+                          <>
+                            <div className="dashboardSectionHeader" style={{ marginBottom: 10 }}>
+                              <div className="dashboardSectionHeaderMain">
+                                <h3>TVA</h3>
+                                <p className="muted" style={{ marginTop: 6 }}>
+                                  Choisis le statut le plus proche de ta situation.
+                                </p>
+                              </div>
+                              <button
+                                className="btn btnActionUtility btnSmall"
+                                type="button"
+                                onClick={() => openExplanationModal("tva")}
+                              >
+                                Comprendre la TVA
+                              </button>
+                            </div>
+                            <div className="choiceRow" style={{ marginTop: 12 }}>
+                              {TVA_CONFIG_OPTIONS.map((option) => (
+                                <button
+                                  key={option.value}
+                                  className={`btn btnChoice ${
+                                    normalizeTvaConfigStatus(tvaConfigDraft) === option.value
+                                      ? "isSelected"
+                                      : ""
+                                  }`}
+                                  type="button"
+                                  onClick={() => handleSelectTvaConfig(option.value)}
+                                >
+                                  {option.label}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="miniActions" style={{ marginTop: 12 }}>
+                              <button
+                                className="btn btnActionSecondary btnSmall"
+                                type="button"
+                                onClick={handleSaveTvaConfig}
+                              >
+                                Enregistrer la TVA
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="dashboardSectionHeader" style={{ marginBottom: 0 }}>
+                            <div className="dashboardSectionHeaderMain">
+                              <h3>Modifier ma TVA</h3>
+                              <p className="muted" style={{ marginTop: 6 }}>
+                                TVA actuelle : {savedTvaLabel} ✅
+                              </p>
+                            </div>
                             <button
-                              key={option.value}
-                              className={`btn btnChoice ${
-                                normalizeTvaConfigStatus(tvaConfigDraft) === option.value
-                                  ? "isSelected"
-                                  : ""
-                              }`}
+                              className="btn btnActionSecondary btnSmall"
                               type="button"
-                              onClick={() => handleSelectTvaConfig(option.value)}
+                              onClick={() => {
+                                setTvaConfigDraft(normalizeTvaConfigStatus(savedTvaValue));
+                                setIsEditingTVA(true);
+                              }}
                             >
-                              {option.label}
+                              Modifier
                             </button>
-                          ))}
-                        </div>
-                        <div className="miniActions" style={{ marginTop: 12 }}>
-                          <button
-                            className="btn btnActionSecondary btnSmall"
-                            type="button"
-                            onClick={handleSaveTvaConfig}
-                          >
-                            Enregistrer la TVA
-                          </button>
-                        </div>
+                          </div>
+                        )}
                       </div>
                       {!hasProfileAcreValue && (
                         <div className="assistantSummaryBox" style={{ marginTop: 14 }}>
@@ -11710,6 +11913,9 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                         ) || "non renseigné"}
                       </li>
                       <li>
+                        <strong>TVA :</strong> {profileConfirmationTvaLabel}
+                      </li>
+                      <li>
                         <strong>ACRE :</strong>{" "}
                         {labelFromOptions(
                           "acre",
@@ -11767,6 +11973,13 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                       >
                         Déclaration
                       </button>
+                      <button
+                        className="btn btnChoice"
+                        type="button"
+                        onClick={() => openSelectiveEditStep("tva")}
+                      >
+                        TVA
+                      </button>
                     </div>
                   </div>
 
@@ -11779,6 +11992,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                             ? "Mettre à jour l’ACRE"
                             : selectedProfileField === "dates"
                               ? "Mettre à jour les dates"
+                              : selectedProfileField === "tva"
+                                ? "Modifier ma TVA"
                               : "Mettre à jour la déclaration"}
                       </h3>
                       <p className="muted" style={{ marginTop: 6 }}>
@@ -11788,6 +12003,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                             ? "Ajuste ton statut ACRE et sa date si elle s’applique."
                             : selectedProfileField === "dates"
                               ? "Mets à jour les dates utiles pour recalculer tes estimations."
+                              : selectedProfileField === "tva"
+                                ? "Choisis le statut TVA le plus proche de ta situation actuelle."
                               : "Choisis le rythme de déclaration qui te correspond."}
                       </p>
 
@@ -11887,6 +12104,44 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                             </button>
                           ))}
                         </div>
+                      )}
+
+                      {selectedProfileField === "tva" && (
+                        <>
+                          <div className="choiceRow" style={{ marginTop: 12 }}>
+                            {TVA_CONFIG_OPTIONS.map((option) => (
+                              <button
+                                key={option.value}
+                                className={`btn btnChoice ${
+                                  normalizeTvaConfigStatus(profileEditDraft.tva_status) ===
+                                  option.value
+                                    ? "isSelected"
+                                    : ""
+                                }`}
+                                type="button"
+                                onClick={() =>
+                                  updateProfileEditDraft({
+                                    tva_status: normalizeTvaConfigStatus(option.value),
+                                  })
+                                }
+                                aria-pressed={
+                                  normalizeTvaConfigStatus(profileEditDraft.tva_status) ===
+                                  option.value
+                                }
+                              >
+                                {option.label}
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            className="btn btnActionUtility btnSmall"
+                            type="button"
+                            onClick={() => openExplanationModal("tva")}
+                            style={{ marginTop: 12 }}
+                          >
+                            Comprendre la TVA
+                          </button>
+                        </>
                       )}
 
                       {assistantFieldError && (
@@ -12094,15 +12349,15 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               {!isPremiumUser && isGuest ? (
                 <div className="discoveryBanner">
                   <div className="discoveryBannerTitle">
-                    Crée ton compte pour activer ton essai Premium
+                    Crée ton compte pour sauvegarder ton suivi
                   </div>
                   <div className="discoveryBannerText">
                     Sans compte, tes données restent sur cet appareil. Elles
                     peuvent être perdues.
                   </div>
                   <div className="dashboardHelperText" style={{ marginTop: 8 }}>
-                    Crée un compte gratuit pour retrouver ton espace et garder
-                    ton suivi dans le temps.
+                    Crée un compte gratuit pour retrouver ton espace à tout
+                    moment.
                   </div>
                   <div className="discoveryBannerActions">
                     <button
@@ -12120,8 +12375,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                     ⏳ Ton mode découverte se termine aujourd’hui
                   </div>
                   <div className="discoveryBannerText">
-                    Ensuite, tu verras l’essentiel. Premium te prévient avant
-                    les échéances importantes et t’aide à agir plus tôt :
+                    Ensuite, tu garderas l’essentiel. Les SMS et rappels
+                    avancés arriveront plus tard en Premium :
                   </div>
                   <ul className="discoveryBannerList">
                     <li>Smart priorités avancées</li>
@@ -12134,7 +12389,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                       type="button"
                       onClick={() => openPremiumModal("early_access_end")}
                     >
-                      Voir Premium
+                      Voir les options à venir
                     </button>
                   </div>
                 </div>
@@ -12170,8 +12425,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                     factures, exports et suivi de base.
                   </div>
                   <div className="dashboardHelperText" style={{ marginTop: 8 }}>
-                    Premium te permet de recevoir les alertes automatiques et
-                    de voir toutes tes Smart Priorités.
+                    Les rappels email sont accessibles gratuitement pendant la
+                    phase de test. SMS et rappels avancés bientôt en Premium.
                   </div>
                   <div className="discoveryBannerActions">
                     <button
@@ -12179,7 +12434,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                       type="button"
                       onClick={() => openPremiumModal("early_access_end")}
                     >
-                      Activer Premium
+                      Activer les rappels automatiques
                     </button>
                   </div>
                 </div>
@@ -12317,6 +12572,11 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                             href="https://www.autoentrepreneur.urssaf.fr/"
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={() =>
+                              trackBetaEvent("urssaf_declare_clicked", {
+                                source: "dashboard_priority",
+                              })
+                            }
                           >
                             Déclarer maintenant
                           </a>
@@ -12376,10 +12636,10 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               )}
 
               {(hasProfileCore || simpleAssistantProfile) && (
-                <section className="dashboardQuickActions" aria-label="Actions rapides">
+                <section className="dashboardQuickActions" aria-label="Centre de contrôle">
                   <div className="dashboardQuickActionsIntro">
-                    <span>Actions rapides</span>
-                    <p>Les 3 gestes utiles pour garder ton suivi à jour.</p>
+                    <span>Centre de contrôle</span>
+                    <p>Accède rapidement aux actions et sections utiles.</p>
                   </div>
                   <div className="dashboardQuickActionsList">
                     <button
@@ -12402,6 +12662,11 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                         href="https://www.autoentrepreneur.urssaf.fr/"
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={() =>
+                          trackBetaEvent("urssaf_declare_clicked", {
+                            source: "dashboard_control_center",
+                          })
+                        }
                       >
                         Déclarer URSSAF
                       </a>
@@ -12414,8 +12679,67 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                         Déclarer URSSAF
                       </button>
                     )}
+                    <button
+                      className="btn btnActionUtility btnSmall"
+                      type="button"
+                      onClick={() => scrollToSection("advisor-share-section")}
+                    >
+                      Partager avec conseiller
+                    </button>
+                    <button
+                      className="btn btnActionUtility btnSmall"
+                      type="button"
+                      onClick={handleEditProfile}
+                    >
+                      Modifier mon profil
+                    </button>
+                    <button
+                      className="btn btnActionUtility btnSmall"
+                      type="button"
+                      onClick={() => scrollToSection("reminders-section")}
+                    >
+                      Mes rappels actifs
+                    </button>
                   </div>
                 </section>
+              )}
+
+              {(hasProfileCore || simpleAssistantProfile) && (
+                <nav className="dashboardInternalNav" aria-label="Navigation interne">
+                  <span>Aller à :</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      revenusRef.current?.scrollIntoView({ behavior: "smooth" })
+                    }
+                  >
+                    Revenus
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      facturesRef.current?.scrollIntoView({ behavior: "smooth" })
+                    }
+                  >
+                    Factures
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      analyseRef.current?.scrollIntoView({ behavior: "smooth" })
+                    }
+                  >
+                    Analyse
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      prioritesRef.current?.scrollIntoView({ behavior: "smooth" })
+                    }
+                  >
+                    Priorités
+                  </button>
+                </nav>
               )}
 
               {!hasDeclarationReminderActive && (
@@ -12588,13 +12912,18 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                       <li>✔ Suivi sans oubli</li>
                     </ul>
                   </div>
-                  <button
-                    className="btn btnActionSecondary btnSmall"
-                    type="button"
-                    onClick={() => openPremiumModal("dashboard_protection")}
-                  >
-                    Activer la protection – 5€/mois
-                  </button>
+                  <div className="dashboardPremiumTestActions">
+                    <button
+                      className="btn btnActionSecondary btnSmall"
+                      type="button"
+                      onClick={() => openPremiumModal("dashboard_protection")}
+                    >
+                      Activer les rappels automatiques
+                    </button>
+                    <p className="dashboardPremiumTestNote">
+                      Gratuit pendant la phase de test. Les tarifs seront définis plus tard.
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -12893,6 +13222,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               {renderBetaMicroFeedbackCard("top")}
               </div>
 
+              <span id="reminders-section" className="dashboardSectionAnchor" />
+
               {!dashboardRemindersDismissed && activeReminderItems.length > 0 && (
                 <div
                   className="dashboardSectionZone dashboardSectionZoneLavender"
@@ -12911,6 +13242,13 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                         </div>
                       </div>
                       <div className="dashboardSectionActions">
+                        <button
+                          className="btn btnActionSecondary btnSmall"
+                          type="button"
+                          onClick={() => openReminderManager("active_reminders_block")}
+                        >
+                          Gérer mes rappels
+                        </button>
                         <button
                           className="btn btnActionUtility btnSmall"
                           type="button"
@@ -13029,7 +13367,10 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               )}
 
               <div
-                ref={smartPrioritiesRef}
+                ref={(node) => {
+                  smartPrioritiesRef.current = node;
+                  prioritesRef.current = node;
+                }}
                 className={`${smartTipsZoneClass} dashboardOrderSmartPriorities`}
               >
               <div className="smartTips" style={{ marginTop: 0 }}>
@@ -13053,8 +13394,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                         Tu vois ta priorité la plus urgente
                       </div>
                       <div className="priorityMessage">
-                        En gratuit, tu peux consulter l’essentiel quand tu te
-                        connectes. Premium te prévient automatiquement avant les
+                        Microassist peut te prévenir automatiquement avant les
                         échéances importantes.
                       </div>
                       <div className="dashboardHelperText" style={{ marginTop: 8 }}>
@@ -13067,8 +13407,11 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                         onClick={() => openPremiumModal("smart_priorities_lock")}
                         style={{ marginTop: 12 }}
                       >
-                        Activer les alertes Premium
+                        Activer les alertes automatiques
                       </button>
+                      <div className="dashboardHelperText" style={{ marginTop: 8 }}>
+                        Gratuit pendant la phase de test
+                      </div>
                     </div>
                   )}
 
@@ -13119,8 +13462,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                         Autres signaux détectés
                       </div>
                       <div className="priorityMessage">
-                        Premium peut t’aider à suivre les autres points
-                        importants avant qu’ils deviennent urgents.
+                        Des rappels plus avancés seront disponibles
+                        prochainement.
                       </div>
                       <button
                         className="btn btnActionSecondary btnSmall"
@@ -13520,7 +13863,11 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
               {/* Analyse financière */}
               {isFiscalProfileComplete && computed.monthlyExpenses !== undefined && (
-                <div className="financialAnalysis dashboardSectionZone dashboardSectionZoneMint dashboardOrderAnalysis">
+                <div
+                  id="analysis-section"
+                  ref={analyseRef}
+                  className="financialAnalysis dashboardSectionZone dashboardSectionZoneMint dashboardOrderAnalysis"
+                >
                   <div className="dashboardSectionHeader">
                     <div className="dashboardSectionHeaderMain">
                       <h3 className="dashboardSectionTitle">{ANALYSIS_COPY.title}</h3>
@@ -13615,7 +13962,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 </div>
               )}
 
-              <div className="fiscalScoreCard dashboardOrderScore">
+              <div id="score-section" className="fiscalScoreCard dashboardOrderScore">
                 <div className="fiscalScoreHeader">
                   <h3>{SCORE_COPY.title}</h3>
                   <div
@@ -13782,7 +14129,11 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   </div>
                 </div>
               )}
-              <div className="dashboardSectionZone dashboardSectionZoneCoolNeutral dashboardOrderRevenues">
+              <div
+                id="revenues-section"
+                ref={revenusRef}
+                className="dashboardSectionZone dashboardSectionZoneCoolNeutral dashboardOrderRevenues"
+              >
               {/* Journal des revenus */}
               <div className="journalHeader dashboardSectionHeader">
                 <div className="dashboardSectionHeaderMain">
@@ -14099,6 +14450,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               {/* ===== MES FACTURES ===== */}
               <div
                 id="invoices-section"
+                ref={facturesRef}
                 className="dashboardSectionZone dashboardSectionZoneSoftNeutral dashboardOrderInvoices"
                 style={{ marginTop: 24 }}
               >
@@ -14309,7 +14661,10 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 )}
               </div>
 
-              <div className="dashboardSectionZone dashboardSectionZoneCoolNeutral dashboardAdvisorShareCard dashboardOrderAdvisorShare">
+              <div
+                id="advisor-share-section"
+                className="dashboardSectionZone dashboardSectionZoneCoolNeutral dashboardAdvisorShareCard dashboardOrderAdvisorShare"
+              >
                 <div className="dashboardSectionHeader">
                   <div className="dashboardSectionHeaderMain">
                     <h3 className="dashboardSectionTitle">
@@ -14986,7 +15341,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
           </div>
         )}
 
-        {/* Modal Enregistrement / Offre 5€ */}
+        {/* Modal Enregistrement / options à venir */}
         {showPricingModal && (
           <div
             className="modalOverlay"
@@ -15410,8 +15765,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     onClick={() => setShowReminderModal(false)}
   >
     <div
-      className="modalCard"
-      style={{ maxWidth: "520px" }}
+      className="modalCard reminderSettingsModal"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="sectionHead">
@@ -15425,139 +15779,64 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
         </button>
       </div>
 
-      <div style={{ marginTop: 20 }}>
-        <p style={{ fontSize: 14, lineHeight: 1.6, marginTop: 0 }}>
-          Choisis les rappels que tu souhaites recevoir pour mieux anticiper
-          tes échéances fiscales.
+      <div className="reminderSettingsBody">
+        <p className="reminderSettingsIntro">
+          Pendant la phase de test, les rappels email sont accessibles gratuitement.
+          Les SMS et rappels avancés arriveront plus tard en Premium.
         </p>
 
-        <div
-          style={{
-            background: "#f9fafb",
-            border: "1px solid #e5e7eb",
-            borderRadius: 12,
-            padding: 16,
-            marginBottom: 16,
-          }}
-        >
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>
-            Rappels activés
-          </div>
-
-          <label style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "center" }}>
-            <input
-              type="checkbox"
-              checked={reminderPrefs.declaration}
-              onChange={() => handleReminderToggle("declaration")}
-            />
+        <div className="reminderSettingsList">
+          <div className="reminderSettingsRow">
             <span>Déclaration URSSAF</span>
-          </label>
-
-          <label style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "center" }}>
-            <input
-              type="checkbox"
-              checked={reminderPrefs.tva}
-              onChange={() => handleReminderToggle("tva")}
-            />
-            <span>Alerte TVA</span>
-          </label>
-
-          <label style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "center" }}>
-            <input
-              type="checkbox"
-              checked={reminderPrefs.cfe}
-              onChange={() => handleReminderToggle("cfe")}
-            />
-            <span>CFE annuelle</span>
-          </label>
-
-          <label style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <input
-              type="checkbox"
-              checked={reminderPrefs.acre}
-              onChange={() => handleReminderToggle("acre")}
-            />
-            <span>Fin ACRE</span>
-          </label>
-        </div>
-
-        <div
-          style={{
-            background: "#f5f3ff",
-            border: "1px solid #ddd6fe",
-            borderRadius: 12,
-            padding: 16,
-            marginBottom: 20,
-          }}
-        >
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>
-            Canal de notification
+            <span className="reminderBadge reminderBadgeActive">Email actif</span>
           </div>
-
-          <label style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "center" }}>
-            <input
-              type="checkbox"
-              checked={reminderPrefs.email}
-              onChange={() => handleReminderToggle("email")}
-            />
-            <span>Email : actif</span>
-          </label>
-
-          <label
-            style={{
-              display: "flex",
-              gap: 10,
-              alignItems: "center",
-              color: "#64748b",
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={false}
-              disabled
-              onChange={() => handleReminderToggle("sms")}
-            />
-            <span>SMS J-1 (bientôt disponible en Premium)</span>
-          </label>
+          <div className="reminderSettingsRow">
+            <span>TVA</span>
+            <span
+              className={`reminderBadge ${
+                profileConfirmationTvaLabel === "À confirmer"
+                  ? "reminderBadgeNeutral"
+                  : "reminderBadgeActive"
+              }`}
+            >
+              {profileConfirmationTvaLabel === "À confirmer"
+                ? "À configurer selon profil"
+                : "Email actif"}
+            </span>
+          </div>
+          <div className="reminderSettingsRow">
+            <span>CFE</span>
+            <span className="reminderBadge reminderBadgeActive">Email actif</span>
+          </div>
+          <div className="reminderSettingsRow">
+            <span>Canal</span>
+            <span className="reminderBadge reminderBadgeActive">Email</span>
+          </div>
+          <div className="reminderSettingsRow">
+            <span>SMS</span>
+            <span className="reminderBadge reminderBadgePremium">
+              Bientôt Premium
+            </span>
+          </div>
         </div>
 
-        <div
-          style={{
-            background: "#fefce8",
-            border: "1px solid #fde68a",
-            borderRadius: 12,
-            padding: 14,
-            marginBottom: 20,
-            fontSize: 13,
-            lineHeight: 1.6,
-            color: "#854d0e",
-          }}
-        >
-          Les SMS ne sont pas encore actifs dans Microassist.
-          Les rappels email restent inclus dans ton espace Microassist.
-        </div>
+        <p className="reminderSettingsNote">
+          SMS et rappels avancés bientôt en Premium.
+        </p>
 
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
+        <div className="reminderSettingsActions">
           <button
             className="btn btnPrimary"
             type="button"
-            onClick={saveReminderPreferences}
-            style={{ flex: 1 }}
+            onClick={() => setShowReminderModal(false)}
           >
-            Enregistrer mes préférences
+            J’ai compris
           </button>
 
           <button
             className="btn btnGhost"
             type="button"
             onClick={() => setShowReminderModal(false)}
-            style={{ flex: 1 }}
           >
             Fermer
           </button>
