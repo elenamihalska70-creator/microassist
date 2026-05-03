@@ -10,6 +10,8 @@ import {
   createFacturXReadyInvoiceDraft,
   downloadTextFile,
   generateFacturXXml,
+  getInvoiceTotals,
+  isInvoiceCompliant,
 } from "../utils/facturx.js";
 
 const SELLER_NAME =
@@ -52,7 +54,11 @@ function pad(value, length = 2) {
 }
 
 function formatInvoiceAmount(amount) {
-  return `${Number(amount || 0).toLocaleString("fr-FR")} €`;
+  const formattedAmount = Number(amount || 0)
+    .toLocaleString("fr-FR")
+    .replace(/[\u00a0\u202f]/g, " ");
+
+  return `${formattedAmount} €`;
 }
 
 function getSafeFilenamePart(value) {
@@ -77,11 +83,11 @@ export function generateB2CInvoicePdf(invoice, { userEmail = "" } = {}) {
     totalTVA: 0,
     totalTTC: invoice.amount || 0,
   };
-  const totals = invoice.totals || {
-    totalHT: invoice.amount || 0,
-    totalTVA: 0,
-    totalTTC: invoice.amount || 0,
-  };
+  const totals = getInvoiceTotals(invoice);
+  const exemptionReason =
+    totals.isVatExempt && !invoice.vatExemptionReason
+      ? TVA_EXEMPTION_MENTION
+      : invoice.vatExemptionReason;
   const seller = invoice.seller || {
     name: SELLER_NAME,
     address: SELLER_ADDRESS,
@@ -123,6 +129,11 @@ export function generateB2CInvoicePdf(invoice, { userEmail = "" } = {}) {
   doc.text(seller.email || SELLER_EMAIL || userEmail || "Email non renseigne", 20, 73);
   doc.text(doc.splitTextToSize(seller.address || SELLER_ADDRESS, 78), 20, 80);
   if (seller.siret) doc.text(`SIRET : ${seller.siret}`, 20, 96);
+  if (!seller.siret) {
+    doc.setTextColor(190, 18, 60);
+    doc.text("Facture non conforme (SIRET manquant)", 20, 96);
+    doc.setTextColor(55, 65, 81);
+  }
   if (seller.vatNumber) doc.text(`TVA : ${seller.vatNumber}`, 20, 102);
 
   doc.setTextColor(30, 27, 75);
@@ -153,7 +164,7 @@ export function generateB2CInvoicePdf(invoice, { userEmail = "" } = {}) {
   doc.text("Qté", 98, 125);
   doc.text("PU HT", 116, 125);
   doc.text("TVA", 142, 125);
-  doc.text("Total TTC", pageWidth - 48, 125);
+  doc.text(totals.isVatExempt ? "Total HT" : "Total TTC", pageWidth - 48, 125);
 
   doc.setTextColor(55, 65, 81);
   doc.setFont("helvetica", "normal");
@@ -161,8 +172,12 @@ export function generateB2CInvoicePdf(invoice, { userEmail = "" } = {}) {
   doc.text(descLines, 25, 139);
   doc.text(String(line.quantity || 0), 98, 139);
   doc.text(formatInvoiceAmount(line.unitPrice), 116, 139);
-  doc.text(`${line.vatRate || 0}%`, 142, 139);
-  doc.text(formatInvoiceAmount(line.totalTTC), pageWidth - 48, 139);
+  doc.text(`${totals.vatRate || 0}%`, 142, 139);
+  doc.text(
+    formatInvoiceAmount(totals.isVatExempt ? totals.totalHT : totals.totalTTC),
+    pageWidth - 48,
+    139,
+  );
 
   const tableBottom = Math.max(160, 139 + descLines.length * 6);
 
@@ -181,14 +196,14 @@ export function generateB2CInvoicePdf(invoice, { userEmail = "" } = {}) {
   doc.rect(pageWidth - 88, tableBottom + 32, 68, 14, "F");
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.text("TOTAL TTC", pageWidth - 84, tableBottom + 41);
+  doc.text("TOTAL À PAYER", pageWidth - 84, tableBottom + 41);
   doc.text(formatInvoiceAmount(totals.totalTTC), pageWidth - 50, tableBottom + 41);
 
   doc.setTextColor(107, 114, 128);
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
-  if (invoice.vatExemptionReason) {
-    doc.text(invoice.vatExemptionReason, 20, tableBottom + 18);
+  if (exemptionReason) {
+    doc.text(exemptionReason, 20, tableBottom + 18);
   }
   doc.text(`Date d'échéance : ${formatDateFr(invoice.dueDate || invoice.due_date)}`, 20, tableBottom + 28);
   doc.text(FACTURX_NOT_TRANSMITTED_NOTE, 20, tableBottom + 38);
@@ -225,11 +240,21 @@ const DEFAULT_FORM = {
 
 export default function InvoiceGenerator({
   user,
+  billingIdentity,
+  initialValues,
   onClose,
+  onGoToProfile,
   onSaved,
 }) {
-  const [form, setForm] = useState(DEFAULT_FORM);
+  const [form, setForm] = useState(() => ({
+    ...DEFAULT_FORM,
+    seller_siret: billingIdentity?.siret || DEFAULT_FORM.seller_siret,
+    seller_name: billingIdentity?.legal_name || SELLER_NAME,
+    seller_address: billingIdentity?.address || SELLER_ADDRESS,
+    ...(initialValues || {}),
+  }));
   const [saving, setSaving] = useState(false);
+  const [showMissingSiretWarning, setShowMissingSiretWarning] = useState(false);
 
   function handleChange(field, value) {
     setForm((prev) => {
@@ -309,13 +334,18 @@ export default function InvoiceGenerator({
     return null;
   }
 
-  async function handleSave() {
+  async function handleSave(options = {}) {
     if (saving) return;
 
     const validationError = validateForm();
 
     if (validationError) {
       alert(validationError);
+      return;
+    }
+
+    if (!options.continueAsDraft && !form.seller_siret.trim()) {
+      setShowMissingSiretWarning(true);
       return;
     }
 
@@ -345,7 +375,7 @@ export default function InvoiceGenerator({
             amount: invoice.totals.totalTTC,
             invoice_date: invoice.issueDate,
             due_date: invoice.dueDate,
-            status: "facturx_draft",
+            status: "unpaid",
             localOnly: true,
           },
           message:
@@ -367,8 +397,8 @@ export default function InvoiceGenerator({
       issueDate: form.invoice_date,
       dueDate: form.due_date,
       seller: {
-        name: SELLER_NAME,
-        address: SELLER_ADDRESS,
+        name: form.seller_name?.trim() || SELLER_NAME,
+        address: form.seller_address?.trim() || SELLER_ADDRESS,
         siret: form.seller_siret.trim(),
         vatNumber: SELLER_VAT_NUMBER,
         email: SELLER_EMAIL || user?.email || "",
@@ -384,6 +414,16 @@ export default function InvoiceGenerator({
       quantity: getNormalizedQuantity(),
       unitPrice: getNormalizedUnitPrice(),
       vatMode: form.vat_mode,
+      is_compliant: isInvoiceCompliant(
+        {
+          seller: {
+            siret: form.seller_siret,
+          },
+        },
+        {
+          billing_identity: billingIdentity,
+        },
+      ),
     });
   }
 
@@ -512,6 +552,26 @@ export default function InvoiceGenerator({
           </label>
 
           <label className="field">
+            <span>Raison sociale vendeur</span>
+            <input
+              type="text"
+              value={form.seller_name}
+              onChange={(e) => handleChange("seller_name", e.target.value)}
+              placeholder="Optionnel"
+            />
+          </label>
+
+          <label className="field fieldFull">
+            <span>Adresse vendeur</span>
+            <input
+              type="text"
+              value={form.seller_address}
+              onChange={(e) => handleChange("seller_address", e.target.value)}
+              placeholder="Optionnel"
+            />
+          </label>
+
+          <label className="field">
             <span>Date de facture</span>
             <input
               type="date"
@@ -594,6 +654,63 @@ export default function InvoiceGenerator({
           </button>
         </div>
       </div>
+
+      {showMissingSiretWarning && (
+        <div
+          className="modalOverlay"
+          onClick={(event) => {
+            event.stopPropagation();
+            setShowMissingSiretWarning(false);
+          }}
+        >
+          <div
+            className="modalCard"
+            onClick={(event) => event.stopPropagation()}
+            style={{ maxWidth: 460 }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="missing-siret-warning-title"
+          >
+            <div className="sectionHead">
+              <h3 id="missing-siret-warning-title">SIRET manquant</h3>
+              <button
+                className="iconBtn"
+                onClick={() => setShowMissingSiretWarning(false)}
+                type="button"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="muted" style={{ marginTop: 8 }}>
+              Pour créer une facture conforme, complète ton SIRET.
+            </p>
+
+            <div className="miniActions" style={{ marginTop: 16 }}>
+              <button
+                className="btn btnGhost"
+                type="button"
+                onClick={() => {
+                  setShowMissingSiretWarning(false);
+                  handleSave({ continueAsDraft: true });
+                }}
+              >
+                Continuer en brouillon
+              </button>
+              <button
+                className="btn btnPrimary"
+                type="button"
+                onClick={() => {
+                  setShowMissingSiretWarning(false);
+                  onGoToProfile?.();
+                }}
+              >
+                Aller au profil
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

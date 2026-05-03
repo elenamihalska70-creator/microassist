@@ -408,16 +408,20 @@ section[id] {
   order: -125;
 }
 
-.dashboardCard > .dashboardCockpit {
+.dashboardCard > .dashboardQuickActions {
   order: -124;
 }
 
-.dashboardCard > .dashboardQuickActions {
+.dashboardCard > .dashboardInternalNav {
   order: -123;
 }
 
-.dashboardCard > .dashboardOrderReminder {
+.dashboardCard > .dashboardCockpit {
   order: -122;
+}
+
+.dashboardCard > .dashboardOrderReminder {
+  order: -121;
 }
 
 .dashboardCard > .dashboardOrderSituation {
@@ -538,11 +542,9 @@ section[id] {
 }
 
 .dashboardQuickActions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
   gap: 14px;
-  margin: -4px 0 14px;
+  margin: 4px 0 14px;
   padding: 16px;
   border: 1px solid #cfe8d8;
   border-radius: 18px;
@@ -572,9 +574,64 @@ section[id] {
 .dashboardQuickActionsList {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.dashboardInternalNav {
+  position: sticky;
+  top: 80px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: -4px 0 14px;
+  padding: 9px 12px;
+  border: 1px solid rgba(207, 232, 216, 0.9);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.035);
+  backdrop-filter: blur(10px);
+  color: #64748b;
+  font-size: 12px;
+}
+
+.dashboardInternalNav span {
+  font-weight: 800;
+  color: #475569;
+}
+
+.dashboardInternalNav button {
+  border: 0;
+  background: transparent;
+  color: #166534;
+  font: inherit;
+  font-weight: 800;
+  padding: 3px 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.dashboardInternalNav button:hover {
+  color: #14532d;
+}
+
+.dashboardSectionAnchor {
+  display: block;
+  height: 1px;
+  margin-top: -1px;
+  scroll-margin-top: 90px;
+}
+
+#revenues-section,
+#invoices-section,
+#analysis-section,
+#score-section,
+#advisor-share-section {
+  scroll-margin-top: 90px;
 }
 
 .dashboardInlineLink {
@@ -842,6 +899,20 @@ section[id] {
   width: fit-content;
   border-color: rgba(109, 40, 217, 0.12);
   color: #334155;
+}
+
+.dashboardPremiumTestNote {
+  margin: 2px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.dashboardPremiumTestActions {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
 }
 
 .dashboardAdvisorShareCard {
@@ -2916,6 +2987,100 @@ section[id] {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
 }
 
+.reminderSettingsModal {
+  max-width: 540px;
+}
+
+.reminderSettingsBody {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.reminderSettingsIntro,
+.reminderSettingsNote {
+  margin: 0;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.reminderSettingsList {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #cfe8d8;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f8fcfa 0%, #ffffff 100%);
+}
+
+.reminderSettingsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.reminderSettingsRow + .reminderSettingsRow {
+  border-top: 1px solid rgba(207, 232, 216, 0.65);
+}
+
+.reminderBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  max-width: 210px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid #dbe4ee;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 800;
+  text-align: center;
+}
+
+.reminderBadgeActive {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.reminderBadgeNeutral {
+  border-color: #dbe4ee;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.reminderBadgePremium {
+  border-color: #d8d4f8;
+  background: #fbfaff;
+  color: #5b21b6;
+}
+
+.reminderSettingsNote {
+  padding: 12px 14px;
+  border: 1px solid #d8d4f8;
+  border-radius: 14px;
+  background: #fbfaff;
+}
+
+.reminderSettingsActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.reminderSettingsActions .btn {
+  flex: 1 1 160px;
+}
+
 .explanationModalBlock {
   padding: 16px;
   border-radius: 14px;
@@ -4045,6 +4210,11 @@ section[id] {
   color: #059669;
 }
 
+.badgeYellow {
+  background: #fffbeb;
+  color: #b45309;
+}
+
 .badgeGray {
   background: #f3f4f6;
   color: #6b7280;
@@ -4286,6 +4456,80 @@ section[id] {
   color: #4b5563;
   font-size: 1rem;
   line-height: 1.6;
+}
+
+.pricingBetaPage {
+  max-width: 860px;
+}
+
+.pricingBetaPage .pricingHeader {
+  align-items: center;
+}
+
+.pricingBetaBadge {
+  display: inline-flex;
+  width: fit-content;
+  margin-bottom: 12px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid #cdeedd;
+  background: #f4fbf7;
+  color: #166534;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.pricingBetaCard {
+  display: grid;
+  gap: 18px;
+  padding: 28px;
+  border-radius: 24px;
+  border: 1px solid #cdeedd;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fcfa 100%);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.06);
+}
+
+.pricingBetaCard p {
+  margin: 0;
+  color: #334155;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.pricingBetaBlock {
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid #dbe4ee;
+  background: #ffffff;
+}
+
+.pricingBetaBlock h2 {
+  margin: 0 0 10px;
+  color: #0f172a;
+  font-size: 17px;
+  line-height: 1.3;
+}
+
+.pricingBetaBlock ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.pricingBetaAccess {
+  border-color: #cdeedd;
+  background: #f4fbf7;
+}
+
+.pricingBetaActions {
+  display: flex;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 2px;
 }
 
 .closeButton {

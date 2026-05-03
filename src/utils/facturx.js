@@ -21,6 +21,150 @@ export function calculateVatRate(vatMode) {
   return 0;
 }
 
+function roundMoney(value) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+export function getInvoiceTotals(invoice = {}) {
+  const line = invoice.lines?.[0] || {};
+  const rawTotalTVA = Number(invoice.totals?.totalTVA ?? line.totalTVA ?? 0);
+  const rawVatRate = Number(line.vatRate ?? invoice.vatRate ?? 0);
+  const exemptionText = String(invoice.vatExemptionReason || "").toLowerCase();
+  const hasExemptionMention =
+    exemptionText.includes("293") ||
+    exemptionText.includes("franchise") ||
+    exemptionText.includes("non applicable");
+  const hasPositiveVat = rawTotalTVA > 0 || rawVatRate > 0;
+  const isVatExempt = hasExemptionMention || !hasPositiveVat;
+  const totalHT = roundMoney(
+    invoice.totals?.totalHT ?? line.totalHT ?? invoice.amount ?? 0,
+  );
+
+  if (isVatExempt) {
+    return {
+      totalHT,
+      totalTVA: 0,
+      totalTTC: totalHT,
+      vatRate: 0,
+      isVatExempt: true,
+      amountLabel: "HT",
+    };
+  }
+
+  const vatRate = rawVatRate;
+  const totalTVA = roundMoney(rawTotalTVA || totalHT * (vatRate / 100));
+  const totalTTC = roundMoney(invoice.totals?.totalTTC ?? line.totalTTC ?? totalHT + totalTVA);
+
+  return {
+    totalHT,
+    totalTVA,
+    totalTTC,
+    vatRate,
+    isVatExempt: false,
+    amountLabel: "TTC",
+  };
+}
+
+export function isInvoiceCompliant(invoice = {}, profile = {}) {
+  if (typeof invoice?.is_compliant === "boolean") {
+    return invoice.is_compliant;
+  }
+
+  const profileBillingIdentity = profile?.billing_identity || profile || {};
+  const sellerSiret =
+    invoice?.seller?.siret ||
+    invoice?.seller_siret ||
+    profileBillingIdentity?.siret ||
+    "";
+
+  return Boolean(String(sellerSiret).trim());
+}
+
+function hasValue(value) {
+  return String(value || "").trim().length > 0;
+}
+
+export function getInvoiceComplianceScore(invoice = {}, profile = {}) {
+  const profileBillingIdentity = profile?.billing_identity || profile || {};
+  const seller = invoice?.seller || {};
+  const buyer = invoice?.buyer || {};
+  const totals = getInvoiceTotals(invoice);
+  const sellerSiret =
+    seller.siret || invoice?.seller_siret || profileBillingIdentity?.siret || "";
+  const sellerLegalName =
+    seller.name ||
+    invoice?.seller_name ||
+    profileBillingIdentity?.legal_name ||
+    "";
+  const sellerAddress =
+    seller.address ||
+    invoice?.seller_address ||
+    profileBillingIdentity?.address ||
+    "";
+  const invoiceNumber =
+    invoice?.invoiceNumber || invoice?.invoice_number || invoice?.number || "";
+  const clientName = buyer.name || invoice?.client_name || "";
+  const invoiceDate = invoice?.issueDate || invoice?.invoice_date || "";
+  const dueDate = invoice?.dueDate || invoice?.due_date || "";
+  const tvaLogicValid =
+    Number.isFinite(totals.totalHT) &&
+    Number.isFinite(totals.totalTVA) &&
+    Number.isFinite(totals.totalTTC) &&
+    (totals.isVatExempt || totals.vatRate > 0);
+  const pdfReady = Boolean(invoiceNumber);
+  const facturXDraftReady = invoice?.formatStatus === "facturx_ready_draft";
+  const checks = [
+    ["seller_siret", "SIRET vendeur", hasValue(sellerSiret)],
+    ["seller_legal_name", "Raison sociale vendeur", hasValue(sellerLegalName)],
+    ["seller_address", "Adresse vendeur", hasValue(sellerAddress)],
+    ["invoice_number", "Numéro de facture", hasValue(invoiceNumber)],
+    ["client_name", "Nom du client", hasValue(clientName)],
+    ["invoice_date", "Date de facture", hasValue(invoiceDate)],
+    ["due_date", "Date d’échéance", hasValue(dueDate)],
+    ["tva_logic", "TVA", tvaLogicValid],
+    ["pdf_ready", "PDF prêt", pdfReady],
+    ["facturx_ready", "Brouillon Factur-X", facturXDraftReady],
+  ];
+  const missingItems = checks
+    .filter(([, , passed]) => !passed)
+    .map(([, label]) => label);
+  const score = Math.round(
+    (checks.filter(([, , passed]) => passed).length / checks.length) * 100,
+  );
+  const blockingKeys = new Set([
+    "invoice_number",
+    "client_name",
+    "invoice_date",
+    "due_date",
+  ]);
+  const hasBlockingMissing = checks.some(
+    ([key, , passed]) => blockingKeys.has(key) && !passed,
+  );
+  const alerts = [];
+
+  if (!hasValue(sellerSiret)) {
+    alerts.push(
+      "⚠️ SIRET manquant : complète ton profil pour rendre cette facture conforme.",
+    );
+  }
+
+  if (invoice?.status !== "paid") {
+    alerts.push("🟡 Facture en attente de paiement.");
+  }
+
+  return {
+    score,
+    status:
+      score === 100
+        ? "conforme"
+        : hasBlockingMissing || score < 60
+          ? "bloquant"
+          : "a_completer",
+    missingItems,
+    alerts,
+  };
+}
+
 export function createFacturXReadyInvoiceDraft({
   id,
   invoiceNumber,
@@ -32,6 +176,7 @@ export function createFacturXReadyInvoiceDraft({
   quantity,
   unitPrice,
   vatMode,
+  is_compliant,
   paymentTerms = "Paiement à échéance indiquée sur la facture.",
 }) {
   const safeQuantity = Math.max(0, Number(quantity) || 0);
@@ -83,6 +228,14 @@ export function createFacturXReadyInvoiceDraft({
           ? "À compléter plus tard"
           : "",
     paymentTerms,
+    is_compliant:
+      is_compliant ??
+      isInvoiceCompliant(
+        {
+          seller,
+        },
+        null,
+      ),
     formatStatus: "facturx_ready_draft",
     transmissionStatus: "not_transmitted",
     statuses: [
@@ -96,6 +249,11 @@ export function createFacturXReadyInvoiceDraft({
 
 export function generateFacturXXml(invoice) {
   const line = invoice.lines?.[0] || {};
+  const totals = getInvoiceTotals(invoice);
+  const exemptionReason =
+    totals.isVatExempt && !invoice.vatExemptionReason
+      ? TVA_EXEMPTION_MENTION
+      : invoice.vatExemptionReason;
 
   // TODO: validate exact Factur-X XML namespace and schema before production.
   // This XML is an EN16931/Factur-X inspired draft for internal preparation only.
@@ -137,16 +295,16 @@ export function generateFacturXXml(invoice) {
       <ram:SpecifiedLineTradeSettlement>
         <ram:ApplicableTradeTax>
           <ram:TypeCode>VAT</ram:TypeCode>
-          <ram:CategoryCode>${line.vatRate > 0 ? "S" : "E"}</ram:CategoryCode>
-          <ram:RateApplicablePercent>${formatMoney(line.vatRate)}</ram:RateApplicablePercent>
+          <ram:CategoryCode>${totals.vatRate > 0 ? "S" : "E"}</ram:CategoryCode>
+          <ram:RateApplicablePercent>${formatMoney(totals.vatRate)}</ram:RateApplicablePercent>
           ${
-            invoice.vatExemptionReason
-              ? `<ram:ExemptionReason>${escapeXml(invoice.vatExemptionReason)}</ram:ExemptionReason>`
+            exemptionReason
+              ? `<ram:ExemptionReason>${escapeXml(exemptionReason)}</ram:ExemptionReason>`
               : ""
           }
         </ram:ApplicableTradeTax>
         <ram:SpecifiedTradeSettlementLineMonetarySummation>
-          <ram:LineTotalAmount>${formatMoney(line.totalHT)}</ram:LineTotalAmount>
+          <ram:LineTotalAmount>${formatMoney(totals.totalHT)}</ram:LineTotalAmount>
         </ram:SpecifiedTradeSettlementLineMonetarySummation>
       </ram:SpecifiedLineTradeSettlement>
     </ram:IncludedSupplyChainTradeLineItem>
@@ -182,11 +340,11 @@ export function generateFacturXXml(invoice) {
         </ram:DueDateDateTime>
       </ram:SpecifiedTradePaymentTerms>
       <ram:SpecifiedTradeSettlementHeaderMonetarySummation>
-        <ram:LineTotalAmount>${formatMoney(invoice.totals?.totalHT)}</ram:LineTotalAmount>
-        <ram:TaxBasisTotalAmount>${formatMoney(invoice.totals?.totalHT)}</ram:TaxBasisTotalAmount>
-        <ram:TaxTotalAmount currencyID="EUR">${formatMoney(invoice.totals?.totalTVA)}</ram:TaxTotalAmount>
-        <ram:GrandTotalAmount>${formatMoney(invoice.totals?.totalTTC)}</ram:GrandTotalAmount>
-        <ram:DuePayableAmount>${formatMoney(invoice.totals?.totalTTC)}</ram:DuePayableAmount>
+        <ram:LineTotalAmount>${formatMoney(totals.totalHT)}</ram:LineTotalAmount>
+        <ram:TaxBasisTotalAmount>${formatMoney(totals.totalHT)}</ram:TaxBasisTotalAmount>
+        <ram:TaxTotalAmount currencyID="EUR">${formatMoney(totals.totalTVA)}</ram:TaxTotalAmount>
+        <ram:GrandTotalAmount>${formatMoney(totals.totalTTC)}</ram:GrandTotalAmount>
+        <ram:DuePayableAmount>${formatMoney(totals.totalTTC)}</ram:DuePayableAmount>
       </ram:SpecifiedTradeSettlementHeaderMonetarySummation>
     </ram:ApplicableHeaderTradeSettlement>
   </rsm:SupplyChainTradeTransaction>
@@ -203,10 +361,6 @@ export function downloadTextFile(filename, content, type = "application/xml") {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
-}
-
-function roundMoney(value) {
-  return Math.round((Number(value) || 0) * 100) / 100;
 }
 
 function formatMoney(value) {

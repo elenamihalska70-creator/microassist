@@ -20,10 +20,13 @@ import InvoiceGenerator, {
   generateB2CInvoicePdf,
 } from "./components/InvoiceGenerator.jsx";
 import {
-  FACTURX_PREPARATION_LABEL,
   PDP_ROADMAP_NOTE,
+  TVA_EXEMPTION_MENTION,
   downloadTextFile,
   generateFacturXXml,
+  getInvoiceComplianceScore,
+  getInvoiceTotals,
+  isInvoiceCompliant,
 } from "./utils/facturx.js";
 import { PRICING_LIMITS } from "./config/pricing.js";
 import { ACCESS_MATRIX, getAccessProfile } from "./config/accessMatrix.js";
@@ -761,7 +764,18 @@ function buildSimpleAssistantGuidance({
 }
 
 function getInvoiceDisplayAmount(invoice) {
-  return Number(invoice?.totals?.totalTTC ?? invoice?.amount ?? 0);
+  const totals = getInvoiceTotals(invoice);
+  return totals.isVatExempt ? totals.totalHT : totals.totalTTC;
+}
+
+function getInvoicePaymentStatus(invoice) {
+  return invoice?.status === "paid" ? "paid" : "unpaid";
+}
+
+function getInvoiceDisplayAmountLabel(invoice) {
+  const totals = getInvoiceTotals(invoice);
+  const amount = totals.isVatExempt ? totals.totalHT : totals.totalTTC;
+  return `${amount.toLocaleString("fr-FR")} € ${totals.amountLabel}`;
 }
 
 function getInvoiceDisplayNumber(invoice) {
@@ -770,6 +784,13 @@ function getInvoiceDisplayNumber(invoice) {
 
 function getInvoiceDisplayDate(invoice) {
   return invoice?.issueDate || invoice?.invoice_date || "";
+}
+
+function addInvoiceDueDate(dateString, days = 30) {
+  const base = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(base.getTime())) return "";
+  base.setDate(base.getDate() + days);
+  return base.toISOString().slice(0, 10);
 }
 
 function isFacturXDraftInvoice(invoice) {
@@ -2499,6 +2520,18 @@ function buildProfilePayload(user, currentProfile = {}, overrides = {}) {
       overrides.onboarding_completed ??
       currentProfile?.onboarding_completed ??
       false,
+    billing_identity:
+      overrides.billing_identity ??
+      currentProfile?.billing_identity ??
+      null,
+  };
+}
+
+function normalizeBillingIdentity(source = {}) {
+  return {
+    siret: String(source?.siret || "").trim(),
+    legal_name: String(source?.legal_name || "").trim(),
+    address: String(source?.address || "").trim(),
   };
 }
 
@@ -2871,6 +2904,7 @@ useEffect(() => {
   const [showCGU, setShowCGU] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showInvoiceGenerator, setShowInvoiceGenerator] = useState(false);
+  const [invoiceInitialValues, setInvoiceInitialValues] = useState(null);
   const [mode, setMode] = useState("user");
   
   const [invoices, setInvoices] = useState([]);
@@ -3150,6 +3184,9 @@ const handleRecoveryComplete = useCallback(() => {
 
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [userProfile, setUserProfile] = useState(null);
+  const [billingIdentityDraft, setBillingIdentityDraft] = useState(() =>
+    normalizeBillingIdentity(),
+  );
   const [subscriptionRecord, setSubscriptionRecord] = useState(null);
   const [fiscalProfile, setFiscalProfile] = useState(null);
   const [fiscalProfileLoaded, setFiscalProfileLoaded] = useState(false);
@@ -3187,6 +3224,10 @@ const handleRecoveryComplete = useCallback(() => {
   );
   const isGuest = !user;
   const isFounder = userProfile?.is_founder === true;
+  const billingIdentity = useMemo(
+    () => normalizeBillingIdentity(userProfile?.billing_identity),
+    [userProfile?.billing_identity],
+  );
   const totalTrialDays = isFounder ? 90 : 14;
   const isTrialActive = trialDaysLeft !== null && trialDaysLeft > 0;
   const trialHasExpired = useMemo(
@@ -3414,6 +3455,48 @@ const handleRecoveryComplete = useCallback(() => {
       return null;
     }
   }, [user?.id]);
+
+  useEffect(() => {
+    setBillingIdentityDraft(billingIdentity);
+  }, [billingIdentity]);
+
+  const saveBillingIdentity = useCallback(async () => {
+    const nextBillingIdentity = normalizeBillingIdentity(billingIdentityDraft);
+
+    if (!user?.id) {
+      showSaveNotice(
+        "Crée un compte pour enregistrer ton identité de facturation.",
+        4000,
+      );
+      return false;
+    }
+
+    const profilePayload = buildProfilePayload(user, userProfile, {
+      billing_identity: nextBillingIdentity,
+    });
+
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .upsert(profilePayload, { onConflict: "id" })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Billing identity save error:", error.message);
+        showSaveNotice("Impossible d’enregistrer l’identité de facturation.", 4000);
+        return false;
+      }
+
+      setUserProfile(data || profilePayload);
+      showSaveNotice("Identité de facturation enregistrée ✅", 3000);
+      return true;
+    } catch (error) {
+      console.error("Unexpected billing identity save error:", error);
+      showSaveNotice("Impossible d’enregistrer l’identité de facturation.", 4000);
+      return false;
+    }
+  }, [billingIdentityDraft, showSaveNotice, user, userProfile]);
 
 const refreshSubscriptionRecord = useCallback(async () => {
   if (!SUBSCRIPTIONS_TABLE_ENABLED) {
@@ -3991,7 +4074,9 @@ const refreshSubscriptionRecord = useCallback(async () => {
               amount: invoice.amount || 0,
               invoice_date: invoice.invoice_date,
               due_date: invoice.due_date,
-              status: invoice.status || "sent",
+              status: invoice.status === "paid" ? "paid" : "unpaid",
+              is_compliant: isInvoiceCompliant(invoice, userProfile),
+              paid_at: invoice.paid_at || null,
             }));
 
             if (payload.length === 0) {
@@ -4123,6 +4208,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
     refreshInvoices,
     saveFiscalProfileToSupabase,
     showSaveNotice,
+    userProfile,
   ]);
 
   // Эффекты с правильными зависимостями
@@ -6747,7 +6833,7 @@ useEffect
   const primarySmartAlertId = smartAlerts[0]?.id || null;
   const invoiceSectionSummary = useMemo(() => {
     const unpaidCount = visibleInvoices.filter(
-      (invoice) => invoice?.status && invoice.status !== "paid",
+      (invoice) => getInvoicePaymentStatus(invoice) === "unpaid",
     ).length;
 
     return {
@@ -8420,7 +8506,73 @@ function handleOpenInvoiceGenerator() {
 
   // Keep every invoice entry point behind the same premium gate.
   trackBetaEvent("invoice_modal_opened", { source: "invoice_entry_point" });
+  setInvoiceInitialValues(null);
   setShowInvoiceGenerator(true);
+}
+
+function handleOpenInvoiceFromLatestRevenue() {
+  if (!guardPremiumAccess("invoice_limit", "invoice_limit")) {
+    return;
+  }
+
+  const latestRevenue = revenues[0];
+  const revenueAmount = Number(latestRevenue?.amount || 0);
+  const revenueDate = latestRevenue?.date || new Date().toISOString().slice(0, 10);
+
+  trackBetaEvent("invoice_modal_opened", { source: "latest_revenue_link" });
+  setInvoiceInitialValues({
+    client_name: latestRevenue?.client || "",
+    description:
+      latestRevenue?.note ||
+      latestRevenue?.invoice ||
+      "Prestation liée au revenu enregistré",
+    unit_price: revenueAmount > 0 ? String(revenueAmount) : "",
+    quantity: "1",
+    invoice_date: revenueDate,
+    due_date: addInvoiceDueDate(revenueDate, 30),
+  });
+  setShowInvoiceGenerator(true);
+}
+
+async function handleMarkInvoicePaid(invoice) {
+  if (!invoice?.id) return;
+
+  const paidAt = new Date().toISOString();
+  const markPaid = (items) =>
+    items.map((item) =>
+      item.id === invoice.id ||
+      item.invoice_number === invoice.invoice_number ||
+      item.invoiceNumber === invoice.invoiceNumber
+        ? { ...item, status: "paid", paid_at: item.paid_at || paidAt }
+        : item,
+    );
+
+  if (invoice.localOnly || !user) {
+    setGuestInvoices((prev) => {
+      const next = markPaid(prev);
+      localStorage.setItem(GUEST_INVOICES_KEY, JSON.stringify(next));
+      return next;
+    });
+    setInvoiceNotice("Facture marquée comme payée ✅");
+    return;
+  }
+
+  setInvoices((prev) => markPaid(prev));
+
+  const { error } = await supabase
+    .from("invoices")
+    .update({ status: "paid", paid_at: paidAt })
+    .eq("id", invoice.id)
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("Invoice payment status update error:", error.message);
+    setInvoiceNotice("Impossible de mettre à jour le statut de paiement.");
+    refreshInvoices();
+    return;
+  }
+
+  setInvoiceNotice("Facture marquée comme payée ✅");
 }
 
 function openReminderManager(source = "default") {
@@ -10011,6 +10163,79 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
   premiumModalSource,
   premiumWaitlistEmail,
 ]);
+
+  function renderBillingIdentitySection() {
+    return (
+      <div className="assistantSummaryBox" style={{ marginTop: 14 }}>
+        <div className="dashboardSectionHeader" style={{ marginBottom: 10 }}>
+          <div className="dashboardSectionHeaderMain">
+            <h3>Identité de facturation</h3>
+            <p className="muted" style={{ marginTop: 6 }}>
+              Ces informations sont optionnelles dans ton profil, mais le SIRET
+              est nécessaire pour créer une facture conforme.
+            </p>
+          </div>
+        </div>
+
+        <div className="formGrid">
+          <label className="field">
+            <span>SIRET</span>
+            <input
+              type="text"
+              value={billingIdentityDraft.siret}
+              onChange={(event) =>
+                setBillingIdentityDraft((prev) => ({
+                  ...prev,
+                  siret: event.target.value,
+                }))
+              }
+              placeholder="Optionnel"
+            />
+          </label>
+
+          <label className="field">
+            <span>Raison sociale</span>
+            <input
+              type="text"
+              value={billingIdentityDraft.legal_name}
+              onChange={(event) =>
+                setBillingIdentityDraft((prev) => ({
+                  ...prev,
+                  legal_name: event.target.value,
+                }))
+              }
+              placeholder="Optionnel"
+            />
+          </label>
+
+          <label className="field fieldFull">
+            <span>Adresse</span>
+            <input
+              type="text"
+              value={billingIdentityDraft.address}
+              onChange={(event) =>
+                setBillingIdentityDraft((prev) => ({
+                  ...prev,
+                  address: event.target.value,
+                }))
+              }
+              placeholder="Optionnel"
+            />
+          </label>
+        </div>
+
+        <div className="miniActions" style={{ marginTop: 12 }}>
+          <button
+            className="btn btnActionSecondary btnSmall"
+            type="button"
+            onClick={saveBillingIdentity}
+          >
+            Enregistrer l’identité
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const activityOptions =
     FISCAL_STEPS.find((candidate) => candidate.key === "activity_type")?.options || [];
@@ -11684,6 +11909,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 </div>
               )}
 
+              {isFiscalProfileCreateMode && renderBillingIdentitySection()}
+
               {isFiscalProfileSummaryMode ? (
                 <>
                   <div className="assistantCompletionBanner">
@@ -11764,6 +11991,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                           )}
                         </ul>
                       </div>
+                      {renderBillingIdentitySection()}
                       <div
                         ref={tvaProfileConfigRef}
                         className="assistantSummaryBox tvaProfileConfigBox"
@@ -11938,6 +12166,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                       )}
                     </ul>
                   </div>
+
+                  {renderBillingIdentitySection()}
 
                   <div className="assistantSummaryBox assistantEditSelector">
                     <h3>Que veux-tu modifier ?</h3>
@@ -14491,11 +14721,13 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
                 <div className="einvoicingInfoCard">
                   <div>
-                    <h3>Anticipez la facture électronique</h3>
+                    <h3>Anticipe la facture électronique</h3>
                     <p>
-                      Microassist génère déjà un PDF et un brouillon XML
-                      Factur-X. La transmission via une plateforme agréée sera
-                      ajoutée dans une prochaine version.
+                      Microassist t’aide à créer des factures claires et
+                      cohérentes avec tes revenus. Tu peux déjà générer un PDF
+                      et préparer un brouillon Factur-X. La transmission
+                      automatique via une plateforme agréée sera ajoutée plus
+                      tard.
                     </p>
                     <p className="einvoicingTrustNote">
                       Important : ce document n’est pas encore transmis
@@ -14507,9 +14739,29 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                     type="button"
                     onClick={handleOpenInvoiceGenerator}
                   >
-                    Créer une facture
+                  Créer une facture
                   </button>
                 </div>
+
+                {revenues.length > 0 && visibleInvoices.length === 0 && (
+                  <div className="einvoicingInfoCard" style={{ marginTop: 12 }}>
+                    <div>
+                      <h3>⚠️ Revenu sans facture liée</h3>
+                      <p>
+                        Tu as des revenus enregistrés, mais aucune facture liée.
+                        Créer une facture permet de mieux justifier ton chiffre
+                        d’affaires.
+                      </p>
+                    </div>
+                    <button
+                      className="btn btnActionSecondary btnSmall"
+                      type="button"
+                      onClick={handleOpenInvoiceFromLatestRevenue}
+                    >
+                      Créer une facture depuis un revenu
+                    </button>
+                  </div>
+                )}
 
                 {invoiceNotice && (
                   <div className="saveNotice" style={{ marginTop: 16, width: "100%" }}>
@@ -14519,6 +14771,21 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                       <div style={{ display: "grid", gap: 8 }}>
                         <div style={{ fontWeight: 700 }}>{invoiceNotice.title}</div>
                         <div>{invoiceNotice.body}</div>
+                        {invoiceNotice.invoice && (
+                          <div>
+                            <button
+                              className="btn btnActionSecondary btnSmall"
+                              type="button"
+                              onClick={() =>
+                                generateB2CInvoicePdf(invoiceNotice.invoice, {
+                                  userEmail: user?.email || "",
+                                })
+                              }
+                            >
+                              Télécharger la facture
+                            </button>
+                          </div>
+                        )}
                         {invoiceNotice.cta === "auth" && (
                           <div>
                             <button
@@ -14571,14 +14838,35 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   </div>
                 ) : (
                   <div className="revenuesList">
-                    {visibleInvoices.map((invoice) => (
+                    {visibleInvoices.map((invoice) => {
+                      const complianceScore = getInvoiceComplianceScore(
+                        invoice,
+                        userProfile,
+                      );
+                      const complianceBadge =
+                        complianceScore.status === "conforme"
+                          ? {
+                              className: "badgeGreen",
+                              label: "✅ Conforme",
+                            }
+                          : complianceScore.status === "bloquant"
+                            ? {
+                                className: "badgeYellow",
+                                label: "❌ Bloquant",
+                              }
+                            : {
+                                className: "badgeYellow",
+                                label: "⚠️ À compléter",
+                              };
+
+                      return (
                       <div key={invoice.id} className="revenueItem">
                         <div className="revenueMain">
                           <div className="revenueAmount">
-                            {getInvoiceDisplayAmount(invoice).toLocaleString("fr-FR")} €
+                            {getInvoiceDisplayAmountLabel(invoice)}
                           </div>
                           <div className="revenueDate">
-                            {getInvoiceDisplayNumber(invoice)}
+                            N° {getInvoiceDisplayNumber(invoice)}
                           </div>
                         </div>
                         <div className="revenueMeta">
@@ -14605,35 +14893,57 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                               })}
                             </div>
                           )}
-                          {isFacturXDraftInvoice(invoice) && (
+                          {getInvoiceTotals(invoice).isVatExempt && (
                             <div>
-                              <strong>Statut :</strong> Factur-X brouillon
+                              <strong>TVA :</strong> {TVA_EXEMPTION_MENTION}
                             </div>
                           )}
                           {isFacturXDraftInvoice(invoice) && (
-                            <div>{FACTURX_PREPARATION_LABEL}</div>
+                            <div>
+                              <strong>Statut :</strong> PDF prêt
+                            </div>
                           )}
+                          {isFacturXDraftInvoice(invoice) && (
+                            <div>
+                              <strong>Mention :</strong> Brouillon Factur-X
+                            </div>
+                          )}
+                          <div>
+                            <strong>Score conformité :</strong>{" "}
+                            {complianceScore.score}/100
+                          </div>
+                          {complianceScore.alerts.map((alert) => (
+                            <div key={alert}>{alert}</div>
+                          ))}
                         </div>
                         <div className="revenueActions">
                           <span
                             className={`badge ${
-                              isFacturXDraftInvoice(invoice)
-                                ? "badgeGray"
-                                : invoice.localOnly
-                                ? "badgeGray"
-                                : invoice.status === "sent"
-                                  ? "badgeGreen"
-                                  : "badgeGray"
+                              getInvoicePaymentStatus(invoice) === "paid"
+                                ? "badgeGreen"
+                                : "badgeYellow"
                             }`}
                           >
-                            {isFacturXDraftInvoice(invoice)
-                              ? "Factur-X brouillon"
-                              : invoice.localOnly
-                              ? "Locale • non enregistrée"
-                              : invoice.status === "sent"
-                                ? "✅ Envoyée"
-                                : "📝 Brouillon"}
+                            {getInvoicePaymentStatus(invoice) === "paid"
+                              ? "Payée"
+                              : "En attente"}
                           </span>
+                          <span
+                            className={`badge ${complianceBadge.className}`}
+                          >
+                            {complianceBadge.label}
+                          </span>
+                          <span className="badge badgeGreen">PDF prêt</span>
+                          {invoice.localOnly && (
+                            <span className="badge badgeGray">
+                              Locale • non enregistrée
+                            </span>
+                          )}
+                          {isFacturXDraftInvoice(invoice) && (
+                            <span className="badge badgeGray">
+                              Brouillon Factur-X
+                            </span>
+                          )}
                           <button
                             className="btn btnActionSecondary btnSmall"
                             type="button"
@@ -14645,6 +14955,15 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                           >
                             PDF
                           </button>
+                          {getInvoicePaymentStatus(invoice) !== "paid" && (
+                            <button
+                              className="btn btnActionSecondary btnSmall"
+                              type="button"
+                              onClick={() => handleMarkInvoicePaid(invoice)}
+                            >
+                              Marquer comme payée
+                            </button>
+                          )}
                           {isFacturXDraftInvoice(invoice) && (
                             <button
                               className="btn btnActionSecondary btnSmall"
@@ -14656,7 +14975,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                           )}
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -15715,9 +16035,20 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
         <InvoiceGenerator
           user={user}
           fiscalProfile={fiscalProfile}
-          onClose={() => setShowInvoiceGenerator(false)}
+          billingIdentity={billingIdentity}
+          initialValues={invoiceInitialValues}
+          onClose={() => {
+            setShowInvoiceGenerator(false);
+            setInvoiceInitialValues(null);
+          }}
+          onGoToProfile={() => {
+            setShowInvoiceGenerator(false);
+            setInvoiceInitialValues(null);
+            handleEditProfile();
+          }}
           onSaved={({ savedToSupabase, message, invoice } = {}) => {
             setShowInvoiceGenerator(false);
+            setInvoiceInitialValues(null);
             if (savedToSupabase) {
               trackEvent("invoice_create", {
                 source: "authenticated",
@@ -15725,11 +16056,21 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 invoiceCount: visibleInvoices.length + 1,
               });
               showSuccessToast(
-                "✅ Facture créée. Tu peux maintenant suivre les paiements.",
+                "✅ Facture créée. Elle est maintenant disponible dans ton suivi.",
                 4000,
               );
               refreshInvoices();
-              setInvoiceNotice(message || "Facture enregistrée ✅");
+              setInvoiceNotice(
+                invoice
+                  ? {
+                      title: "Facture créée ✅",
+                      body:
+                        message ||
+                        "Elle est maintenant disponible dans ton suivi.",
+                      invoice,
+                    }
+                  : message || "Facture créée. Elle est maintenant disponible dans ton suivi.",
+              );
             } else if (invoice) {
               trackEvent("invoice_create", {
                 source: user ? "authenticated_local_facturx" : "guest",
@@ -15737,7 +16078,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 invoiceCount: visibleInvoices.length + 1,
               });
               showSuccessToast(
-                "✅ Facture préparée. PDF et XML sont disponibles.",
+                "✅ Facture créée. Elle est maintenant disponible dans ton suivi.",
                 4000,
               );
               setGuestInvoices((prev) => {
@@ -15747,10 +16088,11 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 return next;
               });
               setInvoiceNotice({
-                title: "Facture préparée ✅",
+                title: "Facture créée ✅",
                 body:
                   message ||
-                  "Facture électronique prête : PDF et XML peuvent être téléchargés depuis la liste.",
+                  "Elle est maintenant disponible dans ton suivi. PDF et XML peuvent être téléchargés depuis la liste.",
+                invoice,
                 cta: user ? null : "auth",
               });
             }
