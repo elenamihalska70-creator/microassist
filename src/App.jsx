@@ -465,19 +465,6 @@ function normalizeTvaConfigStatus(status) {
   return "unknown";
 }
 
-function getTvaImpactText(status) {
-  const normalizedStatus = normalizeTvaConfigStatus(status);
-  if (normalizedStatus === "franchise") {
-    return "Tes factures afficheront la mention TVA non applicable, art. 293 B du CGI.";
-  }
-
-  if (normalizedStatus === "active") {
-    return "Microassist affichera une vigilance TVA et préparera tes factures avec TVA.";
-  }
-
-  return "Microassist gardera une vigilance simple et te rappellera de vérifier.";
-}
-
 function readSimpleAssistantProfile() {
   try {
     const raw = localStorage.getItem(SIMPLE_PROFILE_KEY);
@@ -615,12 +602,6 @@ function getExpertTvaLabel(status) {
   return "À vérifier";
 }
 
-function getExpertAcreLabel(acre) {
-  if (acre === "yes") return "Oui";
-  if (acre === "no") return "Non";
-  return "Non";
-}
-
 function ExpertView({ answers: providedAnswers, revenues: providedRevenues } = {}) {
   const localData = readExpertViewLocalData();
   const profile = localData.profile || {};
@@ -751,11 +732,6 @@ function buildSimpleAssistantGuidance({
     monthlyRevenue,
     hasRealRevenue,
   };
-}
-
-function getInvoiceDisplayAmount(invoice) {
-  const totals = getInvoiceTotals(invoice);
-  return totals.isVatExempt ? totals.totalHT : totals.totalTTC;
 }
 
 function getInvoicePaymentStatus(invoice) {
@@ -971,7 +947,11 @@ function getDeepLinkViewFromQuery() {
   const searchParams = new URLSearchParams(window.location.search);
   const requestedView = searchParams.get("view");
 
-  if (requestedView === "pricing" || requestedView === "dashboard") {
+  if (
+    requestedView === "pricing" ||
+    requestedView === "dashboard" ||
+    requestedView === "assistant"
+  ) {
     return requestedView;
   }
 
@@ -2657,6 +2637,279 @@ function isStepAvailable(stepConfig, sourceAnswers) {
   }
 }
 
+const LEGAL_PAGES = {
+  "/legal/privacy": {
+    title: "Politique de confidentialité",
+    intro:
+      "Cette page présente les principes de protection des données appliqués pendant la phase de test de Microassist.",
+    sections: [
+      {
+        title: "Données collectées",
+        text: "Microassist limite la collecte aux informations utiles au fonctionnement de l’assistant fiscal : profil d’activité, revenus saisis, factures créées, rappels et informations de compte lorsque l’utilisateur choisit d’en créer un.",
+      },
+      {
+        title: "Finalité",
+        text: "Les données servent à afficher un suivi fiscal, conserver l’historique de l’utilisateur, générer des factures et préparer des rappels liés aux obligations de micro-entrepreneur.",
+      },
+      {
+        title: "Droits",
+        text: "Toute personne peut demander l’accès, la correction ou la suppression de ses données en écrivant à contact@microassist.fr.",
+      },
+    ],
+  },
+  "/legal/terms": {
+    title: "Conditions d’utilisation",
+    intro:
+      "Microassist est un prototype SaaS en test destiné à aider les micro-entrepreneurs à mieux suivre leurs obligations.",
+    sections: [
+      {
+        title: "Nature du service",
+        text: "L’outil fournit des estimations, repères et rappels. Il ne remplace pas les sites officiels, un expert-comptable, un avocat ou l’administration fiscale.",
+      },
+      {
+        title: "Responsabilité",
+        text: "L’utilisateur reste responsable de ses déclarations, paiements, factures et vérifications auprès des organismes officiels.",
+      },
+      {
+        title: "Phase de test",
+        text: "Le service peut évoluer, être limité ou modifié pendant la période de prototype. Aucun paiement n’est demandé pendant cette phase.",
+      },
+    ],
+  },
+  "/legal/cookies": {
+    title: "Gestion des cookies",
+    intro:
+      "Microassist utilise uniquement les stockages nécessaires au bon fonctionnement du prototype.",
+    sections: [
+      {
+        title: "Stockage local",
+        text: "Certaines informations peuvent être conservées dans le navigateur pour sauvegarder la progression, les revenus invités, les préférences d’affichage ou l’état des rappels.",
+      },
+      {
+        title: "Cookies essentiels",
+        text: "Les cookies ou jetons techniques liés à l’authentification peuvent être utilisés lorsque l’utilisateur crée un compte.",
+      },
+      {
+        title: "Choix utilisateur",
+        text: "L’utilisateur peut effacer les données locales depuis son navigateur ou demander la suppression des données associées à son compte.",
+      },
+    ],
+  },
+  "/legal/mentions": {
+    title: "Mentions légales",
+    intro:
+      "Informations relatives à l’éditeur du prototype Microassist.",
+    sections: [
+      {
+        title: "Éditeur",
+        text: "Olena Mykhalska / Digital Lab, Belfort, France. Email : contact@microassist.fr. SIRET : à compléter. Statut : micro-entreprise à venir.",
+      },
+      {
+        title: "Hébergement",
+        text: "Le service est hébergé avec Supabase et Vercel.",
+      },
+      {
+        title: "Prototype",
+        text: "Microassist est actuellement un prototype SaaS en test, développé à Belfort pour accompagner les micro-entrepreneurs.",
+      },
+    ],
+  },
+  "/legal/accessibility": {
+    title: "Accessibilité",
+    intro:
+      "Microassist vise une interface claire, lisible et utilisable sur ordinateur comme sur mobile.",
+    sections: [
+      {
+        title: "Engagement",
+        text: "Les pages sont conçues avec des contrastes lisibles, une structure simple et des contrôles accessibles au clavier lorsque cela est possible.",
+      },
+      {
+        title: "Amélioration continue",
+        text: "Le prototype évolue encore. Les retours d’accessibilité peuvent être envoyés à contact@microassist.fr.",
+      },
+      {
+        title: "Limites connues",
+        text: "Certaines zones anciennes de l’interface peuvent encore nécessiter des améliorations de structure ou de libellés.",
+      },
+    ],
+  },
+  "/legal/security": {
+    title: "Sécurité des données",
+    intro:
+      "Microassist applique une approche prudente : minimiser les données, sécuriser les accès et permettre la suppression sur demande.",
+    sections: [
+      {
+        title: "Accès sécurisé",
+        text: "Les comptes et données synchronisées reposent sur l’infrastructure Supabase. L’accès aux données utilisateur est limité au strict besoin de fonctionnement et de support.",
+      },
+      {
+        title: "Minimisation",
+        text: "Microassist demande uniquement les informations nécessaires au suivi fiscal, aux factures, aux rappels et à l’amélioration du prototype.",
+      },
+      {
+        title: "Suppression",
+        text: "Une demande de suppression peut être adressée à contact@microassist.fr. Les données locales peuvent aussi être effacées depuis le navigateur.",
+      },
+    ],
+  },
+};
+
+function MicroassistFooter({
+  onGoToAssistant,
+  onGoToDashboard,
+  onGoToInvoices,
+  onGoToPricing,
+  onGoToReminders,
+  onGoToHelp,
+}) {
+  const productLinks = [
+    { label: "Assistant fiscal", onClick: onGoToAssistant, href: "/?view=assistant" },
+    { label: "Mon espace fiscal", onClick: onGoToDashboard, href: "/?view=dashboard" },
+    { label: "Factures", onClick: onGoToInvoices, href: "/?view=dashboard#invoices-section" },
+    { label: "Tarifs", onClick: onGoToPricing, href: "/?view=pricing" },
+    { label: "Rappels", onClick: onGoToReminders, href: "/?view=dashboard#reminders-section" },
+    { label: "Aide", onClick: onGoToHelp, href: "/#services" },
+  ];
+  const legalLinks = [
+    ["Politique de confidentialité", "/legal/privacy"],
+    ["Conditions d’utilisation", "/legal/terms"],
+    ["Gestion des cookies", "/legal/cookies"],
+    ["Mentions légales", "/legal/mentions"],
+    ["Accessibilité", "/legal/accessibility"],
+    ["Sécurité des données", "/legal/security"],
+    ["Contact RGPD", "mailto:contact@microassist.fr?subject=Contact%20RGPD"],
+  ];
+
+  const handleInternalFooterClick = (event, action) => {
+    if (!action) return;
+    event.preventDefault();
+    action();
+  };
+
+  return (
+    <footer className="siteFooter">
+      <div className="siteFooterInner">
+        <div className="siteFooterGrid">
+          <section className="siteFooterColumn siteFooterBrand">
+            <h2>Microassist</h2>
+            <p>
+              Assistant fiscal simple pour micro-entrepreneurs. Charges, TVA,
+              factures, rappels et suivi fiscal au même endroit.
+            </p>
+            <div className="siteFooterBadges" aria-label="Garanties du prototype">
+              <span>✓ Prototype en test</span>
+              <span>✓ Aucun paiement demandé</span>
+              <span>✓ Données protégées</span>
+            </div>
+            <div className="siteFooterMeta">Version bêta • Belfort • France</div>
+          </section>
+
+          <section className="siteFooterColumn">
+            <h3>Produit</h3>
+            <nav aria-label="Liens produit">
+              {productLinks.map((link) => (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  onClick={(event) => handleInternalFooterClick(event, link.onClick)}
+                >
+                  {link.label}
+                </a>
+              ))}
+            </nav>
+          </section>
+
+          <section className="siteFooterColumn siteFooterTrust">
+            <h3>Confiance & RGPD</h3>
+            <nav aria-label="Liens confiance et RGPD">
+              {legalLinks.map(([label, href]) => (
+                <a key={label} href={href}>
+                  {label}
+                </a>
+              ))}
+            </nav>
+            <p>
+              Microassist respecte les principes RGPD : minimisation des données,
+              accès sécurisé, suppression sur demande.
+            </p>
+          </section>
+
+          <section className="siteFooterColumn siteFooterEditor">
+            <h3>Éditeur</h3>
+            <address>
+              <strong>Olena Mykhalska / Digital Lab</strong>
+              <span>Belfort, France</span>
+              <a href="mailto:contact@microassist.fr">contact@microassist.fr</a>
+              <span>SIRET : à compléter</span>
+              <span>Statut : micro-entreprise à venir</span>
+              <span>Hébergement : Supabase + Vercel</span>
+            </address>
+          </section>
+        </div>
+
+        <div className="siteFooterBottom">
+          <span>© 2026 Microassist — Prototype SaaS français développé à Belfort</span>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+function LegalPage({ page, path }) {
+  return (
+    <div className="page legalPageShell">
+      <header className="topbar">
+        <div className="topbarLeft">
+          <a className="brand legalBrandLink" href="/">
+            Microassist
+          </a>
+          <div className="topbarMeta">
+            <div className="greetingBadge">Informations légales</div>
+          </div>
+        </div>
+        <div className="topbarRight">
+          <nav className="nav">
+            <a className="navLink" href="/">
+              Accueil
+            </a>
+            <a className="navLink" href="/?view=pricing">
+              Tarifs
+            </a>
+            <a className="navLink" href="mailto:contact@microassist.fr">
+              Contact
+            </a>
+          </nav>
+        </div>
+      </header>
+
+      <main className="legalPage">
+        <a className="legalBackLink" href="/">
+          Retour à Microassist
+        </a>
+        <section className="legalHero">
+          <p className="legalEyebrow">Microassist</p>
+          <h1>{page.title}</h1>
+          <p>{page.intro}</p>
+        </section>
+
+        <section className="legalContent" aria-label={page.title}>
+          {page.sections.map((section) => (
+            <article key={section.title} className="legalSection">
+              <h2>{section.title}</h2>
+              <p>{section.text}</p>
+            </article>
+          ))}
+          <div className="legalNotice">
+            Dernière mise à jour : 2026. Page du prototype : <code>{path}</code>
+          </div>
+        </section>
+      </main>
+
+      <MicroassistFooter />
+    </div>
+  );
+}
+
 export default function App() {
   // Основные состояния
   const [stepIndex, setStepIndex] = useState(0);
@@ -2750,6 +3003,7 @@ useEffect(() => {
   const [focusMode, setFocusMode] = useState(false); // ✅ ДОБАВИТЬ
   const { user, loading: authLoading } = useAuth();
   const [appView, setAppView] = useState("landing");
+  const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   const [userName, setUserName] = useState("");
   const [hydrated, setHydrated] = useState(false);
   const inputRef = useRef(null);
@@ -2787,7 +3041,13 @@ useEffect(() => {
 
   const goToView = useCallback((nextView, options = {}) => {
     const { push = true, focus = false } = options;
-    if (push) window.history.pushState({ appView: nextView }, "");
+    if (push) {
+      const nextUrl = window.location.pathname.startsWith("/legal")
+        ? "/"
+        : "";
+      window.history.pushState({ appView: nextView }, "", nextUrl);
+      setCurrentPath(window.location.pathname);
+    }
     setAppView(nextView);
     setFocusMode(focus);
     if (nextView === "assistant") setAssistantCollapsed(false);
@@ -2894,7 +3154,7 @@ useEffect(() => {
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showInvoiceGenerator, setShowInvoiceGenerator] = useState(false);
   const [invoiceInitialValues, setInvoiceInitialValues] = useState(null);
-  const [mode, setMode] = useState("user");
+  const [mode] = useState("user");
   
   const [invoices, setInvoices] = useState([]);
   const [guestInvoices, setGuestInvoices] = useState(() => {
@@ -4784,6 +5044,7 @@ useEffect(() => {
   useEffect(() => {
     const handlePopState = (event) => {
       const state = event.state;
+      setCurrentPath(window.location.pathname);
 
       if (state?.appView) {
         setAppView(state.appView);
@@ -4814,14 +5075,20 @@ useEffect(() => {
     const pendingDeepLinkView = deepLinkViewPendingRef.current;
     const effectiveDeepLinkView =
       pendingDeepLinkView ||
-      (requestedView === "pricing" || requestedView === "dashboard"
+      (requestedView === "pricing" ||
+      requestedView === "dashboard" ||
+      requestedView === "assistant"
         ? requestedView
         : null);
 
     if (!effectiveDeepLinkView) return;
     if (appView === effectiveDeepLinkView) return;
 
-    if (requestedView === "pricing" || requestedView === "dashboard") {
+    if (
+      requestedView === "pricing" ||
+      requestedView === "dashboard" ||
+      requestedView === "assistant"
+    ) {
       console.log(`[deep-link] detected ${requestedView} query param`);
     }
 
@@ -6714,8 +6981,7 @@ useEffect(() => {
     });
   }, [showTVADiagnosticModal]);
   
-useEffect
-  (() => {
+useEffect(() => {
     if (!dashboardNextMonthPrep) return;
 
     setBetaMicroFeedbackState((prev) => {
@@ -9307,7 +9573,9 @@ const handleExportPDF = useCallback(async () => {
 
     const cleanPdfText = (text) =>
       String(text || "")
-        .replace(/[^\x00-\x7F]/g, "")
+        .split("")
+        .filter((char) => char.charCodeAt(0) <= 0x7f)
+        .join("")
         .replace(/\s+/g, " ")
         .trim();
 
@@ -10827,6 +11095,12 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     showSimpleOnboarding,
     showTVADiagnosticModal,
   ]);
+
+  const legalPage = LEGAL_PAGES[currentPath];
+
+  if (legalPage) {
+    return <LegalPage page={legalPage} path={currentPath} />;
+  }
 
   if (window.location.pathname === "/expert-view") {
     return <ExpertView />;
@@ -14959,168 +15233,28 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
           </div>
         )}
 
-        <footer
-          className="footer"
-          style={{
-            marginTop: "40px",
-            padding: "24px 20px",
-            background: "#ffffff",
-            borderTop: "1px solid #e2e8f0",
+        <MicroassistFooter
+          onGoToAssistant={goToAssistant}
+          onGoToDashboard={() => goToDashboard({ scroll: false })}
+          onGoToInvoices={() => {
+            goToView("dashboard", { push: true, focus: true });
+            setTimeout(() => {
+              document
+                .getElementById("invoices-section")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 150);
           }}
-        >
-          <div
-            style={{
-              maxWidth: "1200px",
-              margin: "0 auto",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "16px",
-            }}
-          >
-            {/* Première ligne : liens */}
-            <div
-              style={{
-                display: "flex",
-                gap: "28px",
-                flexWrap: "wrap",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <button
-                onClick={() => setShowCGU(true)}
-                className="footerLink"
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#6b7280",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  padding: "4px 8px",
-                  borderRadius: "6px",
-                  transition: "all 0.2s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.color = "#7c3aed";
-                  e.target.style.backgroundColor = "#f5f3ff";
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.color = "#6b7280";
-                  e.target.style.backgroundColor = "transparent";
-                }}
-              >
-                Mentions légales
-              </button>
-
-              <span style={{ color: "#e2e8f0", fontSize: "14px" }}>|</span>
-
-              <button
-                onClick={() => setShowPrivacy(true)}
-                className="footerLink"
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#6b7280",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  padding: "4px 8px",
-                  borderRadius: "6px",
-                  transition: "all 0.2s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.color = "#7c3aed";
-                  e.target.style.backgroundColor = "#f5f3ff";
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.color = "#6b7280";
-                  e.target.style.backgroundColor = "transparent";
-                }}
-              >
-                Confidentialité
-              </button>
-
-              <span style={{ color: "#e2e8f0", fontSize: "14px" }}>|</span>
-
-              <a
-                href={FEEDBACK_FORM_URL}
-                className="footerLink"
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  color: "#6b7280",
-                  textDecoration: "none",
-                  fontSize: "13px",
-                  padding: "4px 8px",
-                  borderRadius: "6px",
-                  transition: "all 0.2s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.color = "#7c3aed";
-                  e.target.style.backgroundColor = "#f5f3ff";
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.color = "#6b7280";
-                  e.target.style.backgroundColor = "transparent";
-                }}
-              >
-                Contact
-              </a>
-            </div>
-
-            {/* Deuxième ligne : copyright et informations */}
-            <div
-              style={{
-                fontSize: "12px",
-                color: "#9ca3af",
-                display: "flex",
-                alignItems: "center",
-                gap: "16px",
-                flexWrap: "wrap",
-                justifyContent: "center",
-              }}
-            >
-              <span>© {new Date().getFullYear()} Microassist</span>
-              <span style={{ color: "#e2e8f0" }}>•</span>
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "6px 10px",
-                  borderRadius: 999,
-                  background: "#f8fafc",
-                  border: "1px solid #e2e8f0",
-                  color: "#475569",
-                  fontWeight: 600,
-                }}
-              >
-                {trustBadgeLabel}
-              </span>
-              <span style={{ color: "#e2e8f0" }}>•</span>
-              <span>
-                Fait avec ❤️ par{" "}
-                <a
-                  href="https://elenamihalska70-creator.github.io/Portfolio/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="footerLink"
-                >
-                  O.M.
-                </a>
-              </span>
-            </div>
-
-            {/* Troisième ligne : crédits (optionnel, maintenant intégré dans la ligne du dessus) */}
-            {/* <div style={{ 
-      fontSize: '11px', 
-      color: '#cbd5e1',
-      textAlign: 'center'
-    }}>
-      Prototype développé par Olena Mykhalska
-    </div> */}
-          </div>
-        </footer>
+          onGoToPricing={goToPricing}
+          onGoToReminders={() => {
+            goToView("dashboard", { push: true, focus: true });
+            setTimeout(() => {
+              document
+                .getElementById("reminders-section")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 150);
+          }}
+          onGoToHelp={() => goToLandingSection("services")}
+        />
 
         {showCGU && (
           <CGUModal isOpen={showCGU} onClose={() => setShowCGU(false)} />
