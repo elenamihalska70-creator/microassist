@@ -458,6 +458,7 @@ function getTvaConfigLabel(status) {
 
 function normalizeTvaConfigStatus(status) {
   if (status === "tva") return "active";
+  if (status === "assujetti") return "active";
   if (status === "active" || status === "franchise" || status === "unknown") {
     return status;
   }
@@ -602,6 +603,14 @@ function getExpertTvaLabel(status) {
   return "À vérifier";
 }
 
+function getAcreStatusLabel(status) {
+  if (status === "to_request") return "À demander";
+  if (status === "requested") return "Demandée";
+  if (status === "yes") return "Acceptée";
+  if (status === "no") return "Non concerné";
+  return "Je ne sais pas";
+}
+
 function ExpertView({ answers: providedAnswers, revenues: providedRevenues } = {}) {
   const localData = readExpertViewLocalData();
   const profile = localData.profile || {};
@@ -609,7 +618,7 @@ function ExpertView({ answers: providedAnswers, revenues: providedRevenues } = {
     activity: getSimpleActivityLabel(profile.activity_type),
     periodicity: getExpertDeclarationLabel(profile.declaration_frequency),
     tvaStatus: getExpertTvaLabel(profile.tva_status),
-    acre: profile.acre === "yes" ? true : profile.acre === "no" ? false : null,
+    acre: profile.acre || "unknown",
   };
   const revenues = providedRevenues || localData.revenues || [];
   const hasRevenue = revenues.length > 0;
@@ -629,7 +638,7 @@ function ExpertView({ answers: providedAnswers, revenues: providedRevenues } = {
           <p><strong>Activité :</strong> {answers?.activity || "Services"}</p>
           <p><strong>Déclaration :</strong> {answers?.periodicity || "Mensuelle"}</p>
           <p><strong>TVA :</strong> {answers?.tvaStatus || "À vérifier"}</p>
-          <p><strong>ACRE :</strong> {answers?.acre ? "Oui" : "Non"}</p>
+          <p><strong>ACRE :</strong> {getAcreStatusLabel(answers?.acre)}</p>
         </div>
 
         <div className="card priority">
@@ -648,7 +657,7 @@ function ExpertView({ answers: providedAnswers, revenues: providedRevenues } = {
           <li>Déclaration URSSAF : À vérifier</li>
           <li>TVA : À surveiller</li>
           <li>CFE : Rappel actif</li>
-          <li>ACRE : Non</li>
+          <li>ACRE : {getAcreStatusLabel(answers?.acre)}</li>
         </ul>
       </section>
 
@@ -926,16 +935,84 @@ function hasRecoveryUrlState() {
     return false;
   }
 
+  const hash = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+  const searchParams = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(hash);
+  const authType = hashParams.get("type") || searchParams.get("type");
+
+  return authType === "recovery";
+}
+
+function getAuthCallbackParams() {
   const searchParams = new URLSearchParams(window.location.search);
   const hash = window.location.hash.startsWith("#")
     ? window.location.hash.slice(1)
     : window.location.hash;
+  const hashParams = new URLSearchParams(hash);
 
-  return (
-    searchParams.get("mode") === "recovery" ||
-    hash.includes("type=recovery") ||
-    hash.includes("access_token=") ||
-    hash.includes("refresh_token=")
+  return {
+    searchParams,
+    hashParams,
+    type: hashParams.get("type") || searchParams.get("type"),
+    accessToken: hashParams.get("access_token"),
+    refreshToken: hashParams.get("refresh_token"),
+    tokenHash: hashParams.get("token_hash") || searchParams.get("token_hash"),
+    error: hashParams.get("error") || searchParams.get("error"),
+    errorCode:
+      hashParams.get("error_code") || searchParams.get("error_code"),
+  };
+}
+
+function cleanAuthCallbackUrl() {
+  const nextSearchParams = new URLSearchParams(window.location.search);
+  [
+    "mode",
+    "token_hash",
+    "type",
+    "error",
+    "error_code",
+    "error_description",
+  ].forEach((param) => nextSearchParams.delete(param));
+  const nextSearch = nextSearchParams.toString();
+
+  window.history.replaceState(
+    null,
+    "",
+    `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`,
+  );
+}
+
+function clearStaleRecoveryState() {
+  const { type: authType } = getAuthCallbackParams();
+
+  if (authType === "recovery") {
+    return;
+  }
+
+  try {
+    localStorage.removeItem("microassist_recovery_flow");
+    localStorage.removeItem("microassist_password_recovery");
+    sessionStorage.removeItem("microassist_recovery_flow");
+    sessionStorage.removeItem("microassist_password_recovery");
+  } catch {
+    // Ignore storage failures; URL state remains the source of truth.
+  }
+
+  const nextSearchParams = new URLSearchParams(window.location.search);
+  if (nextSearchParams.get("mode") !== "recovery") {
+    return;
+  }
+
+  nextSearchParams.delete("mode");
+  const nextSearch = nextSearchParams.toString();
+  window.history.replaceState(
+    null,
+    "",
+    `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}${
+      window.location.hash || ""
+    }`,
   );
 }
 
@@ -3144,8 +3221,12 @@ useEffect(() => {
   const [simpleOnboardingDraft, setSimpleOnboardingDraft] = useState({
     activity_type: "services",
     declaration_frequency: "mensuel",
-    monthly_revenue: "",
+    business_start_date: "",
+    acre: "unknown",
+    tva_status: "unknown",
   });
+  const [showOnboardingConfirmation, setShowOnboardingConfirmation] =
+    useState(false);
   const [tvaConfigDraft, setTvaConfigDraft] = useState(
     () => normalizeTvaConfigStatus(readSimpleAssistantProfile()?.tva_status),
   );
@@ -4513,7 +4594,7 @@ useEffect(() => {
       isRecoveryFlow,
     });
 
-    if (event === "PASSWORD_RECOVERY" && session) {
+    if (event === "PASSWORD_RECOVERY" && session && hasRecoveryUrlState()) {
       openRecoveryModal();
     }
   });
@@ -4521,9 +4602,25 @@ useEffect(() => {
   return () => {
     subscription.unsubscribe();
   };
-}, [openRecoveryModal, isRecoveryFlow]);
+  }, [openRecoveryModal, isRecoveryFlow]);
 
   useEffect(() => {
+    clearStaleRecoveryState();
+
+    const {
+      type: authType,
+      accessToken,
+      refreshToken,
+      tokenHash,
+      error: authError,
+      errorCode: authErrorCode,
+    } = getAuthCallbackParams();
+
+    const isSignupConfirmation =
+      authType === "signup" ||
+      authType === "confirmation" ||
+      authType === "invite";
+
     if (hasRecoveryUrlState()) {
       console.log("[recovery-debug] open recovery from App URL");
       setAuthInitialMode("recovery");
@@ -4531,26 +4628,9 @@ useEffect(() => {
       setAuthOpen(true);
     }
 
-    const searchParams = new URLSearchParams(window.location.search);
-    const hash = window.location.hash;
-    const hashParams = new URLSearchParams(
-      hash.startsWith("#") ? hash.slice(1) : hash,
-    );
-
-    if (
-      searchParams.get("mode") === "recovery" ||
-      hashParams.get("type") === "recovery" ||
-      hashParams.get("access_token") ||
-      hashParams.get("refresh_token")
-    ) {
+    if (authType === "recovery") {
       openRecoveryModal();
     }
-
-    if (!hash) return;
-    const authType = hashParams.get("type");
-    const accessToken = hashParams.get("access_token");
-    const authError = hashParams.get("error");
-    const authErrorCode = hashParams.get("error_code");
 
     if (
       authError === "access_denied" ||
@@ -4569,11 +4649,59 @@ useEffect(() => {
       return;
     }
 
-    if (!accessToken) {
+    if (tokenHash && authType) {
+      const supportedOtpTypes = new Set([
+        "signup",
+        "recovery",
+        "invite",
+        "magiclink",
+        "email",
+        "email_change",
+      ]);
+      const verifyType = authType === "confirmation" ? "signup" : authType;
+
+      if (!supportedOtpTypes.has(verifyType)) {
+        return;
+      }
+
+      supabase.auth
+        .verifyOtp({
+          token_hash: tokenHash,
+          type: verifyType,
+        })
+        .then(({ error: verifyError }) => {
+          if (verifyError) {
+            showSaveNotice(
+              "Le lien a expiré. Demande un nouveau lien ou connecte-toi avec ton mot de passe.",
+              5000,
+            );
+            cleanAuthCallbackUrl();
+            openAuthModal("signin");
+            return;
+          }
+
+          if (isSignupConfirmation) {
+            localStorage.setItem(PENDING_AUTH_SUCCESS_KEY, "email_confirmed");
+            localStorage.setItem(BETA_SEEN_KEY, "1");
+            setShowBetaNotice(false);
+            return;
+          }
+
+          if (authType === "recovery") {
+            openRecoveryModal();
+            return;
+          }
+
+          localStorage.setItem(PENDING_AUTH_SUCCESS_KEY, "signed_in");
+        });
       return;
     }
 
-    if (authType === "signup") {
+    if (!accessToken && !refreshToken) {
+      return;
+    }
+
+    if (isSignupConfirmation) {
       localStorage.setItem(PENDING_AUTH_SUCCESS_KEY, "email_confirmed");
       localStorage.setItem(BETA_SEEN_KEY, "1");
       setShowBetaNotice(false);
@@ -4582,7 +4710,10 @@ useEffect(() => {
 
     if (authType === "recovery") {
       openRecoveryModal();
+      return;
     }
+
+    localStorage.setItem(PENDING_AUTH_SUCCESS_KEY, "signed_in");
   }, [openRecoveryModal, openAuthModal, showSaveNotice]);
 
 // sync reminder prefs depuis Supabase
@@ -8522,16 +8653,14 @@ useEffect(() => {
     localStorage.setItem(BETA_SEEN_KEY, "1");
     setShowBetaNotice(false);
 
-    const cleanSearchParams = new URLSearchParams(window.location.search);
-    cleanSearchParams.delete("mode");
-    const nextSearch = cleanSearchParams.toString();
-
-    if (window.location.hash || window.location.search.includes("mode=")) {
-      window.history.replaceState(
-        null,
-        "",
-        `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`,
+    const hasAuthCallbackParams =
+      window.location.hash ||
+      ["mode", "token_hash", "type", "error", "error_code"].some((param) =>
+        new URLSearchParams(window.location.search).has(param),
       );
+
+    if (hasAuthCallbackParams) {
+      cleanAuthCallbackUrl();
     }
 
     if (isRecoveryFlow) return;
@@ -8556,7 +8685,7 @@ useEffect(() => {
 
     showSaveNotice(
       pendingAuthSuccess === "email_confirmed"
-        ? "Bienvenue ✅ Ton espace fiscal est prêt."
+        ? "Ton compte est confirmé"
         : profileConflictState.open
           ? "Connexion réussie ✅ Un choix de profil est nécessaire avant toute synchronisation."
         : migrated
@@ -8915,12 +9044,7 @@ useEffect(() => {
 
   const search = window.location.search || "";
   const hash = window.location.hash || "";
-
-  const isRecoveryUrl =
-    search.includes("mode=recovery") ||
-    hash.includes("type=recovery") ||
-    hash.includes("access_token=") ||
-    hash.includes("refresh_token=");
+  const isRecoveryUrl = hasRecoveryUrlState();
 
   const currentUserId = user?.id ?? null;
   const previousUserId = previousUserIdRef.current;
@@ -9171,7 +9295,9 @@ useEffect(() => {
     setSimpleOnboardingDraft({
       activity_type: "services",
       declaration_frequency: "mensuel",
-      monthly_revenue: "",
+      business_start_date: "",
+      acre: "unknown",
+      tva_status: "unknown",
     });
     setHydrated(true);
     console.log("RESET STATE DONE");
@@ -10378,15 +10504,15 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
           <div className="dashboardSectionHeaderMain">
             <h3>Identité de facturation</h3>
             <p className="muted" style={{ marginTop: 6 }}>
-              Ces informations sont optionnelles dans ton profil, mais le SIRET
-              est nécessaire pour créer une facture conforme.
+              Le SIRET peut être complété dès réception pour créer des factures
+              conformes.
             </p>
           </div>
         </div>
 
         <div className="formGrid">
           <label className="field">
-            <span>SIRET</span>
+            <span>SIRET — à compléter dès réception</span>
             <input
               type="text"
               value={billingIdentityDraft.siret}
@@ -10396,7 +10522,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   siret: event.target.value,
                 }))
               }
-              placeholder="Optionnel"
+              placeholder="À compléter dès réception"
             />
           </label>
 
@@ -10761,12 +10887,16 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     }
     handleSimpleOnboardingChange(field, value);
 
+    if (field === "business_start_date") {
+      return;
+    }
+
     if (simpleOnboardingAdvanceTimeoutRef.current) {
       clearTimeout(simpleOnboardingAdvanceTimeoutRef.current);
     }
 
     simpleOnboardingAdvanceTimeoutRef.current = window.setTimeout(() => {
-      setSimpleOnboardingStep((currentStep) => Math.min(currentStep + 1, 2));
+      setSimpleOnboardingStep((currentStep) => Math.min(currentStep + 1, 4));
       simpleOnboardingAdvanceTimeoutRef.current = null;
     }, 150);
   }
@@ -10786,6 +10916,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     }
 
     setShowSimpleOnboarding(false);
+    setShowOnboardingConfirmation(false);
     goToView("dashboard", { push: false, focus: true });
   }
 
@@ -10802,22 +10933,35 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showSimpleOnboarding]);
 
-  function handleSimpleOnboardingSave({ skipRevenue = false } = {}) {
-    const rawRevenue = String(simpleOnboardingDraft.monthly_revenue || "").trim();
-    const revenue = skipRevenue || rawRevenue === "" ? null : Number(rawRevenue);
-    const isLowDataProfile = revenue === null;
+  function handleSimpleOnboardingSave() {
     const finalActivity = normalizeActivityType(
       simpleOnboardingDraft.activity_type,
     );
+    const businessStartDate = normalizeDateValue(
+      simpleOnboardingDraft.business_start_date,
+    );
+    const acreStatus = simpleOnboardingDraft.acre || "unknown";
+    const tvaStatus = normalizeTvaConfigStatus(simpleOnboardingDraft.tva_status);
 
-    if (revenue !== null && (Number.isNaN(revenue) || revenue < 0)) {
-      showSuccessToast("Indiquez un chiffre d’affaires mensuel valide.", 3000);
+    if (!businessStartDate) {
+      showSuccessToast("Indique ta date de début d’activité.", 3000);
       return;
     }
 
-    trackBetaEvent(skipRevenue || rawRevenue === "" ? "onboarding_ca_skipped" : "onboarding_ca_filled", {
+    const fiscalDateErrors = getFiscalDateErrors({
+      business_start_date: businessStartDate,
+      acre: acreStatus,
+    });
+
+    if (fiscalDateErrors.business_start_date) {
+      showSuccessToast(fiscalDateErrors.business_start_date, 3000);
+      return;
+    }
+
+    trackBetaEvent("onboarding_profile_filled", {
       source: "simple_onboarding",
-      hasRevenueEstimate: revenue !== null,
+      acreStatus,
+      tvaStatus,
     });
 
     console.log("ONBOARDING FINAL ACTIVITY", finalActivity);
@@ -10825,10 +10969,14 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
       activity_type: finalActivity,
       declaration_frequency:
         simpleOnboardingDraft.declaration_frequency || "mensuel",
-      monthly_revenue: revenue,
-      starter_monthly_revenue: revenue,
-      data_quality: isLowDataProfile ? "low_data" : "starter_estimate",
-      tva_status: simpleAssistantProfile?.tva_status || "unknown",
+      monthly_revenue: simpleAssistantProfile?.monthly_revenue ?? null,
+      starter_monthly_revenue:
+        simpleAssistantProfile?.starter_monthly_revenue ??
+        simpleAssistantProfile?.monthly_revenue ??
+        null,
+      data_quality: "starter_profile",
+      tva_status: tvaStatus,
+      tva_configured: tvaStatus !== "unknown",
       updated_at: new Date().toISOString(),
     };
     const nextAnswers = sanitizeFiscalAnswers({
@@ -10840,9 +10988,10 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
         simpleOnboardingDraft.declaration_frequency ||
         answers.declaration_frequency ||
         "mensuel",
-      acre: answers.acre,
-      business_start_date: answers.business_start_date || null,
+      acre: acreStatus,
+      business_start_date: businessStartDate,
       acre_start_date: answers.acre_start_date || null,
+      tva_status: tvaStatus,
     });
 
     localStorage.setItem(SIMPLE_PROFILE_KEY, JSON.stringify(nextProfile));
@@ -10850,6 +10999,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     setAnswers(nextAnswers);
     setSimpleAssistantProfile(nextProfile);
     setShowSimpleOnboarding(false);
+    setShowOnboardingConfirmation(true);
     setSimpleOnboardingStep(0);
     if (simpleOnboardingAdvanceTimeoutRef.current) {
       clearTimeout(simpleOnboardingAdvanceTimeoutRef.current);
@@ -10861,17 +11011,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
       source: "simple_onboarding",
       dataQuality: nextProfile.data_quality,
     });
-    goToView("assistant", { push: true, focus: true });
-    window.setTimeout(() => {
-      assistantRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 100);
-    showSuccessToast(
-      "Ton profil est prêt. Valide-le pour accéder à ton espace fiscal.",
-      3000,
-    );
+    goToView("dashboard", { push: true, focus: true });
   }
 
   function handleProfileMissingAcreChange(value) {
@@ -10918,18 +11058,24 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     trackBetaEvent("onboarding_started", { source: "edit_profile" });
     setSimpleOnboardingDraft({
       activity_type: normalizeActivityType(
-        simpleAssistantProfile?.activity_type || "services",
+        dashboardAnswers?.activity_type ||
+          answers.activity_type ||
+          simpleAssistantProfile?.activity_type ||
+          "services",
       ),
       declaration_frequency:
-        simpleAssistantProfile?.declaration_frequency ||
         dashboardAnswers?.declaration_frequency ||
         answers.declaration_frequency ||
+        simpleAssistantProfile?.declaration_frequency ||
         "mensuel",
-      monthly_revenue:
-        simpleAssistantProfile?.monthly_revenue !== undefined &&
-        simpleAssistantProfile?.monthly_revenue !== null
-          ? String(simpleAssistantProfile.monthly_revenue)
-          : "",
+      business_start_date:
+        dashboardAnswers?.business_start_date || answers.business_start_date || "",
+      acre: dashboardAnswers?.acre || answers.acre || "unknown",
+      tva_status:
+        dashboardAnswers?.tva_status ||
+        answers.tva_status ||
+        simpleAssistantProfile?.tva_status ||
+        "unknown",
     });
     setSimpleOnboardingStep(0);
     setShowSimpleOnboarding(true);
@@ -11052,8 +11198,9 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
   useEffect(() => {
     const isAnyModalOpen = Boolean(
-      showBetaNotice ||
+        showBetaNotice ||
         showSimpleOnboarding ||
+        showOnboardingConfirmation ||
         authOpen ||
         profileConflictState.open ||
         pendingStructuredProfileEdit ||
@@ -11088,6 +11235,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     showCashImpactModal,
     showFutureAdvancedModal,
     showInvoiceGenerator,
+    showOnboardingConfirmation,
     showPricingModal,
     showPrivacy,
     showReminderModal,
@@ -11160,15 +11308,15 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
             </button>
             <div className="sectionHead">
               <div>
-                <h3>Étape 1 : configurer votre profil</h3>
+                <h3>Configurer ton profil fiscal</h3>
                 <p className="muted" style={{ margin: "6px 0 0" }}>
-                  Trois questions rapides, puis Microassist affiche votre situation.
+                  Cinq questions rapides pour préparer ton espace.
                 </p>
               </div>
             </div>
 
             <div className="simpleOnboardingSteps">
-              {[0, 1, 2].map((step) => (
+              {[0, 1, 2, 3, 4].map((step) => (
                 <span
                   key={step}
                   className={`simpleStepDot ${
@@ -11180,7 +11328,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
             {simpleOnboardingStep === 0 && (
               <div className="simpleOnboardingBody">
-                <h4>Votre activité principale</h4>
+                <h4>Activité principale</h4>
                 <div className="simpleChoiceGrid">
                   {[
                     { value: "services", label: "Services" },
@@ -11211,7 +11359,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
             {simpleOnboardingStep === 1 && (
               <div className="simpleOnboardingBody">
-                <h4>Votre rythme de déclaration</h4>
+                <h4>Rythme de déclaration</h4>
                 <div className="simpleChoiceGrid">
                   {[
                     { value: "mensuel", label: "Mensuelle" },
@@ -11242,26 +11390,81 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
             {simpleOnboardingStep === 2 && (
               <div className="simpleOnboardingBody">
-                <h4>Votre chiffre d’affaires estimé</h4>
+                <h4>Date de début d’activité</h4>
                 <label className="field">
-                  <span>CA mensuel estimé (optionnel)</span>
+                  <span>Début d’activité</span>
                   <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={simpleOnboardingDraft.monthly_revenue}
+                    type="date"
+                    value={simpleOnboardingDraft.business_start_date}
                     onChange={(event) =>
                       handleSimpleOnboardingChange(
-                        "monthly_revenue",
+                        "business_start_date",
                         event.target.value,
                       )
                     }
-                    placeholder="Ex : 2500"
                   />
                 </label>
                 <p className="muted" style={{ margin: 0 }}>
-                  Si tu ne sais pas encore, tu peux passer cette étape.
+                  Cette date aide à fiabiliser les rappels et les repères fiscaux.
                 </p>
+              </div>
+            )}
+
+            {simpleOnboardingStep === 3 && (
+              <div className="simpleOnboardingBody">
+                <h4>Statut ACRE</h4>
+                <div className="simpleChoiceGrid">
+                  {[
+                    { value: "to_request", label: "À demander" },
+                    { value: "requested", label: "Demandée" },
+                    { value: "yes", label: "Acceptée" },
+                    { value: "no", label: "Non concerné" },
+                    { value: "unknown", label: "Je ne sais pas" },
+                  ].map((choice) => (
+                    <button
+                      key={choice.value}
+                      type="button"
+                      className={`simpleChoiceButton ${
+                        simpleOnboardingDraft.acre === choice.value
+                          ? "isSelected"
+                          : ""
+                      }`}
+                      onClick={() =>
+                        handleSimpleOnboardingOptionSelect("acre", choice.value)
+                      }
+                    >
+                      {choice.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {simpleOnboardingStep === 4 && (
+              <div className="simpleOnboardingBody">
+                <h4>Statut TVA</h4>
+                <div className="simpleChoiceGrid">
+                  {[
+                    { value: "franchise", label: "Franchise en base" },
+                    { value: "active", label: "TVA active" },
+                    { value: "unknown", label: "Je ne sais pas" },
+                  ].map((choice) => (
+                    <button
+                      key={choice.value}
+                      type="button"
+                      className={`simpleChoiceButton ${
+                        simpleOnboardingDraft.tva_status === choice.value
+                          ? "isSelected"
+                          : ""
+                      }`}
+                      onClick={() =>
+                        handleSimpleOnboardingChange("tva_status", choice.value)
+                      }
+                    >
+                      {choice.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -11277,25 +11480,99 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 </button>
               )}
               {simpleOnboardingStep === 2 && (
+                <button
+                  className="btn btnPrimary"
+                  type="button"
+                  onClick={() => {
+                    if (!normalizeDateValue(simpleOnboardingDraft.business_start_date)) {
+                      showSuccessToast("Indique ta date de début d’activité.", 3000);
+                      return;
+                    }
+                    setSimpleOnboardingStep(3);
+                  }}
+                >
+                  Continuer
+                </button>
+              )}
+              {simpleOnboardingStep === 4 && (
                 <>
-                  <button
-                    className="btn btnGhost"
-                    type="button"
-                    onClick={() => handleSimpleOnboardingSave({ skipRevenue: true })}
-                  >
-                    Je ne sais pas encore
-                  </button>
                   <button
                     className="btn btnPrimary"
                     type="button"
                     onClick={() => handleSimpleOnboardingSave()}
                   >
-                    Valider mon profil
+                    Valider
                   </button>
                 </>
               )}
             </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showOnboardingConfirmation && !showBetaNotice && (
+        <div className="modalOverlay">
+          <div className="modalCard simpleOnboardingModal">
+            <div className="sectionHead">
+              <div>
+                <h3>Ton espace fiscal est prêt</h3>
+                <p className="muted" style={{ margin: "6px 0 0" }}>
+                  Tu peux maintenant sauvegarder ton suivi et retrouver ton espace plus tard.
+                </p>
+              </div>
+            </div>
+            <div className="onboardingSummaryList">
+              <div>
+                <span>Activité</span>
+                <strong>{getSimpleActivityLabel(dashboardAnswers.activity_type)}</strong>
+              </div>
+              <div>
+                <span>Déclaration</span>
+                <strong>
+                  {dashboardAnswers.declaration_frequency === "trimestriel"
+                    ? "Trimestrielle"
+                    : "Mensuelle"}
+                </strong>
+              </div>
+              <div>
+                <span>Début d’activité</span>
+                <strong>{dashboardAnswers.business_start_date || "À compléter"}</strong>
+              </div>
+              <div>
+                <span>ACRE</span>
+                <strong>{getAcreStatusLabel(dashboardAnswers.acre)}</strong>
+              </div>
+              <div>
+                <span>TVA</span>
+                <strong>{getTvaConfigLabel(dashboardAnswers.tva_status)}</strong>
+              </div>
+            </div>
+            <div className="miniActions" style={{ marginTop: 18 }}>
+              <button
+                className="btn btnPrimary"
+                type="button"
+                onClick={() => {
+                  setShowOnboardingConfirmation(false);
+                  openAuthModal("signup");
+                }}
+              >
+                Créer mon compte
+              </button>
+              <button
+                className="btn btnGhost"
+                type="button"
+                onClick={() => {
+                  setShowOnboardingConfirmation(false);
+                  goToDashboard({ scroll: false });
+                }}
+              >
+                Continuer sans compte
+              </button>
+            </div>
+            <p className="muted" style={{ margin: "10px 0 0", fontSize: 13 }}>
+              Tes données restent temporaires tant que ton compte n’est pas créé.
+            </p>
           </div>
         </div>
       )}
@@ -11800,7 +12077,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                       </button>
                     )}
                     <button
-                      className="btn btnGhost btnSmall"
+                      className="btn btnSubtle btnSmall"
                       onClick={handleLocalProfileRestart}
                       type="button"
                     >
@@ -11973,6 +12250,13 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                     <div ref={profileReviewRef} style={{ scrollMarginTop: 100 }}>
                       <div className="assistantSummaryBox" style={{ marginTop: 14 }}>
                         <h3>Mon profil</h3>
+                        <button
+                          className="btn btnActionSecondary btnSmall"
+                          type="button"
+                          onClick={openSimpleOnboardingEdit}
+                        >
+                          Modifier
+                        </button>
                         <ul className="assistantSummaryList" style={{ marginTop: 14 }}>
                           <li>
                             <strong>Activité :</strong>{" "}
@@ -11996,8 +12280,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                             <strong>ACRE :</strong>{" "}
                             {hasProfileAcreValue
                               ? labelFromOptions("acre", dashboardAnswers.acre) ||
-                                "Non"
-                              : "Non"}
+                                getAcreStatusLabel(dashboardAnswers.acre)
+                              : "Je ne sais pas"}
                           </li>
                           <li>
                             <strong>Date de début :</strong>{" "}
@@ -12599,15 +12883,13 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               {!isPremiumUser && isGuest ? (
                 <div className="discoveryBanner">
                   <div className="discoveryBannerTitle">
-                    Crée ton compte pour sauvegarder ton suivi
+                    Session temporaire — crée ton compte pour sauvegarder ton suivi.
                   </div>
                   <div className="discoveryBannerText">
-                    Sans compte, tes données restent sur cet appareil. Elles
-                    peuvent être perdues.
+                    Tes données restent temporaires tant que ton compte n’est pas créé.
                   </div>
                   <div className="dashboardHelperText" style={{ marginTop: 8 }}>
-                    Crée un compte gratuit pour retrouver ton espace à tout
-                    moment.
+                    Crée un compte pour retrouver ton espace plus tard.
                   </div>
                   <div className="discoveryBannerActions">
                     <button
@@ -15290,11 +15572,14 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               goToDashboard({ scroll: false });
             }}
             onRecoveryComplete={handleRecoveryComplete}
-            onSuccess={() => {
+            onSuccess={({ mode } = {}) => {
               if (isRecoveryFlow) {
                 return;
               }
-              localStorage.setItem(PENDING_AUTH_SUCCESS_KEY, "manual_auth");
+              localStorage.setItem(
+                PENDING_AUTH_SUCCESS_KEY,
+                mode === "signup" ? "signup" : "manual_auth",
+              );
               closeAuthModal("auth user change effect");
             }}
           />

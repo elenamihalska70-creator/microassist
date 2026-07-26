@@ -3,16 +3,28 @@ import { supabase } from "../lib/supabase.js";
 
 const PASSWORD_MIN_LENGTH = 8;
 const RECOVERY_SUCCESS_REDIRECT_DELAY_MS = 900;
+const SIGNUP_RATE_LIMIT_MESSAGE =
+  "Trop de tentatives pour le moment. Veuillez patienter quelques minutes avant de réessayer.";
 
-function isRecoveryUrlNow() {
+function getAuthRedirectUrl() {
+  return `${window.location.origin}${window.location.pathname}`;
+}
+
+function getCurrentAuthType() {
   const search = window.location.search || "";
   const hash = window.location.hash || "";
-  return (
-    search.includes("mode=recovery") ||
-    hash.includes("type=recovery") ||
-    hash.includes("access_token=") ||
-    hash.includes("refresh_token=")
+  const searchParams = new URLSearchParams(search);
+  const hashParams = new URLSearchParams(
+    hash.startsWith("#") ? hash.slice(1) : hash,
   );
+
+  return hashParams.get("type") || searchParams.get("type");
+}
+
+function isRecoveryUrlNow() {
+  const authType = getCurrentAuthType();
+
+  return authType === "recovery";
 }
 
 function hasRecoveryParams() {
@@ -42,13 +54,28 @@ function getFriendlyAuthError(error, mode) {
     return "Ton compte existe, mais l’email doit encore être confirmé.";
   }
 
-  if (message.includes("rate limit")) {
-    return "Trop de tentatives en peu de temps. Merci de réessayer dans quelques minutes.";
+  if (isRateLimitError(error)) {
+    return mode === "signup"
+      ? SIGNUP_RATE_LIMIT_MESSAGE
+      : "Trop de tentatives en peu de temps. Merci de réessayer dans quelques minutes.";
   }
 
   return mode === "signup"
     ? "Impossible de créer ton compte pour le moment."
     : "Impossible de te connecter pour le moment.";
+}
+
+function isRateLimitError(error) {
+  const message = error?.message?.toLowerCase() || "";
+  const status = error?.status || error?.code;
+
+  return (
+    status === 429 ||
+    status === "429" ||
+    message.includes("rate limit") ||
+    message.includes("too many requests") ||
+    message.includes("over email send rate limit")
+  );
 }
 
 function isExistingAccountSignUpError(error) {
@@ -107,7 +134,7 @@ export default function AuthGate({
   const completeSuccess = useCallback(() => {
     if (successSentRef.current) return;
     successSentRef.current = true;
-    onSuccess?.();
+    onSuccess?.({ mode: modeRef.current });
   }, [onSuccess]);
 
   useEffect(() => {
@@ -122,15 +149,8 @@ export default function AuthGate({
         recoveryRef: recoveryFlowRef.current,
       });
 
-      if (
-        event === "PASSWORD_RECOVERY" ||
-        recoveryFromUrl ||
-        recoveryFlowRef.current
-      ) {
-        if (event === "PASSWORD_RECOVERY") {
-          console.info("[recovery] PASSWORD_RECOVERY received");
-        }
-
+      if (event === "PASSWORD_RECOVERY" && recoveryFromUrl) {
+        console.info("[recovery] recovery flow detected", { event });
         recoveryFlowRef.current = true;
         setMode("recovery");
         setEmail(session?.user?.email || "");
@@ -327,6 +347,7 @@ export default function AuthGate({
           email: cleanEmail,
           password: cleanPassword,
           options: {
+            emailRedirectTo: getAuthRedirectUrl(),
             data: {
               auth_flow: "password",
             },
@@ -415,7 +436,7 @@ export default function AuthGate({
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(
         cleanEmail,
         {
-          redirectTo: `${window.location.origin}${window.location.pathname}?mode=recovery`,
+          redirectTo: getAuthRedirectUrl(),
         },
       );
 
@@ -452,7 +473,7 @@ export default function AuthGate({
         type: "signup",
         email: cleanEmail,
         options: {
-          emailRedirectTo: window.location.origin + window.location.pathname,
+          emailRedirectTo: getAuthRedirectUrl(),
         },
       });
 
@@ -701,6 +722,11 @@ export default function AuthGate({
 
         {notice && <p className="authNotice">{notice}</p>}
         {error && <p className="authError">{error}</p>}
+        {mode === "signup" && error === SIGNUP_RATE_LIMIT_MESSAGE && (
+          <p className="muted authHelper">
+            Si vous avez déjà un compte, utilisez Connexion.
+          </p>
+        )}
       </div>
     </div>
   );
