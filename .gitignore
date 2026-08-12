@@ -24,3 +24,11 @@ dist-ssr
 *.sw?
 .env
 .env.local
+
+# Local tooling
+.claude/
+
+# Generated test/build output
+test-results/
+playwright-report/
+coverage/
