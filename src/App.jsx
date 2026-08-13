@@ -1,4 +1,8 @@
-import { supabase } from "./lib/supabase.js";
+import {
+  supabase,
+  isSupabaseConfigured,
+  SUPABASE_UNAVAILABLE_ERROR,
+} from "./lib/supabase.js";
 import AuthGate from "./components/AuthGate.jsx";
 import CGUModal from "./components/CGUModal.jsx";
 import {
@@ -3499,6 +3503,12 @@ const handleRecoveryComplete = useCallback(() => {
 
     setLogoutPending(true);
 
+    if (!isSupabaseConfigured) {
+      clearAuthenticatedRuntimeState({ clearLocalSessionKeys: true });
+      window.location.assign(window.location.pathname + window.location.search);
+      return;
+    }
+
     try {
       const { error } = await supabase.auth.signOut();
 
@@ -4597,6 +4607,10 @@ const refreshSubscriptionRecord = useCallback(async () => {
   }, [user, refreshSubscriptionRecord]);
 
 useEffect(() => {
+  if (!isSupabaseConfigured) {
+    return;
+  }
+
   const {
     data: { subscription },
   } = supabase.auth.onAuthStateChange((event, session) => {
@@ -4664,7 +4678,7 @@ useEffect(() => {
       return;
     }
 
-    if (tokenHash && authType) {
+    if (tokenHash && authType && isSupabaseConfigured) {
       const supportedOtpTypes = new Set([
         "signup",
         "recovery",
@@ -10376,6 +10390,10 @@ const saveOfferInterest = useCallback(
       };
     }
 
+    if (!isSupabaseConfigured) {
+      return { data: null, error: SUPABASE_UNAVAILABLE_ERROR };
+    }
+
     const normalizedPhone = String(phone || "").trim() || null;
     const normalizedSmsConsent = Boolean(smsConsent);
     const payload = {
@@ -10489,11 +10507,13 @@ const joinPremiumWaitlist = useCallback(
         return true;
       }
 
-      const { data, error } = await supabase.rpc("join_premium_waitlist", {
-        p_email: normalizedEmail,
-        p_user_id: user?.id ?? null,
-        p_source: triggerType,
-      });
+      const { data, error } = isSupabaseConfigured
+        ? await supabase.rpc("join_premium_waitlist", {
+            p_email: normalizedEmail,
+            p_user_id: user?.id ?? null,
+            p_source: triggerType,
+          })
+        : { data: null, error: SUPABASE_UNAVAILABLE_ERROR };
 
       if (error) {
         console.error("Premium waitlist RPC error:", error.message);
