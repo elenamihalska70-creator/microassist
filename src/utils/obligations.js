@@ -27,11 +27,6 @@ function daysBetween(a, b) {
   return Math.ceil(ms / (1000 * 60 * 60 * 24));
 }
 
-function endOfMonth(date) {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
-}
-
-
 function getQuarterIndex(m) {
   if (m <= 2) return 1;
   if (m <= 5) return 2;
@@ -146,7 +141,6 @@ export function computeObligations(answers = {}) {
   const businessStartDate = answers.business_start_date;
   const businessYear = getBusinessYear(businessStartDate);
   const isFirstYear = businessYear === 1;
-  const isSecondYear = businessYear === 2;
 
   let cfeAlert = null;
   if (!isFirstYear && caAnnuel > 5000 && businessStartDate) {

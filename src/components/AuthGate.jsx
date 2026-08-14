@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { supabase } from "../lib/supabase.js";
+import {
+  supabase,
+  isSupabaseConfigured,
+  SUPABASE_UNAVAILABLE_MESSAGE,
+} from "../lib/supabase.js";
 
 const PASSWORD_MIN_LENGTH = 8;
 const RECOVERY_SUCCESS_REDIRECT_DELAY_MS = 900;
@@ -138,6 +142,10 @@ export default function AuthGate({
   }, [onSuccess]);
 
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      return;
+    }
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -313,6 +321,11 @@ export default function AuthGate({
       return;
     }
 
+    if (!isSupabaseConfigured) {
+      setError(SUPABASE_UNAVAILABLE_MESSAGE);
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -428,6 +441,11 @@ export default function AuthGate({
       return;
     }
 
+    if (!isSupabaseConfigured) {
+      setError(SUPABASE_UNAVAILABLE_MESSAGE);
+      return;
+    }
+
     setSubmitting(true);
     setNotice("");
     setError("");
@@ -461,6 +479,11 @@ export default function AuthGate({
     const cleanEmail = email.trim().toLowerCase();
 
     if (!cleanEmail || resendingConfirmation) {
+      return;
+    }
+
+    if (!isSupabaseConfigured) {
+      setError(SUPABASE_UNAVAILABLE_MESSAGE);
       return;
     }
 

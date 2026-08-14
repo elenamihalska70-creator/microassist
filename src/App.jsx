@@ -1,4 +1,8 @@
-import { supabase } from "./lib/supabase.js";
+import {
+  supabase,
+  isSupabaseConfigured,
+  SUPABASE_UNAVAILABLE_ERROR,
+} from "./lib/supabase.js";
 import AuthGate from "./components/AuthGate.jsx";
 import CGUModal from "./components/CGUModal.jsx";
 import {
@@ -12,6 +16,13 @@ import {
 import "./App.css";
 import { FISCAL_STEPS } from "./config/steps.fiscal";
 import { computeObligations } from "./utils/obligations.js";
+import { buildFiscalSummaryInput } from "./application/adapters/index.js";
+import { resolveWeeklyEstimatedRate } from "./application/weekly/resolveWeeklyEstimatedRate.js";
+import {
+  createRuntimeParityEvidence,
+  createRuntimeParityEvidenceStore,
+} from "./application/shadow/runtimeParityEvidence.js";
+import { calculateFiscalSummary } from "./domain/calculations/facade/index.js";
 import { showConsoleSignature } from "./consoleSignature.js";
 import { useAuth } from "./context/AuthContext.jsx";
 import jsPDF from "jspdf";
@@ -32,6 +43,8 @@ import { PRICING_LIMITS } from "./config/pricing.js";
 import { ACCESS_MATRIX, getAccessProfile } from "./config/accessMatrix.js";
 import PricingPage from "./components/PricingPage.jsx";
 import ExpertDashboard from "./components/ExpertDashboard";
+import MainNavigation from "./navigation/MainNavigation.jsx";
+import AppShell from "./shell/AppShell.jsx";
 // Добавьте после других констант:
 const LS_KEY = "microassist_v1";
 const LS_VERSION = 1;
@@ -56,6 +69,12 @@ const EMAIL_EVENT_KEY_PREFIX = "microassist_email_event_";
 const BETA_SEEN_KEY = "beta_seen";
 const PROFILE_CONFLICT_STRATEGY_KEY = "microassist_profile_conflict_strategy";
 const SUBSCRIPTIONS_TABLE_ENABLED = false;
+const FISCAL_SUMMARY_SHADOW_ENABLED = true;
+const SHADOW_PARITY_EVIDENCE_COLLECTION_ENABLED = true;
+const FISCAL_SUMMARY_FIRST_SLICE_VISIBLE_REPLACEMENT_ENABLED = true;
+const SHADOW_PARITY_EVIDENCE_STORE = createRuntimeParityEvidenceStore({
+  enabled: SHADOW_PARITY_EVIDENCE_COLLECTION_ENABLED,
+});
 const FEEDBACK_FORM_URL =
   "https://docs.google.com/forms/d/e/1FAIpQLSfFLqWZajP6Dy0Zm5-bS9cnE5-joWecfCgfyIhzGRMbsk-jqA/viewform";
 const FREE_EXPORTS_PER_MONTH = 3;
@@ -3484,6 +3503,12 @@ const handleRecoveryComplete = useCallback(() => {
 
     setLogoutPending(true);
 
+    if (!isSupabaseConfigured) {
+      clearAuthenticatedRuntimeState({ clearLocalSessionKeys: true });
+      window.location.assign(window.location.pathname + window.location.search);
+      return;
+    }
+
     try {
       const { error } = await supabase.auth.signOut();
 
@@ -4582,6 +4607,10 @@ const refreshSubscriptionRecord = useCallback(async () => {
   }, [user, refreshSubscriptionRecord]);
 
 useEffect(() => {
+  if (!isSupabaseConfigured) {
+    return;
+  }
+
   const {
     data: { subscription },
   } = supabase.auth.onAuthStateChange((event, session) => {
@@ -4649,7 +4678,7 @@ useEffect(() => {
       return;
     }
 
-    if (tokenHash && authType) {
+    if (tokenHash && authType && isSupabaseConfigured) {
       const supportedOtpTypes = new Set([
         "signup",
         "recovery",
@@ -5517,6 +5546,61 @@ useEffect(() => {
     }
   }, [dashboardAnswers, currentMonthTotal, revenues, hasProfileCore, isFiscalProfileComplete]);
 
+  const fiscalSummaryShadow = useMemo(() => {
+    if (!FISCAL_SUMMARY_SHADOW_ENABLED || !hasProfileCore) {
+      return null;
+    }
+
+    try {
+      const shadowInput = buildFiscalSummaryInput({
+        revenues,
+        fiscalProfile: {
+          activity_type: dashboardAnswers.activity_type,
+          acre: dashboardAnswers.acre,
+          acre_start_date: dashboardAnswers.acre_start_date,
+        },
+        period: {},
+        referenceDate: getTodayIsoDate(),
+      });
+      const shadowResult = calculateFiscalSummary(shadowInput, { trace: false });
+      const legacySnapshot = {
+        revenueTotal: currentMonthTotal,
+        estimatedAmount: computed?.estimatedAmount,
+        rate: computed?.rate,
+        acreStatus: computed?.acreStatus,
+      };
+      const shadowParityEvidence = createRuntimeParityEvidence({
+        scenarioId: "app.dashboard.first-slice",
+        legacySnapshot,
+        shadowResult,
+        shadowInput,
+        observedAt: shadowInput.referenceDate,
+      });
+      SHADOW_PARITY_EVIDENCE_STORE.record(shadowParityEvidence);
+
+      void shadowParityEvidence;
+      void shadowResult;
+
+      return {
+        shadowInput,
+        shadowResult,
+        shadowParityEvidence,
+      };
+    } catch {
+      return null;
+    }
+  }, [
+    dashboardAnswers.acre,
+    dashboardAnswers.acre_start_date,
+    dashboardAnswers.activity_type,
+    computed?.acreStatus,
+    computed?.estimatedAmount,
+    computed?.rate,
+    currentMonthTotal,
+    hasProfileCore,
+    revenues,
+  ]);
+
   const activityLabel = useMemo(
     () => labelFromOptions("activity_type", dashboardAnswers.activity_type),
     [dashboardAnswers.activity_type],
@@ -5595,6 +5679,37 @@ useEffect(() => {
   const availableAmount = useMemo(() => {
     return Math.max(0, currentMonthTotal - estimatedCharges);
   }, [currentMonthTotal, estimatedCharges]);
+
+  const fiscalSummaryVisibleSlice = useMemo(() => {
+    const shadowResult = fiscalSummaryShadow?.shadowResult;
+    const usesShadow =
+      FISCAL_SUMMARY_FIRST_SLICE_VISIBLE_REPLACEMENT_ENABLED &&
+      Boolean(shadowResult);
+
+    return {
+      revenueTotal: usesShadow
+        ? shadowResult.revenue.total
+        : currentMonthTotal,
+      baseAmount: usesShadow
+        ? shadowResult.summary.baseAmount
+        : currentMonthTotal,
+      finalContributionAmount: usesShadow
+        ? shadowResult.summary.finalContributionAmount
+        : estimatedCharges,
+      effectiveRate: usesShadow
+        ? shadowResult.summary.effectiveRate
+        : computed?.rate,
+      acreStatus: usesShadow
+        ? shadowResult.contributions.acre.acreStatus
+        : computed?.acreStatus,
+    };
+  }, [
+    computed?.acreStatus,
+    computed?.rate,
+    currentMonthTotal,
+    estimatedCharges,
+    fiscalSummaryShadow,
+  ]);
 
   // ==================== PREVIEW POUR MODALE AJOUT REVENU ====================
   const revenueAmount = useMemo(() => {
@@ -5979,7 +6094,7 @@ useEffect(() => {
     : "Ajoute ton premier revenu";
   const dashboardQuietPlaceholder = "À compléter";
   const dashboardRevenueDisplay = hasRevenueData
-    ? getDisplayValue(currentMonthTotal, "money")
+    ? getDisplayValue(fiscalSummaryVisibleSlice.revenueTotal, "money")
     : cockpitEstimate.isProvisional
       ? `${getDisplayValue(cockpitEstimate.revenue, "money")} estimés`
       : hasLowDataProfile
@@ -5989,7 +6104,9 @@ useEffect(() => {
     ? dashboardQuietPlaceholder
     : hasAnyDashboardData
     ? getDisplayValue(
-        cockpitEstimate.hasEstimate ? cockpitEstimate.charges : estimatedCharges,
+        cockpitEstimate.isProvisional
+          ? cockpitEstimate.charges
+          : fiscalSummaryVisibleSlice.finalContributionAmount,
         "money",
       )
     : dashboardQuietPlaceholder;
@@ -6206,6 +6323,9 @@ useEffect(() => {
     revenues.length,
     tvaStatusHelper,
   ]);
+  const smartAlertEstimatedCharges =
+    fiscalSummaryVisibleSlice.finalContributionAmount;
+  const smartAlertRevenueTotal = fiscalSummaryVisibleSlice.revenueTotal;
   const smartAlerts = useMemo(
     () =>
       buildSmartAlerts({
@@ -6214,8 +6334,8 @@ useEffect(() => {
         revenues,
         invoices: visibleInvoices,
         reminderPrefs,
-        estimatedCharges,
-        currentMonthTotal,
+        estimatedCharges: smartAlertEstimatedCharges,
+        currentMonthTotal: smartAlertRevenueTotal,
       }),
     [
       dashboardAnswers,
@@ -6223,8 +6343,8 @@ useEffect(() => {
       revenues,
       visibleInvoices,
       reminderPrefs,
-      estimatedCharges,
-      currentMonthTotal,
+      smartAlertEstimatedCharges,
+      smartAlertRevenueTotal,
     ],
   );
   const smartPriorities = useMemo(() => {
@@ -6331,15 +6451,18 @@ useEffect(() => {
   )
     ? "dashboardSectionZone dashboardSectionZoneAmber"
     : "dashboardSectionZone dashboardSectionZoneSuccess";
-  const savingsGoal = useMemo(() => {
-    // Objectif d'épargne recommandé: 3 mois de charges
-    return Math.max(estimatedCharges * 3, 500);
-  }, [estimatedCharges]);
-
   const savingsProgress = useMemo(() => {
     // Épargne actuelle = disponible estimé
     return availableAmount;
   }, [availableAmount]);
+  const fiscalCoachingSavingsGoal = Math.max(
+    fiscalSummaryVisibleSlice.finalContributionAmount * 3,
+    500,
+  );
+  const pdfSavingsGoal = Math.max(
+    fiscalSummaryVisibleSlice.finalContributionAmount * 3,
+    500,
+  );
   const fiscalCoachingCard = useMemo(() => {
     const smartAlertIds = new Set(smartAlerts.map((alert) => alert.id));
     const sortedRevenueDates = revenues
@@ -6394,10 +6517,11 @@ useEffect(() => {
         };
       }
 
+    // LOT 5.79A coaching boundary: source-only denominator migration.
     if (
       !smartAlertIds.has("reserve-low") &&
-      savingsGoal > 0 &&
-      savingsProgress < savingsGoal * 0.35
+      fiscalCoachingSavingsGoal > 0 &&
+      savingsProgress < fiscalCoachingSavingsGoal * 0.35
     ) {
       return {
         text: roleBasedTips.dailyFiscalTip.lowReserve,
@@ -6449,7 +6573,7 @@ useEffect(() => {
     revenues,
     computed,
     isFiscalProfileComplete,
-    savingsGoal,
+    fiscalCoachingSavingsGoal,
     savingsProgress,
     dashboardAnswers,
     user,
@@ -6825,6 +6949,7 @@ useEffect(() => {
         .join("|"),
     [activeReminderItems],
   );
+  const weeklyRecapEffectiveRate = fiscalSummaryVisibleSlice.effectiveRate;
   const dashboardWeeklyRecap = useMemo(() => {
     const today = parseIsoDate(getTodayIsoDate());
 
@@ -6846,8 +6971,10 @@ useEffect(() => {
       (sum, revenue) => sum + (Number(revenue.amount) || 0),
       0,
     );
-    const estimatedRate =
-      computed?.rate || getEstimatedRate(dashboardAnswers.activity_type);
+    const estimatedRate = resolveWeeklyEstimatedRate({
+      effectiveRate: weeklyRecapEffectiveRate,
+      legacyFallbackRate: getEstimatedRate(dashboardAnswers.activity_type),
+    });
     const weeklyEstimatedCharges =
       weeklyRevenueCount > 0 && Number.isFinite(estimatedRate)
         ? Math.round(weeklyRevenueTotal * estimatedRate)
@@ -6926,12 +7053,12 @@ useEffect(() => {
     };
   }, [
     activeReminderItems,
-    computed?.rate,
     dashboardAnswers.activity_type,
     dashboardNextStep?.cta,
     dashboardRecommendation?.cta,
     revenues,
     visibleInvoices,
+    weeklyRecapEffectiveRate,
   ]);
   const dashboardThisWeekInsight = useMemo(() => {
     const hasDeclarationDeadline =
@@ -8559,6 +8686,9 @@ const invoicesThisMonth = useMemo(() => {
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   }).length;
 }, [visibleInvoices]);
+  const monthlyReflectionRevenueTotal = fiscalSummaryVisibleSlice.revenueTotal;
+  const monthlyReflectionChargesAmount =
+    fiscalSummaryVisibleSlice.finalContributionAmount;
   const dashboardMonthlyReflection = useMemo(() => {
     if (revenues.length === 0) return null;
 
@@ -8571,7 +8701,7 @@ const invoicesThisMonth = useMemo(() => {
 
     return {
       title: "📅 Bilan du mois",
-      text: `Tu as enregistré ${currentMonthTotal.toLocaleString("fr-FR")} € de revenus, prévu ${estimatedCharges.toLocaleString("fr-FR")} € de charges et créé ${invoiceLabel}.`,
+      text: `Tu as enregistré ${monthlyReflectionRevenueTotal.toLocaleString("fr-FR")} € de revenus, prévu ${monthlyReflectionChargesAmount.toLocaleString("fr-FR")} € de charges et créé ${invoiceLabel}.`,
       helper: [reminderLabel, tvaHelper, "Tu vois plus clairement ton mois en cours."]
         .filter(Boolean)
         .join(" "),
@@ -8579,9 +8709,9 @@ const invoicesThisMonth = useMemo(() => {
   }, [
     activeReminderItems.length,
     computed?.tvaStatus,
-    currentMonthTotal,
-    estimatedCharges,
     invoicesThisMonth,
+    monthlyReflectionChargesAmount,
+    monthlyReflectionRevenueTotal,
     normalizedTvaStatusLabel,
     revenues.length,
   ]);
@@ -9875,9 +10005,10 @@ const handleExportPDF = useCallback(async () => {
           : "Pas encore assez de données"
       }`,
       `Taux estime : ${computed?.rate ? Math.round(computed.rate * 100) : 0}%`,
+      // LOT 5.86A PDF boundary: source-only denominator migration.
       `Objectif d epargne : ${
-        typeof savingsGoal !== "undefined" && savingsGoal > 0
-          ? `${Math.round((savingsProgress / savingsGoal) * 100 || 0)}%`
+        typeof pdfSavingsGoal !== "undefined" && pdfSavingsGoal > 0
+          ? `${Math.round((savingsProgress / pdfSavingsGoal) * 100 || 0)}%`
           : "Pas encore assez de données"
       }`,
     ],
@@ -10006,7 +10137,7 @@ const handleExportPDF = useCallback(async () => {
   computed,
   revenues,
   formatRevenueDate,
-  savingsGoal,
+  pdfSavingsGoal,
   savingsProgress,
 ]);
 
@@ -10259,6 +10390,10 @@ const saveOfferInterest = useCallback(
       };
     }
 
+    if (!isSupabaseConfigured) {
+      return { data: null, error: SUPABASE_UNAVAILABLE_ERROR };
+    }
+
     const normalizedPhone = String(phone || "").trim() || null;
     const normalizedSmsConsent = Boolean(smsConsent);
     const payload = {
@@ -10372,11 +10507,13 @@ const joinPremiumWaitlist = useCallback(
         return true;
       }
 
-      const { data, error } = await supabase.rpc("join_premium_waitlist", {
-        p_email: normalizedEmail,
-        p_user_id: user?.id ?? null,
-        p_source: triggerType,
-      });
+      const { data, error } = isSupabaseConfigured
+        ? await supabase.rpc("join_premium_waitlist", {
+            p_email: normalizedEmail,
+            p_user_id: user?.id ?? null,
+            p_source: triggerType,
+          })
+        : { data: null, error: SUPABASE_UNAVAILABLE_ERROR };
 
       if (error) {
         console.error("Premium waitlist RPC error:", error.message);
@@ -11577,124 +11714,37 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
         </div>
       )}
 
-      <div className="page">
-        <header className="topbar">
-          <div className="appStatusBar">
-            <span className="appStatusBadge">{viewLabel}</span>
-          </div>
-          <div className="topbarLeft">
-            <div className="brand">Entrepreneurs Assistant</div>
-            <div className="topbarMeta">
-              <div className="greetingBadge">{topbarGreetingLabel}</div>
-              {profileLine && <div className="profileMini">{profileLine}</div>}
-              {connectedAccountLabel && (
-                <div className="profileMini">Connectée : {connectedAccountLabel}</div>
-              )}
-            </div>
-          </div>
-
-          <div className="topbarRight">
-            <nav className="nav">
-              <button
-                type="button"
-                className="navLink"
-                onClick={() => goToLandingSection("home")}
-              >
-                Accueil
-              </button>
-              <button
-                type="button"
-                className="navLink"
-                onClick={() => goToLandingSection("services")}
-              >
-                Services
-              </button>
-              <button type="button" className="navLink" onClick={goToAssistant}>
-                Assistant
-              </button>
-              <button
-  type="button"
-  className="navLink"
-  onClick={goToDashboard}
->
-  Mon espace fiscal
-</button>
-              <button
-                type="button"
-                className="navLink"
-                onClick={() => {
-                  setAppView("dashboard");
-                  setTimeout(() => {
-                    document
-                      .getElementById("invoices-section")
-                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }, 150);
-                }}
-              >
-                Factures
-              </button>
-
-              <button
-  type="button"
-  className={`navButton ${appView === "pricing" ? "isActive" : ""}`}
-  onClick={goToPricing}
->
-  Tarifs
-</button>
-
-              <a
-                className="navLink"
-                href={FEEDBACK_FORM_URL}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Contact
-              </a>
-              <a
-                className="navLink"
-                href={FEEDBACK_FORM_URL}
-                target="_blank"
-                rel="noreferrer"
-              >
-                ❓ Signaler un problème
-              </a>
-            </nav>
-
-            {isLocalhostQa && (
-              <button
-                type="button"
-                className="btn btnGhost btnSmall"
-                onClick={toggleLocalPremiumQa}
-                style={{
-                  paddingInline: "0.8rem",
-                  borderRadius: 999,
-                  background: localPremiumStatus
-                    ? "rgba(255, 244, 214, 0.88)"
-                    : "rgba(241, 245, 249, 0.92)",
-                  border: localPremiumStatus
-                    ? "1px solid rgba(217, 168, 41, 0.24)"
-                    : "1px solid rgba(148, 163, 184, 0.22)",
-                  color: localPremiumStatus ? "#7c5a10" : "#475569",
-                  fontWeight: 700,
-                }}
-                title="Basculer le mode Premium QA en local"
-              >
-                🧪 Premium QA
-              </button>
-            )}
-
-            {user && (
-              <button
-                type="button"
-                className="btn btnGhost btnSmall"
-                onClick={handleLogout}
-                disabled={logoutPending}
-              >
-                {logoutPending ? "Déconnexion..." : "Déconnexion"}
-              </button>
-            )}
-          </div>
-        </header>
+      <AppShell
+        header={
+          <MainNavigation
+            appView={appView}
+            connectedAccountLabel={connectedAccountLabel}
+            feedbackFormUrl={FEEDBACK_FORM_URL}
+            isLocalhostQa={isLocalhostQa}
+            localPremiumStatus={localPremiumStatus}
+            logoutPending={logoutPending}
+            onGoToAssistant={goToAssistant}
+            onGoToDashboard={goToDashboard}
+            onGoToInvoices={() => {
+              setAppView("dashboard");
+              setTimeout(() => {
+                document
+                  .getElementById("invoices-section")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }, 150);
+            }}
+            onGoToLandingHome={() => goToLandingSection("home")}
+            onGoToLandingServices={() => goToLandingSection("services")}
+            onGoToPricing={goToPricing}
+            onLogout={handleLogout}
+            onToggleLocalPremiumQa={toggleLocalPremiumQa}
+            profileLine={profileLine}
+            topbarGreetingLabel={topbarGreetingLabel}
+            user={user}
+            viewLabel={viewLabel}
+          />
+        }
+      >
 
         <main className={`container ${focusMode ? "focusMode" : ""}`}>
         {saveNotice && (
@@ -13037,9 +13087,9 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                           <div>
                             <span>Montant estimé</span>
                             <strong>
-                              {cockpitEstimate.hasEstimate
+                              {cockpitEstimate.isProvisional
                                 ? getDisplayValue(cockpitEstimate.charges, "money")
-                                : computed?.amountEstimatedLabel || "À vérifier"}
+                                : dashboardChargesDisplay}
                             </strong>
                           </div>
                           <div>
@@ -13120,10 +13170,10 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                             Comprendre la déclaration URSSAF
                           </button>
                           <div className="dashboardDeclareHelper">
-                            {currentMonthTotal > 0 ? (
+                            {fiscalSummaryVisibleSlice.revenueTotal > 0 ? (
                               <>
                                 <span>
-                                  Montant à déclarer : {getDisplayValue(currentMonthTotal, "money")}
+                                  Montant à déclarer : {getDisplayValue(fiscalSummaryVisibleSlice.revenueTotal, "money")}
                                 </span>
                                 {computed?.nextDeclarationLabel &&
                                   computed.nextDeclarationLabel !== "Profil à compléter" && (
@@ -14521,17 +14571,25 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               </div>
 
               {/* Добавьте после fiscalDashboard */}
-              {isFiscalProfileComplete && currentMonthTotal > 0 && (
+              {isFiscalProfileComplete && fiscalSummaryVisibleSlice.revenueTotal > 0 && (
                 <div
                   className="progressIndicators"
                 >
                   <div className="progressItem">
                     <div className="progressItemHeader">
                       <span>💰 Objectif d'épargne</span>
+                      {/* LOT 5.29 UI boundary: future UI migration must not change coaching or PDF. */}
                       <span>
                         {Math.min(
                           100,
-                          Math.round((savingsProgress / savingsGoal) * 100),
+                          Math.round(
+                            (savingsProgress /
+                              Math.max(
+                                fiscalSummaryVisibleSlice.finalContributionAmount * 3,
+                                500,
+                              )) *
+                              100,
+                          ),
                         )}
                         %
                       </span>
@@ -14540,7 +14598,17 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                       <div
                         className="progressFill"
                         style={{
-                          width: `${Math.min(100, Math.round((savingsProgress / savingsGoal) * 100))}%`,
+                          width: `${Math.min(
+                            100,
+                            Math.round(
+                              (savingsProgress /
+                                Math.max(
+                                  fiscalSummaryVisibleSlice.finalContributionAmount * 3,
+                                  500,
+                                )) *
+                                100,
+                            ),
+                          )}%`,
                         }}
                       />
                     </div>
@@ -16141,7 +16209,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
           content={EXPLANATION_CONTENT[explanationModalType]}
           onClose={closeExplanationModal}
         />
-      </div>
+      </AppShell>
       {showInvoiceGenerator && (
         <InvoiceGenerator
           user={user}
