@@ -3,6 +3,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { getEligibilityWindow } from "./reminderWindow.js";
+import { buildAttemptMetadata } from "./reminderMetadata.js";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const FROM_EMAIL = "noreply@microassist.fr";
@@ -50,17 +52,16 @@ serve(async (req: Request) => {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const dayAfterTomorrow = new Date(today);
-    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
 
-    const dateString = today.toISOString().split("T")[0];
+    const { startDate: dateString, endDate: dayAfterTomorrowDateString } =
+      getEligibilityWindow(today);
     console.log(`📅 Date cible: ${dateString}`);
 
     const { data: reminders, error: remindersError } = await supabaseClient
       .from("reminders")
       .select("*")
       .eq("status", "pending")
-      .lte("reminder_date", dayAfterTomorrow.toISOString().split("T")[0])
+      .lte("reminder_date", dayAfterTomorrowDateString)
       .gte("reminder_date", dateString);
 
     if (remindersError) {
@@ -180,16 +181,40 @@ serve(async (req: Request) => {
         if (emailError) {
           console.error(`❌ Error sending email:`, emailError);
           results.push({ id: reminder.id, status: "failed", reason: emailError.message });
-          await supabaseClient.from("reminders").update({ status: "failed" }).eq("id", reminder.id);
+          const metadata = buildAttemptMetadata(reminder.metadata, {
+            attemptedAt: new Date().toISOString(),
+            providerStatus: "failed",
+            failureReason: emailError.message,
+          });
+          await supabaseClient
+            .from("reminders")
+            .update({ status: "failed", metadata })
+            .eq("id", reminder.id);
         } else {
           console.log(`✅ Email envoyé à ${user.email}`);
           results.push({ id: reminder.id, status: "sent" });
-          await supabaseClient.from("reminders").update({ status: "sent" }).eq("id", reminder.id);
+          const metadata = buildAttemptMetadata(reminder.metadata, {
+            attemptedAt: new Date().toISOString(),
+            providerStatus: "accepted",
+            providerMessageId: emailData?.id ?? null,
+          });
+          await supabaseClient
+            .from("reminders")
+            .update({ status: "sent", metadata })
+            .eq("id", reminder.id);
         }
       } catch (emailError) {
         console.error(`❌ Exception:`, emailError);
         results.push({ id: reminder.id, status: "failed", reason: String(emailError) });
-        await supabaseClient.from("reminders").update({ status: "failed" }).eq("id", reminder.id);
+        const metadata = buildAttemptMetadata(reminder.metadata, {
+          attemptedAt: new Date().toISOString(),
+          providerStatus: "failed",
+          failureReason: String(emailError),
+        });
+        await supabaseClient
+          .from("reminders")
+          .update({ status: "failed", metadata })
+          .eq("id", reminder.id);
       }
     }
 

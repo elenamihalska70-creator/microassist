@@ -23,6 +23,7 @@ import {
   createRuntimeParityEvidenceStore,
 } from "./application/shadow/runtimeParityEvidence.js";
 import { calculateFiscalSummary } from "./domain/calculations/facade/index.js";
+import { calculateNextReminderDate } from "./domain/rules/reminderSchedule.js";
 import { showConsoleSignature } from "./consoleSignature.js";
 import { useAuth } from "./context/AuthContext.jsx";
 import jsPDF from "jspdf";
@@ -4049,28 +4050,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
   }, [user]);
 
   function calculateNextReminder(frequency) {
-    const today = new Date();
-
-    if (frequency === "mensuel") {
-      const nextMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-      nextMonth.setDate(nextMonth.getDate() - 7);
-      return nextMonth.toISOString();
-    }
-
-    if (frequency === "trimestriel") {
-      const month = today.getMonth();
-      let endQuarter;
-
-      if (month <= 2) endQuarter = new Date(today.getFullYear(), 3, 30);
-      else if (month <= 5) endQuarter = new Date(today.getFullYear(), 6, 31);
-      else if (month <= 8) endQuarter = new Date(today.getFullYear(), 9, 31);
-      else endQuarter = new Date(today.getFullYear() + 1, 0, 31);
-
-      endQuarter.setDate(endQuarter.getDate() - 7);
-      return endQuarter.toISOString();
-    }
-
-    return null;
+    return calculateNextReminderDate(frequency);
   }
 
   const persistPremiumStatus = useCallback(
