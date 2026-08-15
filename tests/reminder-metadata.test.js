@@ -115,3 +115,51 @@ test("null/non-object existing metadata is treated as empty, not thrown", () => 
 
   assert.equal(metadata.attempt_count, 1);
 });
+
+// LOT 7.20 — extended provider_status vocabulary. None of these three may
+// ever be conflated with a definite "failed": they each mean "we cannot
+// prove the email was not sent", which matters once retry exists.
+
+test("'unknown' outcome (no response received) is recorded distinctly from 'failed'", () => {
+  const metadata = buildAttemptMetadata(
+    {},
+    {
+      attemptedAt: "2026-08-14T08:00:01.000Z",
+      providerStatus: "unknown",
+      failureReason: "TypeError: fetch failed",
+    },
+  );
+
+  assert.equal(metadata.provider_status, "unknown");
+  assert.notEqual(metadata.provider_status, "failed");
+  assert.equal(metadata.failure_reason, "TypeError: fetch failed");
+  assert.equal(metadata.attempt_count, 1);
+});
+
+test("'conflict' outcome (invalid_idempotent_request) is recorded distinctly from 'failed'", () => {
+  const metadata = buildAttemptMetadata(
+    {},
+    {
+      attemptedAt: "2026-08-14T08:00:01.000Z",
+      providerStatus: "conflict",
+      failureReason: "Idempotency key already used with a different payload",
+    },
+  );
+
+  assert.equal(metadata.provider_status, "conflict");
+  assert.notEqual(metadata.provider_status, "failed");
+});
+
+test("'concurrent' outcome (concurrent_idempotent_requests) is recorded distinctly from 'failed'", () => {
+  const metadata = buildAttemptMetadata(
+    {},
+    {
+      attemptedAt: "2026-08-14T08:00:01.000Z",
+      providerStatus: "concurrent",
+      failureReason: "A request with this idempotency key is already in progress",
+    },
+  );
+
+  assert.equal(metadata.provider_status, "concurrent");
+  assert.notEqual(metadata.provider_status, "failed");
+});
