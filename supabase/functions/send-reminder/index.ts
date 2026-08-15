@@ -7,8 +7,14 @@ import { getEligibilityWindow } from "./reminderWindow.js";
 import { buildAttemptMetadata } from "./reminderMetadata.js";
 import { buildLogicalDeliveryKey, buildProviderIdempotencyKey } from "./reminderIdentity.js";
 import { buildReminderPayload, REMINDER_TEMPLATE_VERSION } from "./reminderPayload.js";
-import { hasDurableAcceptedOutcome } from "./reminderReplay.js";
+import {
+  occurrenceScopedMetadata,
+  hasDurableAcceptedOutcome,
+  hasFrozenPayloadForOccurrence,
+  hasFrozenRecipientForOccurrence,
+} from "./reminderReplay.js";
 import { buildNoEmailMetadata, resolveNoEmailFinalizeResult } from "./reminderNoEmail.js";
+import { buildRetryPolicyFields, isRetryable } from "./reminderRetryPolicy.js";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const FROM_EMAIL = "noreply@microassist.fr";
@@ -55,12 +61,18 @@ serve(async (req: Request) => {
     const resend = new Resend(RESEND_API_KEY);
     console.log("✅ Client Resend initialisé");
 
-    const today = new Date();
+    // LOT 7.33: `now` (untruncated) drives retry-policy timing decisions
+    // (the unknown-outcome 24h window); `today` (midnight) still drives the
+    // date-window query, unchanged in shape from before -- only
+    // getEligibilityWindow's own range widened (bounded overdue catch-up,
+    // reminderWindow.js).
+    const now = new Date();
+    const today = new Date(now);
     today.setHours(0, 0, 0, 0);
 
     const { startDate: dateString, endDate: dayAfterTomorrowDateString } =
       getEligibilityWindow(today);
-    console.log(`📅 Date cible: ${dateString}`);
+    console.log(`📅 Date cible: ${dateString} → ${dayAfterTomorrowDateString}`);
 
     const { data: reminders, error: remindersError } = await supabaseClient
       .from("reminders")
@@ -118,13 +130,24 @@ serve(async (req: Request) => {
       const claimToken = claim.claim_token;
       const claimedMetadata = claim.metadata || {};
 
+      // LOT 7.32: claim_reminder unconditionally refreshes
+      // metadata.logical_delivery_key on every successful claim, so
+      // claimedMetadata's key always matches the current occurrence
+      // trivially -- it cannot be used to detect a superseded occurrence.
+      // preClaimMetadata (the row as read by the SELECT above, before this
+      // invocation's claim touched it) is the only trustworthy reference
+      // for "does the rest of this metadata belong to what we're claiming
+      // right now." See reminderReplay.js for the full explanation.
+      const preClaimMetadata = reminder.metadata || {};
+      const scopedPriorMetadata = occurrenceScopedMetadata(preClaimMetadata, logicalDeliveryKey);
+
       // Replay safety (LOT 7.22): a prior attempt on this exact logical
       // delivery may have durably persisted a provider-accepted outcome
       // (Phase A) and then failed to finalize status (Phase B). Reclaiming
       // must not call Resend again in that case -- only the missing
       // finalize is still needed. Resend's own 24h idempotency dedup is a
       // second layer, not a substitute for checking this first.
-      if (hasDurableAcceptedOutcome(claimedMetadata, logicalDeliveryKey)) {
+      if (hasDurableAcceptedOutcome(preClaimMetadata, logicalDeliveryKey)) {
         console.log(
           `♻️ Reminder ${reminder.id} already accepted by provider in a prior attempt — finalizing without resending`,
         );
@@ -154,6 +177,51 @@ serve(async (req: Request) => {
         continue;
       }
 
+      // LOT 7.33: a row can be "pending" and still not eligible for a
+      // fresh provider call. Attempt-count exhaustion never reaches this
+      // point under the current design -- it's decided immediately at
+      // write time below (finalStatus), landing straight on "failed". This
+      // gate exists for the one case that can only be discovered on a
+      // LATER read: an "unknown" outcome whose 24h provider-idempotency
+      // window has since elapsed with no resolution (LOT 7.31 section 16 --
+      // conservative, do not blindly resend). Also acts as a defensive
+      // backstop for any other retry-exhausted-but-still-pending state.
+      if (!isRetryable(scopedPriorMetadata, { now })) {
+        console.log(
+          `⛔ Reminder ${reminder.id} retry budget exhausted (${scopedPriorMetadata.last_failure_category ?? "n/a"}) — finalizing without a new provider call`,
+        );
+        const exhaustedMetadata = {
+          ...scopedPriorMetadata,
+          claim: claimedMetadata.claim,
+          logical_delivery_key: logicalDeliveryKey,
+          ...buildRetryPolicyFields(scopedPriorMetadata, { now }),
+        };
+        const { data: exhaustedRows, error: exhaustedError } = await supabaseClient
+          .from("reminders")
+          .update({ status: "failed", metadata: exhaustedMetadata })
+          .eq("id", reminder.id)
+          .eq("metadata->claim->>claim_token", claimToken)
+          .select("id");
+
+        if (exhaustedError) {
+          console.error(`❌ Retry-exhaustion finalize error for ${reminder.id}:`, exhaustedError);
+          results.push({ id: reminder.id, status: "finalize_failed", reason: "retry_exhausted" });
+        } else if (!exhaustedRows || exhaustedRows.length === 0) {
+          console.warn(
+            `⚠️ Retry-exhaustion finalize skipped for ${reminder.id}: claim no longer owned (reclaimed by a newer invocation)`,
+          );
+          results.push({ id: reminder.id, status: "skipped", reason: "claim_lost_before_exhaustion_finalize" });
+        } else {
+          results.push({
+            id: reminder.id,
+            status: "failed",
+            reason: "retry_exhausted",
+            last_failure_category: exhaustedMetadata.last_failure_category,
+          });
+        }
+        continue;
+      }
+
       const { data: userData } = await supabaseClient.auth.admin.getUserById(reminder.user_id);
       console.log(`👤 Utilisateur trouvé: ${userData?.user?.email ? "oui" : "non"}`);
 
@@ -174,11 +242,25 @@ serve(async (req: Request) => {
         // ownership discipline as every other finalize write in this loop:
         // claim-token filtered, error checked, affected rows checked. A
         // stale claimant must not overwrite a newer invocation's state.
+        //
+        // metadata base is scopedPriorMetadata (LOT 7.32), not
+        // claimedMetadata directly: a superseded occurrence's stale
+        // attempt_count/provider_status/retry state must not carry into
+        // this write. `claim` still comes from claimedMetadata -- it's
+        // always fresh from this claim, unrelated to occurrence identity.
+        const noEmailAt = new Date().toISOString();
+        const noEmailMetadataBase = buildNoEmailMetadata(
+          { ...scopedPriorMetadata, claim: claimedMetadata.claim },
+          noEmailAt,
+        );
         const { data: noEmailRows, error: noEmailError } = await supabaseClient
           .from("reminders")
           .update({
             status: "failed",
-            metadata: buildNoEmailMetadata(claimedMetadata, new Date().toISOString()),
+            metadata: {
+              ...noEmailMetadataBase,
+              ...buildRetryPolicyFields(noEmailMetadataBase, { now: new Date(noEmailAt) }),
+            },
           })
           .eq("id", reminder.id)
           .eq("metadata->claim->>claim_token", claimToken)
@@ -200,12 +282,10 @@ serve(async (req: Request) => {
       // exists, otherwise render fresh. Absolute-date wording already makes
       // rendering deterministic regardless of "today"; freezing additionally
       // protects against a template change deployed between retries.
-      const hasFrozenPayload =
-        typeof claimedMetadata.rendered_subject === "string" &&
-        typeof claimedMetadata.rendered_html === "string";
+      const hasFrozenPayload = hasFrozenPayloadForOccurrence(preClaimMetadata, logicalDeliveryKey);
 
       const rendered = hasFrozenPayload
-        ? { subject: claimedMetadata.rendered_subject, html: claimedMetadata.rendered_html }
+        ? { subject: scopedPriorMetadata.rendered_subject, html: scopedPriorMetadata.rendered_html }
         : buildReminderPayload({
             reminderType: reminder.reminder_type,
             reminderDate: reminder.reminder_date,
@@ -218,13 +298,22 @@ serve(async (req: Request) => {
       // Recipient frozen at first claim (LOT 7.18 section 10): guarantees a
       // stable `to` field under the same idempotency key even if the user
       // changes their email between retries.
-      const recipientSnapshot =
-        typeof claimedMetadata.recipient_snapshot === "string"
-          ? claimedMetadata.recipient_snapshot
-          : user.email;
+      const recipientSnapshot = hasFrozenRecipientForOccurrence(preClaimMetadata, logicalDeliveryKey)
+        ? scopedPriorMetadata.recipient_snapshot
+        : user.email;
 
+      // frozenFields base is scopedPriorMetadata, not claimedMetadata (LOT
+      // 7.32): if this is a new occurrence (fiscal-profile save changed
+      // reminder_date since the last attempt), scopedPriorMetadata is `{}`,
+      // so attempt_count/provider_status/last_failure_category/
+      // retry_exhausted_at from the superseded occurrence do NOT carry
+      // forward into this attempt. `claim` is always taken from
+      // claimedMetadata -- the current claim_token, needed for the
+      // ownership-filtered writes below, is unrelated to occurrence
+      // identity.
       const frozenFields = {
-        ...claimedMetadata,
+        ...scopedPriorMetadata,
+        claim: claimedMetadata.claim,
         logical_delivery_key: logicalDeliveryKey,
         idempotency_key: idempotencyKey,
         template_version: REMINDER_TEMPLATE_VERSION,
@@ -306,6 +395,28 @@ serve(async (req: Request) => {
           failureReason: String(emailError),
         });
         finalStatus = "failed";
+      }
+
+      // LOT 7.32: classify the outcome and update the retry budget before
+      // persisting. buildRetryPolicyFields reads outcomeMetadata directly
+      // (attempt_count etc. are already occurrence-scoped, since
+      // frozenFields was built from scopedPriorMetadata above) and only
+      // adds last_failure_category/retry_exhausted_at -- no other key is
+      // touched, no provider outcome evidence is erased.
+      outcomeMetadata = {
+        ...outcomeMetadata,
+        ...buildRetryPolicyFields(outcomeMetadata, { now }),
+      };
+
+      // LOT 7.33: a retryable failure must finalize to "pending", not
+      // "failed" -- claim_reminder only ever reclaims status='pending'
+      // rows (unchanged RPC, no migration this LOT), so this is what
+      // actually makes a later cron run able to retry it at all. Only a
+      // truly terminal outcome (permanent failure, or retry budget already
+      // exhausted by this very attempt) finalizes to "failed". Accepted is
+      // untouched: finalStatus is already "sent" here, never re-evaluated.
+      if (finalStatus === "failed") {
+        finalStatus = isRetryable(outcomeMetadata, { now }) ? "pending" : "failed";
       }
 
       // Phase A (LOT 7.22): persist the provider outcome durably BEFORE
