@@ -15,6 +15,12 @@ import {
 } from "./reminderReplay.js";
 import { buildNoEmailMetadata, resolveNoEmailFinalizeResult } from "./reminderNoEmail.js";
 import { buildRetryPolicyFields, isRetryable } from "./reminderRetryPolicy.js";
+import {
+  resolveTriggerSource,
+  buildStartRecord,
+  buildCompletionRecord,
+  buildFailureRecord,
+} from "./reminderSchedulerHeartbeat.js";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const FROM_EMAIL = "noreply@microassist.fr";
@@ -44,6 +50,15 @@ serve(async (req: Request) => {
     return new Response("Unauthorized", { status: 401 });
   }
 
+  // LOT 8.2 section 10: declared outside the try/catch so a crash before
+  // the Supabase client and run_id exist (e.g. createClient itself
+  // throwing) can still be handled -- the default no-op logs the exact
+  // limitation instead of silently doing nothing. Reassigned to a real
+  // implementation once the client and runId are available below.
+  let finalizeHeartbeat: (record: Record<string, unknown>) => Promise<void> = async () => {
+    console.error("❌ Scheduler heartbeat could not be finalized: crash occurred before run row existed");
+  };
+
   try {
     console.log("🔄 Création du client Supabase...");
     const supabaseClient = createClient(
@@ -69,6 +84,39 @@ serve(async (req: Request) => {
     const now = new Date();
     const today = new Date(now);
     today.setHours(0, 0, 0, 0);
+    const todayDateString = today.toISOString().split("T")[0];
+
+    // Scheduler heartbeat (LOT 8.2): durable, application-level evidence
+    // that this invocation happened, independent of the reminder rows
+    // themselves (LOT 8.1 design). run_id is generated here, not by cron,
+    // so manual invocations get one too. trigger_source defaults to
+    // "scheduled" -- cron's request carries no marker at all (unchanged,
+    // out of scope to modify this LOT), so only an explicit opt-in header
+    // on a manual/smoke call is ever classified as "manual".
+    const runId = crypto.randomUUID();
+    const triggerSource = resolveTriggerSource(req.headers.get("X-Trigger-Source"));
+    console.log(`💓 Scheduler run ${runId} (${triggerSource})`);
+
+    const { error: heartbeatStartError } = await supabaseClient
+      .from("scheduler_runs")
+      .insert(buildStartRecord({ runId, triggerSource, startedAt: now.toISOString() }));
+
+    if (heartbeatStartError) {
+      // Heartbeat is observability only -- never let a failure to record
+      // it block real reminder processing, which is the thing that
+      // actually protects the user's declaration deadline.
+      console.error(`❌ Scheduler heartbeat start-record insert failed for ${runId}:`, heartbeatStartError);
+    }
+
+    finalizeHeartbeat = async (record: Record<string, unknown>) => {
+      const { error: heartbeatFinalizeError } = await supabaseClient
+        .from("scheduler_runs")
+        .update(record)
+        .eq("run_id", runId);
+      if (heartbeatFinalizeError) {
+        console.error(`❌ Scheduler heartbeat finalize failed for ${runId}:`, heartbeatFinalizeError);
+      }
+    };
 
     const { startDate: dateString, endDate: dayAfterTomorrowDateString } =
       getEligibilityWindow(today);
@@ -83,6 +131,7 @@ serve(async (req: Request) => {
 
     if (remindersError) {
       console.error("❌ Error fetching reminders:", remindersError);
+      await finalizeHeartbeat(buildFailureRecord({ completedAt: new Date().toISOString(), error: remindersError }));
       return new Response(JSON.stringify({ error: remindersError.message }), { status: 500 });
     }
 
@@ -90,11 +139,26 @@ serve(async (req: Request) => {
 
     if (!reminders || reminders.length === 0) {
       console.log("ℹ️ Aucun rappel à envoyer");
+      // LOT 8.2 section 12: a zero-reminder day is still a completed,
+      // healthy scheduler run -- it must produce a heartbeat exactly like
+      // any other, with every count at 0, not be treated as "nothing to
+      // record."
+      await finalizeHeartbeat(
+        buildCompletionRecord({ completedAt: new Date().toISOString(), results: [], catchUpCount: 0, retryCount: 0 }),
+      );
       return new Response(JSON.stringify({ message: "No reminders to send" }), { status: 200 });
     }
 
     console.log(`📋 ${reminders.length} rappels à traiter`);
     const results = [];
+    // LOT 8.2: orthogonal per-run tags for the heartbeat's observability
+    // contract, incremented exactly once per claimed row -- a row can
+    // legitimately be both catch-up AND retry, or either alone, and this
+    // count is independent of whatever sent/failed/skipped bucket it ends
+    // up in (LOT 8.2 section 11 example: "a retry that succeeds: processed
+    // +1, sent +1, retry +1", never processed twice).
+    let catchUpCount = 0;
+    let retryCount = 0;
 
     for (const reminder of reminders) {
       console.log(`🔄 Traitement du reminder ${reminder.id}, type: ${reminder.reminder_type}`);
@@ -140,6 +204,20 @@ serve(async (req: Request) => {
       // right now." See reminderReplay.js for the full explanation.
       const preClaimMetadata = reminder.metadata || {};
       const scopedPriorMetadata = occurrenceScopedMetadata(preClaimMetadata, logicalDeliveryKey);
+
+      // LOT 8.2: tag this claimed row for the heartbeat counters. Catch-up
+      // is a property of the row itself (was it already overdue when we
+      // claimed it); retry is a property of its occurrence-scoped prior
+      // metadata (did a previous attempt already happen for this exact
+      // occurrence). Neither tag affects selection, claim, or provider
+      // behavior -- observability only, per this LOT's scope.
+      if (reminder.reminder_date < todayDateString) catchUpCount += 1;
+      if (
+        typeof scopedPriorMetadata.provider_status === "string" ||
+        typeof scopedPriorMetadata.no_email_at === "string"
+      ) {
+        retryCount += 1;
+      }
 
       // Replay safety (LOT 7.22): a prior attempt on this exact logical
       // delivery may have durably persisted a provider-accepted outcome
@@ -484,12 +562,24 @@ serve(async (req: Request) => {
     }
 
     console.log(`🏁 Fin. ${results.length} rappels traités`);
+    await finalizeHeartbeat(
+      buildCompletionRecord({ completedAt: new Date().toISOString(), results, catchUpCount, retryCount }),
+    );
     return new Response(
       JSON.stringify({ success: true, results }),
       { headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("❌ Unexpected error:", error);
+    // Best-effort: if the crash happened before the run row existed, the
+    // default no-op above logs that limitation instead of throwing here.
+    // If finalizeHeartbeat's own write fails, that failure must not mask
+    // the original error or break the 500 response the caller needs.
+    try {
+      await finalizeHeartbeat(buildFailureRecord({ completedAt: new Date().toISOString(), error }));
+    } catch (heartbeatError) {
+      console.error("❌ Scheduler heartbeat failure-record write itself failed:", heartbeatError);
+    }
     return new Response(
       JSON.stringify({ error: "Internal server error", details: String(error) }),
       { status: 500, headers: { "Content-Type": "application/json" } }
