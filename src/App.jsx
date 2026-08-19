@@ -2799,7 +2799,7 @@ const LEGAL_PAGES = {
     sections: [
       {
         title: "Éditeur",
-        text: "Olena Mykhalska / Digital Lab, Belfort, France. Email : contact@microassist.fr. SIRET : à compléter. Statut : micro-entreprise à venir.",
+        text: "Olena Mykhalska / Digital Lab, Belfort, France. Email : contact@microassist.fr. SIREN : 105 759 286. SIRET : 105 759 286 00013. Statut : entrepreneur individuel.",
       },
       {
         title: "Hébergement",
@@ -2937,8 +2937,8 @@ function MicroassistFooter({
               <strong>Olena Mykhalska / Digital Lab</strong>
               <span>Belfort, France</span>
               <a href="mailto:contact@microassist.fr">contact@microassist.fr</a>
-              <span>SIRET : à compléter</span>
-              <span>Statut : micro-entreprise à venir</span>
+              <span>SIRET : 105 759 286 00013</span>
+              <span>Statut : entrepreneur individuel</span>
               <span>Hébergement : Supabase + Vercel</span>
             </address>
           </section>
