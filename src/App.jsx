@@ -1505,162 +1505,12 @@ function markEmailEventHandled(eventType, userId, meta = {}) {
   }
 }
 
-function buildTrialEndingEmailPayload({ email, trialEndsAt }) {
-  const trialEndLabel = trialEndsAt
-    ? new Date(trialEndsAt).toLocaleDateString("fr-FR")
-    : "";
-
-  return {
-    subject: "⏳ Ton essai Microassist se termine dans 7 jours",
-    text: [
-      "Bonjour 👋",
-      "",
-      "Ton essai Premium se termine dans 7 jours.",
-      "",
-      "Tu as pu tester :",
-      "• l’historique complet",
-      "• les rappels avant échéance",
-      "• les exports PDF",
-      "",
-      "En gratuit, tu vois l’essentiel.",
-      "Avec Premium, Microassist te prévient avant les échéances importantes et t’aide à agir plus tôt.",
-      "",
-      trialEndLabel
-        ? `Fin de l’essai : ${trialEndLabel}.`
-        : "La fin de ton essai approche.",
-      "",
-      "Les rappels avancés seront proposés progressivement après la phase de test.",
-      "",
-      "À très vite,",
-      "Microassist",
-    ].join("\n"),
-    html: `
-      <p>Bonjour 👋</p>
-      <p>Ton essai Premium se termine dans <strong>7 jours</strong>.</p>
-      <p>Tu as pu tester :</p>
-      <ul>
-        <li>l’historique complet</li>
-        <li>les rappels avant échéance</li>
-        <li>les exports PDF</li>
-      </ul>
-      <p>En gratuit, tu vois l’essentiel.</p>
-      <p>Avec Premium, Microassist te prévient avant les échéances importantes et t’aide à agir plus tôt.</p>
-      ${
-        trialEndLabel
-          ? `<p><strong>Fin de l’essai :</strong> ${trialEndLabel}</p>`
-          : `<p>La fin de ton essai approche.</p>`
-      }
-      <p><a href="https://microassist.vercel.app/" style="background:#111;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;display:inline-block;">Voir les tarifs Premium</a></p>
-      <p>À très vite,<br/>Microassist</p>
-    `,
-    email,
-    trialEndsAt,
-  };
-}
-
-function buildTrialEndingEmailPayloadJ2({ email, trialEndsAt }) {
-  const trialEndLabel = trialEndsAt
-    ? new Date(trialEndsAt).toLocaleDateString("fr-FR")
-    : "";
-
-  return {
-    subject: "⏳ Plus que 2 jours avant la fin de ton essai Microassist",
-    text: [
-      "Bonjour 👋",
-      "",
-      "Il ne reste plus que 2 jours avant la fin de ton essai Premium Microassist.",
-      "",
-      "Pendant cet essai, tu as pu profiter de :",
-      "- l’historique complet",
-      "- les rappels avant échéance",
-      "- les exports PDF",
-      "",
-      "En gratuit, tu vois l’essentiel.",
-      "Avec Premium, Microassist te prévient avant les échéances importantes et t’aide à agir plus tôt.",
-      "",
-      trialEndLabel
-        ? `Fin de l’essai : ${trialEndLabel}`
-        : "Fin de l’essai : bientôt",
-      "",
-      "Voir les tarifs Premium : https://microassist.vercel.app/?view=pricing",
-      "",
-      "À très vite,",
-      "Microassist",
-    ].join("\n"),
-    html: `
-      <h2>Plus que 2 jours avant la fin de ton essai</h2>
-      <p>Il ne reste plus que <strong>2 jours</strong> avant la fin de ton essai Premium Microassist.</p>
-      <p>Pendant cet essai, tu as pu profiter de :</p>
-      <ul>
-        <li>l’historique complet</li>
-        <li>les rappels avant échéance</li>
-        <li>les exports PDF</li>
-      </ul>
-      <p>En gratuit, tu vois l’essentiel.</p>
-      <p>Avec Premium, Microassist te prévient avant les échéances importantes et t’aide à agir plus tôt.</p>
-      ${
-        trialEndLabel
-          ? `<p><strong>Fin de l’essai :</strong> ${trialEndLabel}</p>`
-          : `<p><strong>Fin de l’essai :</strong> bientôt</p>`
-      }
-      <p><a href="https://microassist.vercel.app/?view=pricing" style="background:#111;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;display:inline-block;">Voir les tarifs Premium</a></p>
-      <p>À très vite,<br/>Microassist</p>
-    `,
-    email,
-    trialEndsAt,
-  };
-}
-
-function buildTrialExpiredEmailPayload({ email, trialEndsAt }) {
-  const trialEndLabel = trialEndsAt
-    ? new Date(trialEndsAt).toLocaleDateString("fr-FR")
-    : "";
-
-  return {
-    subject: "Ton essai Microassist est terminé",
-    text: [
-      "Bonjour 👋",
-      "",
-      "Ton essai Premium Microassist est maintenant terminé.",
-      "",
-      "En gratuit, tu vois l’essentiel :",
-      "- suivi simple",
-      "- estimations de base",
-      "",
-      "Avec Premium, Microassist te prévient avant les échéances importantes et t’aide à agir plus tôt.",
-      "",
-      "Découvre l’offre Premium ici :",
-      "https://microassist.vercel.app/?view=pricing",
-      "",
-      "À bientôt,",
-      "Microassist",
-    ].join("\n"),
-    html: `
-      <h2>Ton essai Microassist est terminé</h2>
-      <p>Ton essai Premium Microassist est maintenant terminé.</p>
-      <div>
-        <p><strong>En gratuit, tu vois l’essentiel</strong></p>
-        <ul>
-          <li>suivi simple</li>
-          <li>estimations de base</li>
-        </ul>
-      </div>
-      <div>
-        <p><strong>Premium</strong></p>
-        <p>Microassist te prévient avant les échéances importantes et t’aide à agir plus tôt.</p>
-      </div>
-      ${
-        trialEndLabel
-          ? `<p><strong>Fin de l’essai :</strong> ${trialEndLabel}</p>`
-          : ""
-      }
-      <p><a href="https://microassist.vercel.app/?view=pricing" style="background:#111;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;display:inline-block;">Voir les tarifs Premium</a></p>
-      <p>À bientôt,<br/>Microassist</p>
-    `,
-    email,
-    trialEndsAt,
-  };
-}
+// LOT 10.1G: buildTrialEndingEmailPayload / buildTrialEndingEmailPayloadJ2 /
+// buildTrialExpiredEmailPayload removed. Their output was only ever used
+// to populate the request body sent to send-trial-ending-email, which no
+// longer trusts client-supplied subject/html/text -- the Edge Function
+// now owns this exact copy server-side (see
+// supabase/functions/send-trial-ending-email/trialEmailTemplates.js).
 
 function buildDeclarationReminderEmailPayloadJ2({ email, deadlineDate }) {
   const declarationDateLabel = formatDeclarationDeadlineLabel(deadlineDate);
@@ -3674,13 +3524,20 @@ const handleRecoveryComplete = useCallback(() => {
       typeof lastActivityDays === "number" ? lastActivityDays : 0,
   });
   const sendTrialEndingEmail = useCallback(
-    async (payload) => {
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+    async () => {
+      // LOT 10.1G: the anon key grants no real identity and the function
+      // no longer trusts a client-supplied recipient/subject/html/userId
+      // -- the caller's own authenticated session token is the only
+      // credential sent, and the Edge Function derives everything else
+      // (event type, trial state, email content) itself.
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
 
-      if (!supabaseAnonKey) {
+      if (sessionError || !accessToken) {
         console.warn(
           "[trial-email-send] error",
-          "Missing Supabase anon key",
+          "Missing authenticated session",
         );
         return null;
       }
@@ -3691,9 +3548,8 @@ const handleRecoveryComplete = useCallback(() => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${supabaseAnonKey}`,
+            Authorization: `Bearer ${accessToken}`,
           },
-          body: JSON.stringify(payload),
         },
       );
 
@@ -7788,20 +7644,9 @@ useEffect(() => {
       return;
     }
 
-    const emailPayload = buildTrialEndingEmailPayload({
-      email: user.email,
-      trialEndsAt: subscriptionLikeState.trialEndsAt,
-    });
-    const requestBody = {
-      userId: user.id,
-      email: user.email,
-      eventType,
-      subject: emailPayload.subject,
-      text: emailPayload.text,
-      html: emailPayload.html,
-      trialEndsAt: subscriptionLikeState.trialEndsAt,
-    };
-
+    // LOT 10.1G: no recipient/subject/html/userId is sent to the server
+    // anymore -- the Edge Function derives caller identity from the
+    // authenticated session and looks up trial state itself.
     markEmailEventHandled(eventType, user.id, {
       trialEndsAt: subscriptionLikeState.trialEndsAt,
       pending: true,
@@ -7818,7 +7663,7 @@ useEffect(() => {
 
     const run = async () => {
       try {
-        const result = await sendTrialEndingEmail(requestBody);
+        const result = await sendTrialEndingEmail();
 
         if (cancelled) return;
 
@@ -7881,20 +7726,9 @@ useEffect(() => {
       return;
     }
 
-    const emailPayload = buildTrialEndingEmailPayloadJ2({
-      email: user.email,
-      trialEndsAt: subscriptionLikeState.trialEndsAt,
-    });
-    const requestBody = {
-      userId: user.id,
-      email: user.email,
-      eventType,
-      subject: emailPayload.subject,
-      text: emailPayload.text,
-      html: emailPayload.html,
-      trialEndsAt: subscriptionLikeState.trialEndsAt,
-    };
-
+    // LOT 10.1G: no recipient/subject/html/userId is sent to the server
+    // anymore -- the Edge Function derives caller identity from the
+    // authenticated session and looks up trial state itself.
     markEmailEventHandled(eventType, user.id, {
       trialEndsAt: subscriptionLikeState.trialEndsAt,
       pending: true,
@@ -7911,7 +7745,7 @@ useEffect(() => {
 
     const run = async () => {
       try {
-        const result = await sendTrialEndingEmail(requestBody);
+        const result = await sendTrialEndingEmail();
 
         if (cancelled) return;
 
@@ -7974,20 +7808,9 @@ useEffect(() => {
       return;
     }
 
-    const emailPayload = buildTrialExpiredEmailPayload({
-      email: user.email,
-      trialEndsAt: subscriptionLikeState.trialEndsAt,
-    });
-    const requestBody = {
-      userId: user.id,
-      email: user.email,
-      eventType,
-      subject: emailPayload.subject,
-      text: emailPayload.text,
-      html: emailPayload.html,
-      trialEndsAt: subscriptionLikeState.trialEndsAt,
-    };
-
+    // LOT 10.1G: no recipient/subject/html/userId is sent to the server
+    // anymore -- the Edge Function derives caller identity from the
+    // authenticated session and looks up trial state itself.
     markEmailEventHandled(eventType, user.id, {
       trialEndsAt: subscriptionLikeState.trialEndsAt,
       pending: true,
@@ -8004,7 +7827,7 @@ useEffect(() => {
 
     const run = async () => {
       try {
-        const result = await sendTrialEndingEmail(requestBody);
+        const result = await sendTrialEndingEmail();
 
         if (cancelled) return;
 
