@@ -1,11 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
-import { Resend } from "https://esm.sh/resend@2.0.0";
-
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
-const EMAIL_FROM = Deno.env.get("EMAIL_FROM") ?? "";
+import { isTrialEmailsEnabled } from "./trialEmailsFlag.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,216 +8,135 @@ const corsHeaders = {
   "Content-Type": "application/json",
 };
 
-type TrialEndingEmailRequest = {
-  userId?: string | null;
-  email?: string | null;
-  eventType?: string | null;
-  subject?: string | null;
-  text?: string | null;
-  html?: string | null;
-  trialEndsAt?: string | null;
-};
+// LOT 9.2: emergency server-side stop for obsolete trial/premium lifecycle
+// emails. Root cause (LOT 9.1): this function has no dedup of its own, and
+// the client-side trial_expired trigger condition never naturally resets
+// after trial expiry, so every app visit past the 24h client-local
+// cooldown re-sends a real email indefinitely. This flag is the narrowest
+// server-side stop -- it does not touch dedup, email_events, trigger
+// semantics, or trial policy (all explicitly out of scope this LOT).
+//
+// Fail-closed: only the exact string "true" enables sending. Absent,
+// "false", or any other value disables it -- matches LOT 9.2 section 3.
+const TRIAL_EMAILS_ENABLED = isTrialEmailsEnabled(Deno.env.get("TRIAL_EMAILS_ENABLED"));
 
-function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-serve(async (req: Request) => {
+serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  if (req.method !== "POST") {
+  // Checked before any parsing, Resend client creation, or DB work (LOT
+  // 9.2 section 4) -- no email/body is even read when disabled.
+  if (!TRIAL_EMAILS_ENABLED) {
+    console.log("[trial-email] skipped: disabled");
     return new Response(
       JSON.stringify({
-        ok: false,
-        skipped: false,
-        error: "Method not allowed",
+        ok: true,
+        skipped: true,
+        reason: "trial_emails_disabled",
       }),
-      { status: 405, headers: corsHeaders },
+      { status: 200, headers: corsHeaders },
     );
   }
 
   try {
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    const body = await req.json();
+    const { email, subject, text, html, trialEndsAt, userId } = body;
+
+    if (!email) {
       return new Response(
         JSON.stringify({
           ok: false,
-          skipped: false,
-          error: "Missing Supabase environment variables",
+          success: false,
+          error: "Missing email",
         }),
-        { status: 500, headers: corsHeaders },
+        {
+          status: 400,
+          headers: corsHeaders,
+        },
       );
     }
+
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
     if (!RESEND_API_KEY) {
       return new Response(
         JSON.stringify({
           ok: false,
-          skipped: false,
-          error: "Missing RESEND_API_KEY",
+          success: false,
+          error: "Missing RESEND_API_KEY secret",
         }),
-        { status: 500, headers: corsHeaders },
+        {
+          status: 500,
+          headers: corsHeaders,
+        },
       );
     }
 
-    if (!EMAIL_FROM) {
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          skipped: false,
-          error: "Missing EMAIL_FROM",
-        }),
-        { status: 500, headers: corsHeaders },
-      );
-    }
-
-    const body = (await req.json()) as TrialEndingEmailRequest;
-
-    const userId = body?.userId || null;
-    const email = String(body?.email || "").trim().toLowerCase();
-    const eventType = String(body?.eventType || "trial_ending_j7").trim() || "trial_ending_j7";
-    const subject = String(body?.subject || "").trim();
-    const text = String(body?.text || "").trim();
-    const html = String(body?.html || "").trim();
-    const trialEndsAt = body?.trialEndsAt || null;
-
-    if (!isValidEmail(email)) {
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          skipped: false,
-          error: "Invalid email",
-        }),
-        { status: 400, headers: corsHeaders },
-      );
-    }
-
-    if (!subject) {
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          skipped: false,
-          error: "Missing subject",
-        }),
-        { status: 400, headers: corsHeaders },
-      );
-    }
-
-    if (!text && !html) {
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          skipped: false,
-          error: "Missing email body",
-        }),
-        { status: 400, headers: corsHeaders },
-      );
-    }
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
+    const resendResponse = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        from: "Microassist <onboarding@resend.dev>",
+        to: email,
+        subject: subject || "Test Microassist",
+        html:
+          html ||
+          `<h2>Ton essai Premium se termine dans 7 jours</h2><p>Fin de l’essai : ${trialEndsAt || ""}</p>`,
+        text:
+          text ||
+          `Ton essai Premium se termine bientôt. Fin de l’essai : ${trialEndsAt || ""}`,
+      }),
     });
 
-    const { data: existingEvent, error: existingEventError } = await supabase
-      .from("email_events")
-      .select("id")
-      .eq("email", email)
-      .eq("event_type", eventType)
-      .limit(1)
-      .maybeSingle();
+    const resendData = await resendResponse.json();
 
-    if (existingEventError) {
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          skipped: false,
-          error: existingEventError.message,
-        }),
-        { status: 500, headers: corsHeaders },
-      );
-    }
-
-    if (existingEvent) {
-      return new Response(
-        JSON.stringify({
-          ok: true,
-          skipped: true,
-          reason: "already_sent",
-        }),
-        { status: 200, headers: corsHeaders },
-      );
-    }
-
-    const resend = new Resend(RESEND_API_KEY);
-    const { data: resendData, error: resendError } = await resend.emails.send({
-      from: EMAIL_FROM,
-      to: [email],
-      subject,
-      text: text || undefined,
-      html: html || undefined,
-    });
-
-    if (resendError) {
-      console.log("RESEND RESPONSE:", resendData);
+    if (!resendResponse.ok) {
       return new Response(
         JSON.stringify({
           ok: false,
           success: false,
-          skipped: false,
           error: "Resend send failed",
-          resend: {
-            data: resendData,
-            error: resendError,
-          },
+          resend: resendData,
         }),
-        { status: 502, headers: corsHeaders },
-      );
-    }
-
-    const providerMessageId = resendData?.id ?? null;
-
-    const { error: insertError } = await supabase.from("email_events").insert({
-      user_id: userId,
-      email,
-      event_type: eventType,
-      meta: {
-        trialEndsAt,
-        resendId: providerMessageId,
-      },
-    });
-
-    if (insertError) {
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          skipped: false,
-          error: insertError.message,
-          providerMessageId,
-        }),
-        { status: 500, headers: corsHeaders },
+        {
+          status: 500,
+          headers: corsHeaders,
+        },
       );
     }
 
     return new Response(
       JSON.stringify({
         ok: true,
+        success: true,
         skipped: false,
-        providerMessageId,
+        resend: resendData,
+        meta: {
+          userId: userId || null,
+          email,
+          trialEndsAt: trialEndsAt || null,
+        },
       }),
-      { status: 200, headers: corsHeaders },
+      {
+        status: 200,
+        headers: corsHeaders,
+      },
     );
   } catch (error) {
     return new Response(
       JSON.stringify({
         ok: false,
-        skipped: false,
-        error: error instanceof Error ? error.message : String(error),
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
       }),
-      { status: 500, headers: corsHeaders },
+      {
+        status: 500,
+        headers: corsHeaders,
+      },
     );
   }
 });
