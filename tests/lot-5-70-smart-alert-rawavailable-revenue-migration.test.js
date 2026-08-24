@@ -211,7 +211,10 @@ test("LOT 5.70 keeps other smart alerts isolated", () => {
   const smartFunction = sourceWithoutComments(buildSmartAlertsFunctionBlock());
 
   assert.match(smartFunction, /computed\?\.tvaStatus === "exceeded"/);
-  assert.match(smartFunction, /answers\?\.acre === "yes"/);
+  // LOT 10.1D: ACRE timing now derives from the canonical, reform-aware
+  // computed.acreStatus/acreEndDate instead of an independent
+  // acre_start_date + 12 months guess.
+  assert.match(smartFunction, /computed\?\.acreStatus === "active"/);
   assert.match(smartFunction, /revenues\.length <= 2/);
   assert.doesNotMatch(smartFunction, /smartAlertRevenueTotal|fiscalSummaryVisibleSlice/);
 });

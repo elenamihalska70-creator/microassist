@@ -449,3 +449,114 @@ test("pre-reform duration is unaffected by the post-reform duration fix", () => 
   assert.equal(rule.output.acreActive, true);
   assert.equal(rule.output.acreMonthsLeft, 10);
 });
+
+// --- LOT 10.1D: ACRE timing consumer consolidation --------------------------
+//
+// LOT 10.1C found 7 places in App.jsx that each independently reimplemented
+// "ACRE end date" via `acreEnd.setMonth(acreEnd.getMonth() + 12)` from
+// acre_start_date -- unaware of the 2026-07-01 reform or the quarter-based
+// post-reform duration. All 7 are migrated to read `computed.acreStatus` /
+// `computed.acreEndDate` (the canonical computeObligations output) instead.
+// As with buildSimpleAssistantGuidance in LOT 10.1B, these consumers live
+// inside src/App.jsx (a React component this suite has no JSX execution
+// harness for), so migration is proven the same way: by source inspection.
+function readAppSource() {
+  return readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8").replace(
+    /\r\n/g,
+    "\n",
+  );
+}
+
+test("no production consumer independently reconstructs the ACRE end date anymore", () => {
+  const source = readAppSource();
+
+  assert.equal(
+    source.includes("acreEnd.setMonth(acreEnd.getMonth() + 12)"),
+    false,
+    "an independent flat +12-month ACRE end-date calculation still exists in App.jsx",
+  );
+  assert.equal(
+    /const acreEnd = new Date/.test(source),
+    false,
+    "an independent acreEnd reconstruction still exists in App.jsx",
+  );
+});
+
+test("alert path (buildSmartAlerts) consumes canonical ACRE timing", () => {
+  const source = readAppSource();
+  const start = source.indexOf("function buildSmartAlerts(");
+  assert.ok(start >= 0, "buildSmartAlerts must still exist in App.jsx");
+  const body = source.slice(start, start + 2500);
+
+  assert.match(body, /computed\?\.acreStatus === "active" && computed\?\.acreEndDate/);
+  assert.match(body, /id:\s*"acre-ending"/);
+  assert.equal(/answers/.test(body), false, "buildSmartAlerts should no longer need the answers parameter");
+});
+
+test("daily tip path consumes canonical ACRE timing", () => {
+  const source = readAppSource();
+  const marker = "roleBasedTips.dailyFiscalTip.acreEnding";
+  const markerIndex = source.indexOf(marker);
+  assert.ok(markerIndex >= 0, "the daily ACRE-ending tip copy must still exist");
+  const body = source.slice(Math.max(0, markerIndex - 700), markerIndex + 100);
+
+  assert.match(body, /computed\?\.acreStatus === "active"/);
+  assert.match(body, /computed\?\.acreEndDate/);
+});
+
+test("astuce contextuelle (fiscalRecommendationCard) path consumes canonical ACRE timing", () => {
+  const source = readAppSource();
+  const marker = "anticipe la hausse des cotisations après l’ACRE";
+  const markerIndex = source.indexOf(marker);
+  assert.ok(markerIndex >= 0, "the ACRE-ending recommendation copy must still exist");
+  const body = source.slice(Math.max(0, markerIndex - 700), markerIndex + 50);
+
+  assert.match(body, /computed\?\.acreStatus === "active"/);
+  assert.match(body, /computed\?\.acreEndDate/);
+});
+
+test("reminder-related path (activeReminderItems) consumes canonical ACRE timing", () => {
+  const source = readAppSource();
+  const marker = 'title: "Fin ACRE"';
+  const markerIndex = source.indexOf(marker);
+  assert.ok(markerIndex >= 0, "the ACRE reminder item must still exist");
+  const body = source.slice(Math.max(0, markerIndex - 700), markerIndex + 100);
+
+  assert.match(body, /computed\?\.acreStatus === "active"/);
+  assert.match(body, /computed\?\.acreEndDate/);
+});
+
+test("Premium nudge timing path (premiumContextualCTA) consumes canonical ACRE timing", () => {
+  const source = readAppSource();
+  // "premium_acre_context" also appears as a substring check inside an
+  // unrelated event-source normalizer; the property-assignment form below
+  // is unique to premiumContextualCTA's candidate list.
+  const marker = 'source: "premium_acre_context"';
+  const markerIndex = source.indexOf(marker);
+  assert.ok(markerIndex >= 0, "the Premium ACRE-ending context CTA must still exist");
+  const body = source.slice(Math.max(0, markerIndex - 1400), markerIndex + 50);
+
+  assert.match(body, /computed\?\.acreStatus === "active"/);
+  assert.match(body, /computed\?\.acreEndDate/);
+});
+
+test("dashboard top-nudge notification path consumes canonical ACRE timing", () => {
+  const source = readAppSource();
+  const marker = "acre_ending";
+  const markerIndex = source.indexOf(marker);
+  assert.ok(markerIndex >= 0, "the acre_ending notification type must still exist");
+  const body = source.slice(Math.max(0, markerIndex - 700), markerIndex + 50);
+
+  assert.match(body, /computed\?\.acreStatus === "active"/);
+  assert.match(body, /computed\?\.acreEndDate/);
+});
+
+test("feedback context snapshot path consumes canonical ACRE timing", () => {
+  const source = readAppSource();
+  const marker = "let acreMonthsRemaining = null;";
+  const markerIndex = source.indexOf(marker);
+  assert.ok(markerIndex >= 0, "acreMonthsRemaining must still exist");
+  const body = source.slice(markerIndex, markerIndex + 400);
+
+  assert.match(body, /computed\?\.acreStatus === "active"/);
+});

@@ -213,7 +213,10 @@ test("LOT 5.73 keeps alert priority and other smart alerts isolated", () => {
   const smartFunction = sourceWithoutComments(buildSmartAlertsFunctionBlock());
 
   assert.match(smartFunction, /computed\?\.tvaStatus === "exceeded"[\s\S]*id: "tva-threshold"/);
-  assert.match(smartFunction, /answers\?\.acre === "yes"[\s\S]*id: "acre-ending"/);
+  // LOT 10.1D: ACRE timing now derives from the canonical, reform-aware
+  // computed.acreStatus/acreEndDate instead of an independent
+  // acre_start_date + 12 months guess.
+  assert.match(smartFunction, /computed\?\.acreStatus === "active"[\s\S]*id: "acre-ending"/);
   assert.match(smartFunction, /id: "reserve-low"[\s\S]*revenues\.length <= 2[\s\S]*id: "early-tracking"/);
   assert.match(smartFunction, /id: "all-clear"/);
   assert.doesNotMatch(smartFunction, /smartAlertRevenueTotal|fiscalSummaryVisibleSlice/);

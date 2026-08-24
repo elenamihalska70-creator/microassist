@@ -2001,7 +2001,6 @@ function getFiscalDateErrors(sourceAnswers = {}) {
 }
 
 function buildSmartAlerts({
-  answers = {},
   computed = {},
   revenues = [],
   invoices = [],
@@ -2025,26 +2024,26 @@ function buildSmartAlerts({
     ];
   }
 
-  if (answers?.acre === "yes" && answers?.acre_start_date) {
-    const acreStart = parseIsoDate(answers.acre_start_date);
-    if (acreStart) {
-      const acreEnd = new Date(acreStart);
-      acreEnd.setMonth(acreEnd.getMonth() + 12);
-      const daysLeft = Math.ceil((acreEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      const monthsLeft = Math.max(1, Math.ceil(daysLeft / 30));
+  if (computed?.acreStatus === "active" && computed?.acreEndDate) {
+    // LOT 10.1D: derives from the canonical, reform-aware acreEndDate
+    // (computeObligations) instead of independently recomputing a flat
+    // +12-month guess from acre_start_date.
+    const daysLeft = Math.ceil(
+      (computed.acreEndDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    const monthsLeft = Math.max(1, Math.ceil(daysLeft / 30));
 
-      if (daysLeft > 0 && monthsLeft <= 2) {
-        return [
-          {
-          id: "acre-ending",
-          level: "warning",
-          title: "Fin ACRE bientôt",
-          text: "Anticipe la hausse de cotisations liée à la fin de l’ACRE.",
-          cta: "Modifier mon profil",
-          action: "profile",
-          },
-        ];
-      }
+    if (daysLeft > 0 && monthsLeft <= 2) {
+      return [
+        {
+        id: "acre-ending",
+        level: "warning",
+        title: "Fin ACRE bientôt",
+        text: "Anticipe la hausse de cotisations liée à la fin de l’ACRE.",
+        cta: "Modifier mon profil",
+        action: "profile",
+        },
+      ];
     }
   }
 
@@ -6323,7 +6322,6 @@ useEffect(() => {
   const smartAlerts = useMemo(
     () =>
       buildSmartAlerts({
-        answers: dashboardAnswers,
         computed,
         revenues,
         invoices: visibleInvoices,
@@ -6332,7 +6330,6 @@ useEffect(() => {
         currentMonthTotal: smartAlertRevenueTotal,
       }),
     [
-      dashboardAnswers,
       computed,
       revenues,
       visibleInvoices,
@@ -6524,24 +6521,21 @@ useEffect(() => {
 
     if (
       !smartAlertIds.has("acre-ending") &&
-      dashboardAnswers?.acre === "yes" &&
-      dashboardAnswers?.acre_start_date
+      computed?.acreStatus === "active" &&
+      computed?.acreEndDate
     ) {
-      const acreStart = parseIsoDate(dashboardAnswers.acre_start_date);
+      // LOT 10.1D: derives from the canonical, reform-aware acreEndDate
+      // (computed via computeObligations) instead of independently
+      // recomputing a flat +12-month guess from acre_start_date.
+      const daysLeft = Math.ceil(
+        (computed.acreEndDate.getTime() - parseIsoDate(getTodayIsoDate()).getTime()) /
+          (1000 * 60 * 60 * 24),
+      );
 
-      if (acreStart) {
-        const acreEnd = new Date(acreStart);
-        acreEnd.setMonth(acreEnd.getMonth() + 12);
-        const daysLeft = Math.ceil(
-          (acreEnd.getTime() - parseIsoDate(getTodayIsoDate()).getTime()) /
-            (1000 * 60 * 60 * 24),
-        );
-
-        if (daysLeft > 0 && daysLeft <= 90) {
-          return {
-            text: roleBasedTips.dailyFiscalTip.acreEnding,
-          };
-        }
+      if (daysLeft > 0 && daysLeft <= 90) {
+        return {
+          text: roleBasedTips.dailyFiscalTip.acreEnding,
+        };
       }
     }
 
@@ -6845,63 +6839,60 @@ useEffect(() => {
       });
     }
 
-    if (reminderPrefs.acre && dashboardAnswers?.acre === "yes" && dashboardAnswers?.acre_start_date) {
-      const acreStart = parseIsoDate(dashboardAnswers.acre_start_date);
-      if (acreStart) {
-        const acreEnd = new Date(acreStart);
-        acreEnd.setMonth(acreEnd.getMonth() + 12);
-        const daysLeft = Math.ceil(
-          (acreEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-        );
+    if (reminderPrefs.acre && computed?.acreStatus === "active" && computed?.acreEndDate) {
+      // LOT 10.1D: canonical, reform-aware acreEndDate (computeObligations)
+      // instead of an independent flat +12-month guess from acre_start_date.
+      const daysLeft = Math.ceil(
+        (computed.acreEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+      );
 
-        if (daysLeft > 0 && daysLeft <= 90) {
-          const monthsLeft = Math.max(1, Math.ceil(daysLeft / 30));
-          items.push({
-            key: "acre",
-            title: "Fin ACRE",
-            text: `Fin estimée dans ${monthsLeft} mois.`,
-            urgent: true,
-            channel: reminderChannel,
-            actions: [
-              {
-                label: "Comprendre",
-                kind: "button",
-                onClick: () => openExplanationModal("acre"),
-              },
-              {
-                label: "Modifier mon profil",
-                kind: "button",
-                onClick: () => handleEditProfile(),
-              },
-              {
-                label: "Configurer",
-                kind: "button",
-                onClick: () => openReminderManager("reminder_acre"),
-              },
-            ],
-          });
-        } else if (daysLeft > 90) {
-          const monthsLeft = Math.max(1, Math.ceil(daysLeft / 30));
-          items.push({
-            key: "acre-active",
-            title: "ACRE active",
-            text: `Fin estimée dans ${monthsLeft} mois.`,
-            urgent: false,
-            channel: reminderChannel,
-            actions: [
-              {
-                label: "Comprendre",
-                kind: "button",
-                onClick: () => openExplanationModal("acre"),
-              },
-              {
-                label: "Modifier mon profil",
-                kind: "button",
-                onClick: () => handleEditProfile(),
-              },
-            ],
-          });
-        }
+      if (daysLeft > 0 && daysLeft <= 90) {
+        const monthsLeft = Math.max(1, Math.ceil(daysLeft / 30));
+        items.push({
+          key: "acre",
+          title: "Fin ACRE",
+          text: `Fin estimée dans ${monthsLeft} mois.`,
+          urgent: true,
+          channel: reminderChannel,
+          actions: [
+            {
+              label: "Comprendre",
+              kind: "button",
+              onClick: () => openExplanationModal("acre"),
+            },
+            {
+              label: "Modifier mon profil",
+              kind: "button",
+              onClick: () => handleEditProfile(),
+            },
+            {
+              label: "Configurer",
+              kind: "button",
+              onClick: () => openReminderManager("reminder_acre"),
+            },
+          ],
+        });
+      } else if (daysLeft > 90) {
+        const monthsLeft = Math.max(1, Math.ceil(daysLeft / 30));
+        items.push({
+          key: "acre-active",
+          title: "ACRE active",
+          text: `Fin estimée dans ${monthsLeft} mois.`,
+          urgent: false,
+          channel: reminderChannel,
+          actions: [
+            {
+              label: "Comprendre",
+              kind: "button",
+              onClick: () => openExplanationModal("acre"),
+            },
+            {
+              label: "Modifier mon profil",
+              kind: "button",
+              onClick: () => handleEditProfile(),
+            },
+          ],
+        });
       }
     }
 
@@ -6925,7 +6916,6 @@ useEffect(() => {
     return items;
   }, [
     computed,
-    dashboardAnswers,
     handleEditProfile,
     hasSmsPremiumAccess,
     openExplanationModal,
@@ -7334,22 +7324,18 @@ useEffect(() => {
 
     if (
       primarySmartAlertId !== "acre-ending" &&
-      dashboardAnswers?.acre === "yes" &&
-      dashboardAnswers?.acre_start_date
+      computed?.acreStatus === "active" &&
+      computed?.acreEndDate
     ) {
-      const acreStart = parseIsoDate(dashboardAnswers.acre_start_date);
+      // LOT 10.1D: canonical, reform-aware acreEndDate (computeObligations)
+      // instead of an independent flat +12-month guess from acre_start_date.
+      const daysLeft = Math.ceil(
+        (computed.acreEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+      );
+      const monthsLeft = daysLeft > 0 ? Math.max(1, Math.ceil(daysLeft / 30)) : 0;
 
-      if (acreStart) {
-        const acreEnd = new Date(acreStart);
-        acreEnd.setMonth(acreEnd.getMonth() + 12);
-        const daysLeft = Math.ceil(
-          (acreEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-        );
-        const monthsLeft = daysLeft > 0 ? Math.max(1, Math.ceil(daysLeft / 30)) : 0;
-
-        if (monthsLeft > 0 && monthsLeft <= 2) {
-          return "💡 Astuce : anticipe la hausse des cotisations après l’ACRE.";
-        }
+      if (monthsLeft > 0 && monthsLeft <= 2) {
+        return "💡 Astuce : anticipe la hausse des cotisations après l’ACRE.";
       }
     }
 
@@ -7361,8 +7347,8 @@ useEffect(() => {
   }, [
     computed?.monthlyExpenses,
     computed?.tvaStatus,
-    dashboardAnswers?.acre,
-    dashboardAnswers?.acre_start_date,
+    computed?.acreStatus,
+    computed?.acreEndDate,
     invoiceSectionSummary.unpaidCount,
     primarySmartAlertId,
     revenues.length,
@@ -7625,16 +7611,15 @@ useEffect(() => {
     [filteredRevenues],
   );
   const premiumContextualCTA = useMemo(() => {
-    const acreStart = dashboardAnswers?.acre_start_date
-      ? parseIsoDate(dashboardAnswers.acre_start_date)
-      : null;
+    // LOT 10.1D: canonical, reform-aware acreEndDate (computeObligations)
+    // instead of an independent flat +12-month guess from acre_start_date.
+    // Fixes only the timing source -- Premium visibility/gating logic below
+    // is unchanged.
     let acreMonthsLeft = null;
 
-    if (dashboardAnswers?.acre === "yes" && acreStart) {
-      const acreEnd = new Date(acreStart);
-      acreEnd.setMonth(acreEnd.getMonth() + 12);
+    if (computed?.acreStatus === "active" && computed?.acreEndDate) {
       const daysLeft = Math.ceil(
-        (acreEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+        (computed.acreEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
       );
 
       if (daysLeft > 0) {
@@ -7678,8 +7663,8 @@ useEffect(() => {
       ) || null
     );
   }, [
-    dashboardAnswers?.acre,
-    dashboardAnswers?.acre_start_date,
+    computed?.acreStatus,
+    computed?.acreEndDate,
     computed?.tvaStatus,
     revenues.length,
     invoiceSectionSummary.unpaidCount,
@@ -8404,33 +8389,29 @@ useEffect(() => {
 
     if (
       primarySmartAlertId !== "acre-ending" &&
-      dashboardAnswers?.acre === "yes" &&
-      dashboardAnswers?.acre_start_date
+      computed?.acreStatus === "active" &&
+      computed?.acreEndDate
     ) {
-      const acreStart = parseIsoDate(dashboardAnswers.acre_start_date);
+      // LOT 10.1D: canonical, reform-aware acreEndDate (computeObligations)
+      // instead of an independent flat +12-month guess from acre_start_date.
+      const daysLeft = Math.ceil(
+        (computed.acreEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+      );
+      const monthsLeft = daysLeft > 0 ? Math.max(1, Math.ceil(daysLeft / 30)) : 0;
 
-      if (acreStart) {
-        const acreEnd = new Date(acreStart);
-        acreEnd.setMonth(acreEnd.getMonth() + 12);
-        const daysLeft = Math.ceil(
-          (acreEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-        );
-        const monthsLeft = daysLeft > 0 ? Math.max(1, Math.ceil(daysLeft / 30)) : 0;
-
-        if (monthsLeft > 0 && monthsLeft <= 2) {
-          return {
-            type: "acre_ending",
-            text: "⏳ Prépare la fin ACRE dès maintenant pour éviter le choc de charges.",
-          };
-        }
+      if (monthsLeft > 0 && monthsLeft <= 2) {
+        return {
+          type: "acre_ending",
+          text: "⏳ Prépare la fin ACRE dès maintenant pour éviter le choc de charges.",
+        };
       }
     }
 
     return null;
   }, [
     computed?.tvaStatus,
-    dashboardAnswers?.acre,
-    dashboardAnswers?.acre_start_date,
+    computed?.acreStatus,
+    computed?.acreEndDate,
     primarySmartAlertId,
     revenues,
     visibleInvoices.length,
@@ -8441,22 +8422,16 @@ useEffect(() => {
   const feedbackContextSnapshot = useMemo(() => {
     let acreMonthsRemaining = null;
 
-    if (dashboardAnswers?.acre === "yes" && dashboardAnswers?.acre_start_date) {
-      const acreStart = parseIsoDate(dashboardAnswers.acre_start_date);
+    // LOT 10.1D: canonical, reform-aware acreEndDate (computeObligations)
+    // instead of an independent flat +12-month guess from acre_start_date.
+    if (computed?.acreStatus === "active" && computed?.acreEndDate) {
+      const daysLeft = Math.ceil(
+        (computed.acreEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+      );
 
-      if (acreStart) {
-        const acreEnd = new Date(acreStart);
-        acreEnd.setMonth(acreEnd.getMonth() + 12);
-        const daysLeft = Math.ceil(
-          (acreEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-        );
-
-        if (daysLeft > 0) {
-          acreMonthsRemaining = Math.max(1, Math.ceil(daysLeft / 30));
-        } else {
-          acreMonthsRemaining = 0;
-        }
-      }
+      acreMonthsRemaining = daysLeft > 0 ? Math.max(1, Math.ceil(daysLeft / 30)) : 0;
+    } else if (computed?.acreStatus === "expired") {
+      acreMonthsRemaining = 0;
     }
 
     
@@ -8473,8 +8448,8 @@ useEffect(() => {
       acreMonthsRemaining,
     };
   }, [
-    dashboardAnswers?.acre,
-    dashboardAnswers?.acre_start_date,
+    computed?.acreStatus,
+    computed?.acreEndDate,
     currentMonthTotal,
     revenues.length,
     visibleInvoices.length,
