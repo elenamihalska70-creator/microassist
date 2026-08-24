@@ -18,6 +18,25 @@ const MIGRATION_SOURCE = readFileSync(
   "utf8",
 );
 
+const PUBLIC_REVOKE_MIGRATION_SOURCE = readFileSync(
+  new URL(
+    "../supabase/migrations/20260824154036_revoke_public_execute_trial_email_rpcs.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+
+test("follow-up migration: PostgreSQL's default PUBLIC execute grant is explicitly revoked for both new RPCs (LOT 10.1H live-verification finding)", () => {
+  assert.match(
+    PUBLIC_REVOKE_MIGRATION_SOURCE,
+    /revoke execute on function public\.claim_trial_email\(uuid, text, timestamptz, integer\) from public;/,
+  );
+  assert.match(
+    PUBLIC_REVOKE_MIGRATION_SOURCE,
+    /revoke execute on function public\.finalize_trial_email\(uuid, text, timestamptz, uuid, text, text\) from public;/,
+  );
+});
+
 test("email_events: RLS enable and anon/authenticated revoke are explicit, guarded so the migration applies cleanly whether or not the table exists", () => {
   assert.match(MIGRATION_SOURCE, /if exists \(\s*\n\s*select 1 from pg_tables where schemaname = 'public' and tablename = 'email_events'/);
   assert.match(MIGRATION_SOURCE, /execute 'alter table public\.email_events enable row level security';/);
