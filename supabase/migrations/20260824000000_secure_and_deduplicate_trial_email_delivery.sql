@@ -5,11 +5,12 @@
 -- proven safe in production by claim_reminder
 -- (20260814213308_create_claim_reminder_rpc.sql).
 --
--- NOT EXECUTED as part of this LOT -- written for review only. Every
+-- Written in LOT 10.1G for review, applied to production in LOT 10.1H
+-- after live-schema verification (see that LOT's report). Every
 -- statement is additive/idempotent (if not exists / or replace) and
--- non-destructive. See LOT 10.1G report section L for the preflight
--- query and why this migration carries zero conflict risk against
--- existing rows.
+-- non-destructive. See the preflight query at the end of this file and
+-- LOT 10.1H report section F for why this migration carries zero
+-- conflict risk against existing rows.
 
 -- ---------------------------------------------------------------------
 -- 1. email_events: harden to fully server-owned (LOT 10.1G section 3)
@@ -21,18 +22,33 @@
 -- default, an RLS-less table is reachable through the auto-generated
 -- PostgREST API by anon/authenticated roles. This section makes the
 -- intended protection explicit rather than relying on nobody having
--- called it (see LOT 10.1G report section 2 for why this is reported as
--- inferred-from-schema, not independently verified against the live
--- database).
+-- called it.
+--
+-- LOT 10.1H release verification found this table does NOT exist in
+-- the live production database (its migration file was apparently never
+-- actually applied there, unlike this file's own trial_email_events
+-- section) -- so the exposure LOT 10.1F/G could only report as
+-- "inferred, not independently verified" was in fact never live at all.
+-- Guarded with a conditional so this migration applies cleanly whether
+-- or not the table exists (now, or if created later), instead of
+-- aborting the whole transaction on a relation-does-not-exist error.
 
-alter table public.email_events enable row level security;
+do $$
+begin
+  if exists (
+    select 1 from pg_tables where schemaname = 'public' and tablename = 'email_events'
+  ) then
+    execute 'alter table public.email_events enable row level security';
+    execute 'revoke all on public.email_events from anon, authenticated';
+  end if;
+end
+$$;
 
--- Deliberately zero policies: RLS with no policies denies all access to
--- anon/authenticated for both reads and writes. service_role bypasses
--- RLS entirely (Supabase default), matching the delivery_events/
--- scheduler_runs precedent already established in this repository.
-
-revoke all on public.email_events from anon, authenticated;
+-- Deliberately zero policies when the table exists: RLS with no
+-- policies denies all access to anon/authenticated for both reads and
+-- writes. service_role bypasses RLS entirely (Supabase default),
+-- matching the delivery_events/scheduler_runs precedent already
+-- established in this repository.
 
 -- ---------------------------------------------------------------------
 -- 2. trial_email_events: new, purpose-built idempotency table

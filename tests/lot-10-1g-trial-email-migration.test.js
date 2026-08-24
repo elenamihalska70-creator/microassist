@@ -18,9 +18,10 @@ const MIGRATION_SOURCE = readFileSync(
   "utf8",
 );
 
-test("email_events: RLS is explicitly enabled and anon/authenticated are explicitly revoked", () => {
-  assert.match(MIGRATION_SOURCE, /alter table public\.email_events enable row level security;/);
-  assert.match(MIGRATION_SOURCE, /revoke all on public\.email_events from anon, authenticated;/);
+test("email_events: RLS enable and anon/authenticated revoke are explicit, guarded so the migration applies cleanly whether or not the table exists", () => {
+  assert.match(MIGRATION_SOURCE, /if exists \(\s*\n\s*select 1 from pg_tables where schemaname = 'public' and tablename = 'email_events'/);
+  assert.match(MIGRATION_SOURCE, /execute 'alter table public\.email_events enable row level security';/);
+  assert.match(MIGRATION_SOURCE, /execute 'revoke all on public\.email_events from anon, authenticated';/);
 });
 
 test("trial_email_events: identity unique constraint is (user_id, event_type, trial_ends_at), not email", () => {
