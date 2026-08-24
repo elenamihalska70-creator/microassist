@@ -102,10 +102,15 @@ serve(async (req) => {
     // userProfile/profiles read), so a legitimate user's experience is
     // unchanged -- only the request body's claimed trialEndsAt is no
     // longer trusted.
+    // LOT 10.1H: production's profiles table primary key is "id"
+    // (references auth.users(id) directly), matching the client's own
+    // .eq("id", user.id) read pattern (src/App.jsx) -- confirmed against
+    // the live schema during release verification, not the "user_id"
+    // shape this repo's own (never-applied) profiles migration describes.
     const { data: profileRow, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("trial_ends_at")
-      .eq("user_id", userId)
+      .eq("id", userId)
       .maybeSingle();
 
     if (profileError) {
