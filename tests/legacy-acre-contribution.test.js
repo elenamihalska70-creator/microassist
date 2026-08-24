@@ -6,6 +6,11 @@ import { calculateLegacyAcreContribution } from "../src/domain/calculations/acre
 import { computeObligations } from "../src/utils/obligations.js";
 
 const REFERENCE_DATE = "2026-07-30";
+// LOT 10.1B: owner-verified ACRE reform takes effect 2026-07-01. Tests in this
+// file characterize the pre-reform (50%) cohort's mechanics unless noted
+// otherwise, so they inject a business start date safely before that cutover.
+const PRE_REFORM_BUSINESS_START = "2020-01-01";
+const POST_REFORM_BUSINESS_START = "2026-07-01";
 
 function standardContribution(input, options = {}) {
   return calculateStandardContribution(input, options);
@@ -36,12 +41,14 @@ test("applies active legacy ACRE for services without recalculating the standard
   });
   const result = calculateLegacyAcreContribution(standard, {
     acre: "yes",
+    businessStartDate: PRE_REFORM_BUSINESS_START,
     referenceDate: REFERENCE_DATE,
   });
   const legacy = computeObligations({
     ca_month: 1000,
     activity_type: "services",
     acre: "yes",
+    business_start_date: PRE_REFORM_BUSINESS_START,
   });
 
   assert.equal(result.standardContributionAmount, standard.contributionAmount);
@@ -54,12 +61,13 @@ test("applies active legacy ACRE for services without recalculating the standard
 test("applies active legacy ACRE for commerce activity", () => {
   const result = legacyAcre(
     { standardInput: { baseAmount: 1000, activityType: "commerce" } },
-    { acre: "yes" },
+    { acre: "yes", businessStartDate: PRE_REFORM_BUSINESS_START },
   );
   const legacy = computeObligations({
     ca_month: 1000,
     activity_type: "commerce",
     acre: "yes",
+    business_start_date: PRE_REFORM_BUSINESS_START,
   });
 
   assert.equal(result.acreContributionAmount, legacy.estimatedAmount);
@@ -70,12 +78,13 @@ test("applies active legacy ACRE for commerce activity", () => {
 test("applies active legacy ACRE for mixed activity", () => {
   const result = legacyAcre(
     { standardInput: { baseAmount: 1000, activityType: "mixte" } },
-    { acre: "yes" },
+    { acre: "yes", businessStartDate: PRE_REFORM_BUSINESS_START },
   );
   const legacy = computeObligations({
     ca_month: 1000,
     activity_type: "mixte",
     acre: "yes",
+    business_start_date: PRE_REFORM_BUSINESS_START,
   });
 
   assert.equal(result.acreContributionAmount, legacy.estimatedAmount);
@@ -142,7 +151,11 @@ test("does not apply unconfirmed to_request or requested statuses", () => {
 test("reports an active period from an injected start and reference date", () => {
   const result = legacyAcre(
     { standardInput: { baseAmount: 1000, activityType: "services" } },
-    { acre: "yes", acreStartDate: "2026-07-30" },
+    {
+      acre: "yes",
+      acreStartDate: "2026-07-30",
+      businessStartDate: PRE_REFORM_BUSINESS_START,
+    },
   );
 
   assert.equal(result.acreApplied, true);
@@ -155,7 +168,11 @@ test("reports an active period from an injected start and reference date", () =>
 test("reports an expired period after the legacy twelve-month boundary", () => {
   const result = legacyAcre(
     { standardInput: { baseAmount: 1000, activityType: "services" } },
-    { acre: "yes", acreStartDate: "2025-06-30" },
+    {
+      acre: "yes",
+      acreStartDate: "2025-06-30",
+      businessStartDate: PRE_REFORM_BUSINESS_START,
+    },
   );
 
   assert.equal(result.acreApplied, false);
@@ -171,6 +188,7 @@ test("keeps ACRE active on the month before the legacy expiry boundary", () => {
     {
       acre: "yes",
       acreStartDate: "2025-07-30",
+      businessStartDate: PRE_REFORM_BUSINESS_START,
       referenceDate: "2026-06-30",
     },
   );
@@ -186,6 +204,7 @@ test("expires ACRE exactly at the legacy twelve-month month boundary", () => {
     {
       acre: "yes",
       acreStartDate: "2025-07-30",
+      businessStartDate: PRE_REFORM_BUSINESS_START,
       referenceDate: "2026-07-30",
     },
   );
@@ -198,7 +217,7 @@ test("expires ACRE exactly at the legacy twelve-month month boundary", () => {
 test("keeps zero base at zero with active ACRE", () => {
   const result = legacyAcre(
     { standardInput: { baseAmount: 0, activityType: "services" } },
-    { acre: "yes" },
+    { acre: "yes", businessStartDate: PRE_REFORM_BUSINESS_START },
   );
 
   assert.equal(result.standardContributionAmount, 0);
@@ -214,12 +233,14 @@ test("characterizes negative base parity when the standard contribution allows i
   );
   const result = calculateLegacyAcreContribution(standard, {
     acre: "yes",
+    businessStartDate: PRE_REFORM_BUSINESS_START,
     referenceDate: REFERENCE_DATE,
   });
   const legacy = computeObligations({
     ca_month: -1000,
     activity_type: "services",
     acre: "yes",
+    business_start_date: PRE_REFORM_BUSINESS_START,
   });
 
   assert.equal(result.acreApplied, true);
@@ -229,12 +250,17 @@ test("characterizes negative base parity when the standard contribution allows i
 test("warns but preserves legacy no-date behavior when start date is invalid", () => {
   const result = legacyAcre(
     { standardInput: { baseAmount: 1000, activityType: "services" } },
-    { acre: "yes", acreStartDate: "not-a-date" },
+    {
+      acre: "yes",
+      acreStartDate: "not-a-date",
+      businessStartDate: PRE_REFORM_BUSINESS_START,
+    },
   );
   const noDateLegacy = computeObligations({
     ca_month: 1000,
     activity_type: "services",
     acre: "yes",
+    business_start_date: PRE_REFORM_BUSINESS_START,
   });
 
   assert.equal(result.acreApplied, true);
@@ -311,12 +337,14 @@ test("keeps trace disabled by default and emits structured trace when enabled", 
 
   const withoutTrace = calculateLegacyAcreContribution(standard, {
     acre: "yes",
+    businessStartDate: PRE_REFORM_BUSINESS_START,
     referenceDate: REFERENCE_DATE,
   });
   const withTrace = calculateLegacyAcreContribution(
     standard,
     {
       acre: "yes",
+      businessStartDate: PRE_REFORM_BUSINESS_START,
       referenceDate: REFERENCE_DATE,
     },
     { trace: true },

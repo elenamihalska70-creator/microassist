@@ -113,6 +113,8 @@ const BASE_SCENARIOS = Object.freeze([
     activityType: "services",
     acre: "yes",
     acreStartDate: "2026-01-15",
+    // LOT 10.1B: pre-reform business so this stays the historical 50% case.
+    businessStartDate: "2020-01-01",
     expectedRate: 0.11,
     expectedCharges: 110,
     expectedAcreStatus: "active",
@@ -218,6 +220,7 @@ function shadowResultFor(scenario) {
       activity_type: scenario.activityType,
       acre: scenario.acre,
       acre_start_date: scenario.acreStartDate,
+      business_start_date: scenario.businessStartDate ?? "",
     },
     period: {},
     referenceDate: REFERENCE_DATE,
@@ -231,6 +234,7 @@ function legacyChargesFor(scenario) {
     activity_type: scenario.activityType,
     acre: scenario.acre,
     acre_start_date: scenario.acreStartDate,
+    business_start_date: scenario.businessStartDate ?? "",
     referenceDate: REFERENCE_DATE,
   });
   const total = revenueTotal(scenario.values);

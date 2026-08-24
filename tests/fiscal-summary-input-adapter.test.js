@@ -18,6 +18,7 @@ const VALID_INPUT = Object.freeze({
     activity_type: "services",
     acre: "yes",
     acre_start_date: "2026-01-01",
+    business_start_date: "2020-01-01",
   }),
   period: Object.freeze({
     startDate: "2026-07-01",
@@ -57,6 +58,7 @@ test("maps a complete application DTO to the Facade input contract", () => {
       activityType: "services",
       acre: "yes",
       acreStartDate: "2026-01-01",
+      businessStartDate: "2020-01-01",
     },
     period: {
       startDate: "2026-07-01",
@@ -73,6 +75,7 @@ test("maps a minimal valid application DTO without deriving values", () => {
       activity_type: undefined,
       acre: undefined,
       acre_start_date: undefined,
+      business_start_date: undefined,
     },
     period: {},
     referenceDate: undefined,
@@ -84,6 +87,7 @@ test("maps a minimal valid application DTO without deriving values", () => {
       activityType: undefined,
       acre: undefined,
       acreStartDate: undefined,
+      businessStartDate: undefined,
     },
     period: {},
     referenceDate: undefined,
@@ -118,6 +122,7 @@ test("renames only the approved fiscal profile properties", () => {
     "activityType",
     "acre",
     "acreStartDate",
+    "businessStartDate",
   ]);
 });
 

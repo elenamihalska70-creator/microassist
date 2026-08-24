@@ -524,13 +524,6 @@ function normalizeActivityType(value) {
   return normalized || "services";
 }
 
-function getSimpleChargeRate(activityType) {
-  const normalizedActivityType = normalizeActivityType(activityType);
-  if (normalizedActivityType === "services") return 22;
-  if (normalizedActivityType === "commerce") return 12;
-  return 17;
-}
-
 function getSimpleActivityLabel(activityType) {
   const normalizedActivityType = normalizeActivityType(activityType);
   if (normalizedActivityType === "services") return "Services";
@@ -712,8 +705,19 @@ function buildSimpleAssistantGuidance({
   const monthlyRevenue = hasRealRevenue
     ? Math.max(0, Number(realMonthlyRevenue) || 0)
     : starterEstimate;
-  const chargeRate = getSimpleChargeRate(profile.activity_type);
-  const chargeEstimate = Math.round(monthlyRevenue * (chargeRate / 100));
+
+  // Single canonical fiscal engine (LOT 10.1B): onboarding no longer owns its
+  // own contribution/ACRE rate table. It calls the exact same computeObligations
+  // path as the dashboard so the two screens can never disagree again.
+  const guidanceObligations = computeObligations({
+    ca_month: monthlyRevenue,
+    activity_type: profile.activity_type,
+    acre: profile.acre,
+    acre_start_date: profile.acre_start_date,
+    business_start_date: profile.business_start_date,
+  });
+  const chargeRate = Math.round(guidanceObligations.rate * 100);
+  const chargeEstimate = guidanceObligations.estimatedAmount;
   const alerts = ["Préparez votre déclaration URSSAF"];
 
   if (!hasRealRevenue && !hasStarterEstimate) {
@@ -5538,6 +5542,7 @@ useEffect(() => {
           activity_type: dashboardAnswers.activity_type,
           acre: dashboardAnswers.acre,
           acre_start_date: dashboardAnswers.acre_start_date,
+          business_start_date: dashboardAnswers.business_start_date,
         },
         period: {},
         referenceDate: getTodayIsoDate(),
@@ -5992,9 +5997,18 @@ useEffect(() => {
         ),
       monthly_revenue: simpleAssistantProfile?.monthly_revenue ?? null,
       tva_status: normalizeTvaConfigStatus(simpleAssistantProfile?.tva_status),
+      // LOT 10.1B: carry the same ACRE/date fields the dashboard reads from
+      // dashboardAnswers, so the onboarding estimate can apply ACRE like the
+      // dashboard does instead of silently ignoring it.
+      acre: dashboardAnswers?.acre ?? null,
+      acre_start_date: dashboardAnswers?.acre_start_date ?? null,
+      business_start_date: dashboardAnswers?.business_start_date ?? null,
     }),
     [
       dashboardAnswers?.activity_type,
+      dashboardAnswers?.acre,
+      dashboardAnswers?.acre_start_date,
+      dashboardAnswers?.business_start_date,
       simpleAssistantProfile?.activity_type,
       simpleAssistantProfile?.monthly_revenue,
       simpleAssistantProfile?.tva_status,

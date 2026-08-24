@@ -38,7 +38,7 @@ export const FISCAL_STEPS = [
       { value: "no", label: "Non concerné" },
       { value: "unknown", label: "Je ne sais pas" },
     ],
-    help: "L'ACRE réduit les charges sociales de 50% la première année.",
+    help: "L'ACRE réduit les charges sociales (50% si ton activité a démarré avant le 1er juillet 2026, 25% à partir de cette date).",
   },
 
   {

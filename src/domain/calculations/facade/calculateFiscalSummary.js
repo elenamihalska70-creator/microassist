@@ -179,6 +179,7 @@ export function calculateFiscalSummary(input, options = {}) {
     {
       acre: fiscalProfile.acre,
       acreStartDate: fiscalProfile.acreStartDate,
+      businessStartDate: fiscalProfile.businessStartDate,
       [PROFILE_ACTIVITY_FIELD]: fiscalProfile[PROFILE_ACTIVITY_FIELD],
       referenceDate: input.referenceDate,
     },

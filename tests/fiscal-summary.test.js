@@ -234,6 +234,7 @@ test("passes the standard contribution result and ACRE context to ACRE", () => {
   assert.deepEqual(acreCall[2], {
     acre: "yes",
     acreStartDate: "2026-01-01",
+    businessStartDate: undefined,
     activityType: "services",
     referenceDate: "2026-07-30",
   });

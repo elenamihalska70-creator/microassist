@@ -5,10 +5,19 @@ const INPUT_FIELDS = Object.freeze([
   "referenceDate",
 ]);
 
-const PROFILE_FIELDS = Object.freeze([
+const REQUIRED_PROFILE_FIELDS = Object.freeze([
   "activity_type",
   "acre",
   "acre_start_date",
+]);
+
+// LOT 10.1B: business_start_date is accepted but not required, so existing
+// callers that never carried this field (predating the ACRE reform) keep
+// working unchanged; when absent it maps to undefined, which the ACRE rule
+// already treats as "regime unknown, apply full rate" rather than guessing.
+const KNOWN_PROFILE_FIELDS = Object.freeze([
+  ...REQUIRED_PROFILE_FIELDS,
+  "business_start_date",
 ]);
 
 function assertPlainObject(value, message) {
@@ -60,12 +69,12 @@ export function buildFiscalSummaryInput(input) {
   );
   assertKnownFields(
     input.fiscalProfile,
-    PROFILE_FIELDS,
+    KNOWN_PROFILE_FIELDS,
     "buildFiscalSummaryInput fiscalProfile contains unknown fields",
   );
   assertRequiredFields(
     input.fiscalProfile,
-    PROFILE_FIELDS,
+    REQUIRED_PROFILE_FIELDS,
     "buildFiscalSummaryInput fiscalProfile is missing required fields",
   );
   assertPlainObject(input.period, "buildFiscalSummaryInput period must be an object");
@@ -76,6 +85,7 @@ export function buildFiscalSummaryInput(input) {
       activityType: input.fiscalProfile.activity_type,
       acre: input.fiscalProfile.acre,
       acreStartDate: input.fiscalProfile.acre_start_date,
+      businessStartDate: input.fiscalProfile.business_start_date,
     },
     period: { ...input.period },
     referenceDate: input.referenceDate,

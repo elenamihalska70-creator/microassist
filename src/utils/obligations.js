@@ -1,11 +1,7 @@
 // src/utils/obligations.js
 
-function getRate(activityType) {
-  if (activityType === "services") return 0.22;
-  if (activityType === "commerce") return 0.123;
-  if (activityType === "mixte") return 0.18;
-  return 0;
-}
+import { calculateStandardContribution } from "../domain/calculations/contributions/index.js";
+import { calculateLegacyAcreContribution } from "../domain/calculations/acre/index.js";
 
 function formatFR(date) {
   return date.toLocaleDateString("fr-FR", {
@@ -66,50 +62,62 @@ function getBusinessYear(startDate) {
 
 export function computeObligations(answers = {}) {
   const ca = Number(answers.ca_month || 0);
-  const baseRate = getRate(answers.activity_type);
-  let rate = baseRate;
-  
-  // ==================== ACRE LOGIC ====================
-  let acreActive = false;
-  let acreMonthsLeft = null;
-  let acreEndDate = null;
+
+  // ==================== CONTRIBUTION + ACRE (canonical engine) ====================
+  // Delegates rate selection and the owner-verified ACRE reform (LOT 10.1B) to
+  // src/domain/calculations, the single source of truth for this decision —
+  // this function must not re-derive its own contribution/ACRE percentages.
+  const standardContribution = calculateStandardContribution(
+    {
+      baseAmount: ca,
+      activityType: answers.activity_type,
+    },
+    // Preserves the pre-canonical-engine contract: computeObligations never
+    // gated on the sign of ca_month, it just did the arithmetic.
+    { allowNegativeBase: true },
+  );
+  const acreContribution = calculateLegacyAcreContribution(standardContribution, {
+    acre: answers.acre,
+    acreStartDate: answers.acre_start_date,
+    businessStartDate: answers.business_start_date,
+    activityType: answers.activity_type,
+    referenceDate: new Date(),
+  });
+
+  const baseRate = standardContribution.rate;
+  const rate = acreContribution.acreRate;
+  const acreActive = acreContribution.acreApplied;
+  const acreMonthsLeft = acreContribution.acreMonthsLeft;
+  const acreEndDate = acreContribution.acrePeriod?.endDate
+    ? new Date(acreContribution.acrePeriod.endDate)
+    : null;
+  const acreStatus = acreContribution.acreStatus;
+  const acreRegime = acreContribution.regime;
   let acreHint = null;
-  let acreStatus = "inactive"; // добавим статус
 
   if (answers.acre === "yes" && baseRate > 0) {
-    acreActive = true;
-    rate = baseRate / 2;
-    
-    if (answers.acre_start_date) {
-      const startDate = new Date(answers.acre_start_date);
-      const today = new Date();
-      const endDate = new Date(startDate);
-      endDate.setMonth(endDate.getMonth() + 12);
-      
-      const monthsSinceStart = (today.getFullYear() - startDate.getFullYear()) * 12 + 
-                              (today.getMonth() - startDate.getMonth());
-      acreMonthsLeft = Math.max(0, 12 - monthsSinceStart);
-      acreEndDate = endDate;
-      
-      if (acreMonthsLeft <= 0) {
-        acreActive = false;
-        rate = baseRate;
-        acreStatus = "expired";
-        acreHint = "⚠️ Votre période ACRE est terminée. Modifiez votre profil pour ajuster les charges.";
+    if (acreStatus === "regime_unknown") {
+      acreHint =
+        "💡 Complète ta date officielle de création d'activité pour affiner ton taux ACRE : le taux plein est appliqué en attendant, par prudence.";
+    } else if (acreStatus === "expired") {
+      acreHint = "⚠️ Votre période ACRE est terminée. Modifiez votre profil pour ajuster les charges.";
+    } else if (acreStatus === "active") {
+      if (acreMonthsLeft !== null && acreMonthsLeft <= 3) {
+        acreHint = `⏰ ACRE bientôt terminée : encore ${acreMonthsLeft} mois. Pensez à mettre à jour votre profil.`;
       } else {
-        acreStatus = "active";
-        if (acreMonthsLeft <= 3) {
-          acreHint = `⏰ ACRE bientôt terminée : encore ${acreMonthsLeft} mois. Pensez à mettre à jour votre profil.`;
-        } else {
-          acreHint = `💡 ACRE appliquée : taux réduit de ${Math.round(baseRate * 100)}% → ${Math.round(rate * 100)}% pour la première année. Valable encore ${acreMonthsLeft} mois.`;
-        }
+        const regimeNote =
+          acreRegime === "post_reform_2026_07"
+            ? " (activité créée à partir du 1er juillet 2026)"
+            : "";
+        acreHint =
+          acreMonthsLeft !== null
+            ? `💡 ACRE appliquée : taux réduit de ${Math.round(baseRate * 100)}% → ${Math.round(rate * 100)}% pour la première année${regimeNote}. Valable encore ${acreMonthsLeft} mois.`
+            : `💡 ACRE appliquée : taux réduit de ${Math.round(baseRate * 100)}% → ${Math.round(rate * 100)}% pour la première année${regimeNote}.`;
       }
-    } else {
-      acreStatus = "active";
-      acreHint = `💡 ACRE appliquée : taux réduit de ${Math.round(baseRate * 100)}% → ${Math.round(rate * 100)}% pour la première année.`;
     }
   } else if (answers.acre === "unknown") {
-    acreHint = "💡 Si tu bénéficies de l’ACRE, tes charges peuvent être réduites de 50% la première année.";
+    acreHint =
+      "💡 Si tu bénéficies de l’ACRE, tes charges peuvent être réduites (50% si ton activité a démarré avant le 1er juillet 2026, 25% à partir de cette date) la première année.";
   }
 
   const estimatedAmount = Math.round(ca * rate);
@@ -366,6 +374,12 @@ let amountEstimatedLabel = "—";
       amountEstimatedLabel += ` • ACRE (${Math.round(baseRate * 100)}% → ${Math.round(rate * 100)}%) • reste ${acreMonthsLeft} mois`;
     } else if (acreActive && acreMonthsLeft === 0) {
       amountEstimatedLabel += ` • ACRE terminée`;
+    } else if (acreStatus === "regime_unknown") {
+      // LOT 10.1C: without this, a user who answered "ACRE: oui" sees a
+      // plain non-ACRE-looking estimate with no visible explanation for
+      // why it's higher than expected. Smallest possible nudge, same
+      // inline-suffix mechanism as the two branches above.
+      amountEstimatedLabel += ` • ACRE : complète ta date de création d'activité pour affiner ce taux`;
     }
   }
 

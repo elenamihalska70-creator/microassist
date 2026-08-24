@@ -44,6 +44,7 @@ function copyShadowInput(input) {
             activityType: input.fiscalProfile.activityType,
             acre: input.fiscalProfile.acre,
             acreStartDate: input.fiscalProfile.acreStartDate,
+            businessStartDate: input.fiscalProfile.businessStartDate,
           }
         : null,
     period:

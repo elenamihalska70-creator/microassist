@@ -88,6 +88,39 @@ function normalizeStartDate(context, warnings) {
   };
 }
 
+function normalizeBusinessStartDate(context, warnings) {
+  const rawBusinessStartDate = hasOwn(context, "businessStartDate")
+    ? context.businessStartDate
+    : context.business_start_date;
+
+  if (
+    rawBusinessStartDate === null ||
+    rawBusinessStartDate === undefined ||
+    rawBusinessStartDate === ""
+  ) {
+    return { rawBusinessStartDate, businessStartDate: null, businessStartDateForRule: null };
+  }
+
+  const businessStartDate = parseLocalDate(rawBusinessStartDate);
+
+  if (!businessStartDate) {
+    appendWarning(
+      warnings,
+      createWarning({
+        code: "INVALID_BUSINESS_START_DATE",
+        severity: "warning",
+        field: "businessStartDate",
+      }),
+    );
+  }
+
+  return {
+    rawBusinessStartDate,
+    businessStartDate,
+    businessStartDateForRule: businessStartDate,
+  };
+}
+
 function normalizeReferenceDate(context, warnings) {
   const rawReferenceDate = context.referenceDate;
   const referenceDate = parseLocalDate(rawReferenceDate);
@@ -145,7 +178,8 @@ function fallbackResult({
     standardContributionAmount,
     acreApplied: false,
     acreRate: standardRate,
-    reductionRate: rule?.value?.reductionFactor ?? null,
+    reductionRate: rule?.output?.reductionFactor ?? null,
+    regime: rule?.output?.regime ?? null,
     acreContributionAmount: standardContributionAmount,
     savedAmount: 0,
     acrePeriod: {
@@ -271,12 +305,17 @@ export function calculateLegacyAcreContribution(
 
   const { referenceDate } = normalizeReferenceDate(acreContext, warnings);
   const { startDate, startDateForRule } = normalizeStartDate(acreContext, warnings);
+  const { businessStartDate, businessStartDateForRule } = normalizeBusinessStartDate(
+    acreContext,
+    warnings,
+  );
 
   const inputTrace = createTraceStep(traceEnabled, "acre.input.normalize", {
     acre,
     activityType,
     referenceDate: formatLocalDate(referenceDate),
     acreStartDate: formatLocalDate(startDate),
+    businessStartDate: formatLocalDate(businessStartDate),
   });
   if (inputTrace) trace.push(inputTrace);
 
@@ -306,6 +345,7 @@ export function calculateLegacyAcreContribution(
   const rule = resolveRule(resolveAcreRule, {
     acre,
     acreStartDate: startDateForRule,
+    businessStartDate: businessStartDateForRule,
     activityType,
     today: referenceDate,
   });
@@ -386,6 +426,16 @@ export function calculateLegacyAcreContribution(
         sourceId: rule.ruleId || null,
       }),
     );
+  } else if (!acreApplied && rule.output?.acreStatus === "regime_unknown") {
+    appendWarning(
+      warnings,
+      createWarning({
+        code: "ACRE_REGIME_UNKNOWN_BUSINESS_START_DATE_REQUIRED",
+        severity: "warning",
+        field: "businessStartDate",
+        sourceId: rule.ruleId || null,
+      }),
+    );
   } else if (!acreApplied && acre === "yes") {
     appendWarning(
       warnings,
@@ -452,7 +502,8 @@ export function calculateLegacyAcreContribution(
     standardContributionAmount,
     acreApplied,
     acreRate: effectiveRate,
-    reductionRate: rule.value?.reductionFactor ?? null,
+    reductionRate: rule.output?.reductionFactor ?? null,
+    regime: rule.output?.regime ?? null,
     acreContributionAmount,
     savedAmount,
     acrePeriod: {

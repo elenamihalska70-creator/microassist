@@ -2,6 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  ACRE_POST_REFORM_REDUCTION_FACTOR,
+  ACRE_PRE_REFORM_REDUCTION_FACTOR,
+  ACRE_REFORM_EFFECTIVE_DATE,
   CURRENT_RULE_SET,
   getAcreRule,
   getApplicableRuleSet,
@@ -11,7 +14,6 @@ import {
   getPremiumRule,
   getPremiumTriggerRule,
   getRevenueContributionRule,
-  getSimpleAssistantContributionRule,
   getSimpleAssistantVatRule,
   getTrialDaysLeftRule,
   getVatRule,
@@ -74,29 +76,21 @@ test("revenue contribution rules preserve category fallbacks", () => {
   );
 });
 
-test("simple assistant contribution percentages preserve App.jsx fallback", () => {
-  assert.equal(getSimpleAssistantContributionRule({ activityType: "services" }).value, 22);
-  assert.equal(getSimpleAssistantContributionRule({ activityType: "commerce" }).value, 12);
-  assert.equal(getSimpleAssistantContributionRule({ activityType: "mixte" }).value, 17);
-
-  const fallback = getSimpleAssistantContributionRule({ activityType: "unknown" });
-
-  assert.equal(fallback.value, 17);
-  assert.equal(fallback.fallback, "unknown_activity_falls_back_to_mixed_17_percent");
-});
-
 test("ACRE rules match current behavior for active, expired and missing date", () => {
   const activeStart = monthsAgo(2);
   const expiredStart = monthsAgo(13);
+  const preReformBusinessStart = "2020-01-01";
 
   const activeRule = getAcreRule({
     acre: "yes",
     acreStartDate: activeStart,
+    businessStartDate: preReformBusinessStart,
     activityType: "services",
   });
   const activeComputed = computeObligations({
     acre: "yes",
     acre_start_date: activeStart,
+    business_start_date: preReformBusinessStart,
     activity_type: "services",
     ca_month: 1000,
   });
@@ -108,11 +102,13 @@ test("ACRE rules match current behavior for active, expired and missing date", (
   const expiredRule = getAcreRule({
     acre: "yes",
     acreStartDate: expiredStart,
+    businessStartDate: preReformBusinessStart,
     activityType: "services",
   });
   const expiredComputed = computeObligations({
     acre: "yes",
     acre_start_date: expiredStart,
+    business_start_date: preReformBusinessStart,
     activity_type: "services",
     ca_month: 1000,
   });
@@ -125,19 +121,91 @@ test("ACRE rules match current behavior for active, expired and missing date", (
     acre: "yes",
     activityType: "services",
   });
+  const missingDateComputed = computeObligations({
+    acre: "yes",
+    activity_type: "services",
+    ca_month: 1000,
+  });
 
-  assert.equal(missingDateRule.output.acreActive, true);
-  assert.equal(missingDateRule.output.effectiveRate, 0.11);
-  assert.equal(missingDateRule.fallback, "acre_active_without_start_date");
+  assert.equal(missingDateRule.output.acreActive, false);
+  assert.equal(missingDateRule.output.acreStatus, "regime_unknown");
+  assert.equal(missingDateRule.output.effectiveRate, 0.22);
+  assert.equal(missingDateRule.fallback, "acre_regime_unknown_missing_business_start_date");
+  assert.equal(missingDateComputed.acreStatus, "regime_unknown");
+  assert.equal(missingDateComputed.rate, 0.22);
+});
+
+test("ACRE reform applies the owner-verified 50%/75% split around 2026-07-01", () => {
+  assert.equal(ACRE_REFORM_EFFECTIVE_DATE, "2026-07-01");
+  assert.equal(ACRE_PRE_REFORM_REDUCTION_FACTOR, 0.5);
+  assert.equal(ACRE_POST_REFORM_REDUCTION_FACTOR, 0.25);
+
+  const preReform = getAcreRule({
+    acre: "yes",
+    acreStartDate: "2026-07-15",
+    businessStartDate: "2026-06-30",
+    activityType: "services",
+    today: new Date("2026-07-15T12:00:00"),
+  });
+  const postReformExact = getAcreRule({
+    acre: "yes",
+    acreStartDate: "2026-07-15",
+    businessStartDate: "2026-07-01",
+    activityType: "services",
+    today: new Date("2026-07-15T12:00:00"),
+  });
+  const postReformLater = getAcreRule({
+    acre: "yes",
+    acreStartDate: "2026-08-01",
+    businessStartDate: "2026-08-01",
+    activityType: "services",
+    today: new Date("2026-08-01T12:00:00"),
+  });
+
+  assert.equal(preReform.output.regime, "pre_reform");
+  assert.equal(preReform.output.effectiveRate, 0.11);
+
+  assert.equal(postReformExact.output.regime, "post_reform_2026_07");
+  assert.equal(postReformExact.output.effectiveRate, 0.165);
+
+  assert.equal(postReformLater.output.regime, "post_reform_2026_07");
+  assert.equal(postReformLater.output.effectiveRate, 0.165);
+});
+
+test("ACRE regime is never guessed when businessStartDate is missing or invalid", () => {
+  const missing = getAcreRule({ acre: "yes", activityType: "services" });
+  const invalid = getAcreRule({
+    acre: "yes",
+    businessStartDate: "not-a-date",
+    activityType: "services",
+  });
+  const blank = getAcreRule({
+    acre: "yes",
+    businessStartDate: "",
+    activityType: "services",
+  });
+
+  for (const result of [missing, invalid, blank]) {
+    assert.equal(result.output.acreActive, false);
+    assert.equal(result.output.acreStatus, "regime_unknown");
+    assert.equal(result.output.effectiveRate, 0.22);
+    assert.equal(result.output.regime, null);
+  }
+
+  assert.equal(missing.fallback, "acre_regime_unknown_missing_business_start_date");
+  assert.equal(invalid.fallback, "acre_regime_unknown_invalid_business_start_date");
+  assert.equal(blank.fallback, "acre_regime_unknown_missing_business_start_date");
 });
 
 test("ACRE boundary dates are deterministic with injected today", () => {
   const today = new Date("2026-07-29T12:00:00");
+  const preReformBusinessStart = "2020-01-01";
 
   assert.equal(
     getAcreRule({
       acre: "yes",
       acreStartDate: "2026-07-29",
+      businessStartDate: preReformBusinessStart,
       activityType: "services",
       today,
     }).output.acreMonthsLeft,
@@ -147,6 +215,7 @@ test("ACRE boundary dates are deterministic with injected today", () => {
     getAcreRule({
       acre: "yes",
       acreStartDate: "2025-07-29",
+      businessStartDate: preReformBusinessStart,
       activityType: "services",
       today,
     }).output.acreStatus,

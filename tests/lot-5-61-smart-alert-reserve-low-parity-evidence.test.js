@@ -56,6 +56,9 @@ const INPUT_PARITY_SCENARIOS = Object.freeze([
     activityType: "services",
     acre: "yes",
     acreStartDate: "2026-01-01",
+    // LOT 10.1B: pre-reform business so the historical flat-50% stand-in in
+    // contributionRate() below remains an accurate proxy for this scenario.
+    businessStartDate: "2020-01-01",
     reachability: "reachable in production",
   },
   { id: "contribution-zero", values: [], activityType: "services", reachability: "reachable in production" },
@@ -161,6 +164,7 @@ function shadowFinalContributionAmount(scenario) {
       activity_type: scenario.activityType,
       acre: scenario.acre ?? "no",
       acre_start_date: scenario.acreStartDate ?? "",
+      business_start_date: scenario.businessStartDate ?? "",
     },
     period: {},
     referenceDate: REFERENCE_DATE,
@@ -256,6 +260,7 @@ test("LOT 5.61 covers service, commerce, mixte and ACRE input parity", () => {
       activityType: "services",
       acre: "yes",
       acreStartDate: "2026-01-01",
+      businessStartDate: "2020-01-01",
     },
   ];
 
