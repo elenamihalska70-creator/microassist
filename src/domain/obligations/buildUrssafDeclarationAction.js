@@ -7,6 +7,7 @@ import {
   SEVERITY,
   OBLIGATION_STATUS,
   PRIORITY_TIER,
+  COMPLETION_STATE,
   DECLARATION_DUE_SOON_WARNING_DAYS,
   DECLARATION_DUE_SOON_CRITICAL_DAYS,
 } from "./constants.js";
@@ -56,6 +57,15 @@ function toIsoDate(date) {
  * the canonical fiscal engine's output (context.fiscalSummary) rather than
  * recomputing deadline or contribution math.
  *
+ * LOT 10.2D: context.declarationDossier is the dossier row (if any) already
+ * matched by the caller (getPrioritizedActions, via
+ * domain/declarationDossier/dossierIdentity.js#findDossierForPeriod) to the
+ * SAME period this function independently resolves via getDeadlineRule. A
+ * dossier with declared_at set means the user has confirmed submission --
+ * the period must no longer surface as an active DUE/DUE_SOON/OVERDUE
+ * action once that is true (LOT 10.2D section 11); paid_at (a separate,
+ * never-implied fact) additionally marks it PAID.
+ *
  * Returns null when the declaration frequency is unknown -- that gap is
  * represented by a missing-information action instead (see
  * buildMissingInformationActions.js), not by a fabricated deadline.
@@ -67,12 +77,32 @@ export function buildUrssafDeclarationAction(context = {}) {
 
   const deadlineRule = getDeadlineRule({ frequency, today: context.referenceDate });
   const { deadlineDate, daysLeft, periodLabel } = deadlineRule.output;
-  const status = resolveStatus(daysLeft);
+
+  const dossier = context.declarationDossier ?? null;
+  const isPaid = Boolean(dossier?.paid_at);
+  const isDeclared = isPaid || Boolean(dossier?.declared_at);
+
+  const status = isPaid
+    ? OBLIGATION_STATUS.paid
+    : isDeclared
+      ? OBLIGATION_STATUS.declared
+      : resolveStatus(daysLeft);
   if (!status) return null;
 
-  const { severity, priorityTier } = resolveSeverityAndTier(status, daysLeft);
+  const { severity, priorityTier } = isDeclared
+    ? { severity: SEVERITY.info, priorityTier: PRIORITY_TIER.informationalGuidance }
+    : resolveSeverityAndTier(status, daysLeft);
+
   const summary = context.fiscalSummary?.summary ?? null;
-  const amount = summary?.finalContributionAmount ?? null;
+  const liveAmount = summary?.finalContributionAmount ?? null;
+  const amount = isDeclared
+    ? (dossier.actual_contributions ?? dossier.estimated_contributions ?? liveAmount)
+    : liveAmount;
+  const amountKind = isDeclared
+    ? (dossier.actual_contributions != null ? "actual" : "estimated")
+    : amount === null
+      ? null
+      : "estimated";
 
   return createAction({
     id: `urssaf-declaration-${toIsoDate(deadlineDate) ?? "unknown"}`,
@@ -84,18 +114,29 @@ export function buildUrssafDeclarationAction(context = {}) {
     period: periodLabel ? { frequency, label: periodLabel } : null,
     dueDate: toIsoDate(deadlineDate),
     amount,
-    amountKind: amount === null ? null : "estimated",
+    amountKind,
     confidence: summary && summary.calculable === false ? "low" : deadlineRule.confidence,
     source: "domain.rules.deadlineRules#getDeadlineRule",
+    completionState: isDeclared ? COMPLETION_STATE.userConfirmed : undefined,
     officialAction: getOfficialAction("urssafDeclaration"),
     reason:
-      status === OBLIGATION_STATUS.overdue
-        ? `URSSAF declaration deadline passed ${Math.abs(daysLeft)} day(s) ago.`
-        : status === OBLIGATION_STATUS.due
-          ? "URSSAF declaration is due today."
-          : status === OBLIGATION_STATUS.dueSoon
-            ? `URSSAF declaration is due in ${daysLeft} day(s).`
-            : `Next URSSAF declaration is due in ${daysLeft} day(s).`,
-    metadata: { daysLeft, frequency },
+      isPaid
+        ? "Declaration has been confirmed as declared and paid."
+        : isDeclared
+          ? "Declaration has been confirmed as submitted."
+          : status === OBLIGATION_STATUS.overdue
+            ? `URSSAF declaration deadline passed ${Math.abs(daysLeft)} day(s) ago.`
+            : status === OBLIGATION_STATUS.due
+              ? "URSSAF declaration is due today."
+              : status === OBLIGATION_STATUS.dueSoon
+                ? `URSSAF declaration is due in ${daysLeft} day(s).`
+                : `Next URSSAF declaration is due in ${daysLeft} day(s).`,
+    metadata: {
+      daysLeft,
+      frequency,
+      declaredAt: dossier?.declared_at ?? null,
+      paidAt: dossier?.paid_at ?? null,
+      dossierId: dossier?.id ?? null,
+    },
   });
 }

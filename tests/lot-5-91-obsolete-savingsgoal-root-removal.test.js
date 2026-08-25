@@ -229,24 +229,29 @@ test("LOT 5.91A assistant-context code has no savingsGoal reference", () => {
 });
 
 // 18. no new useState was introduced by this removal (stable or reduced, never increased)
+// LOT 10.2D added 5 useState calls afterwards (declaration dossier UI
+// state), unrelated to this removal's own "-0 from the removal" fact.
 test("LOT 5.91A useState count is stable, never increased by this removal", () => {
   // Removing a useMemo declaration cannot add a useState call; this locks in
   // that no incidental useState was introduced alongside the removal.
-  assert.equal(occurrences(CODE, /\buseState\(/g), 81);
+  assert.equal(occurrences(CODE, /\buseState\(/g), 86);
 });
 
 // 19. no new useEffect was introduced
+// LOT 10.2D added 1 useEffect afterwards (fetch declaration dossiers on
+// user change), unrelated to this removal's own "-0 from the removal" fact.
 test("LOT 5.91A useEffect count is stable, never increased by this removal", () => {
-  assert.equal(occurrences(CODE, /\buseEffect\(/g), 58);
+  assert.equal(occurrences(CODE, /\buseEffect\(/g), 59);
 });
 
 // useMemo dropped by exactly the one hook removed with the declaration.
 // LOT 10.2B added one new useMemo afterwards (canonical obligation/action
-// priority shadow integration), so this LOT's own baseline is now 88 -- the
-// "-1 from the removal" fact this test protects is unaffected by that later,
-// unrelated addition.
+// priority shadow integration); LOT 10.2D added 4 more (declaration
+// dossier view selectors) -- this LOT's own baseline is now 92 -- the
+// "-1 from the removal" fact this test protects is unaffected by those
+// later, unrelated additions.
 test("LOT 5.91A useMemo count dropped by exactly one call site (the removed hook)", () => {
-  assert.equal(occurrences(CODE, /\buseMemo\(/g), 88);
+  assert.equal(occurrences(CODE, /\buseMemo\(/g), 92);
 });
 
 // 20. no new helper/shared function was introduced merging the two aliases

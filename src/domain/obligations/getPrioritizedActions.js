@@ -1,5 +1,7 @@
 import { buildFiscalSummaryInput } from "../../application/adapters/buildFiscalSummaryInput.js";
 import { calculateFiscalSummary } from "../calculations/facade/calculateFiscalSummary.js";
+import { resolveCurrentDeclarationPeriod } from "../rules/declarationPeriod.js";
+import { findDossierForPeriod } from "../declarationDossier/dossierIdentity.js";
 import { buildMissingInformationActions } from "./buildMissingInformationActions.js";
 import { buildUrssafDeclarationAction } from "./buildUrssafDeclarationAction.js";
 import { buildTvaThresholdAction } from "./buildTvaThresholdAction.js";
@@ -50,6 +52,11 @@ function tryBuildFiscalSummary(fiscalProfile, revenues, referenceDate) {
  *   revenues: [...],
  *   referenceDate: "YYYY-MM-DD" | Date | undefined,
  *   monthlyRevenue, yearToDateRevenue, monthsWithData: for the VAT projection,
+ *   declarationDossiers: [...] -- LOT 10.2D: the user's own dossier rows
+ *     (already fetched by the caller; this function does not query
+ *     Supabase). When the CURRENT declaration period has a matching row
+ *     with declared_at set, that period is represented as DECLARED/PAID
+ *     instead of an active DUE/DUE_SOON/OVERDUE action.
  * }
  */
 export function getPrioritizedActions(context = {}) {
@@ -57,10 +64,17 @@ export function getPrioritizedActions(context = {}) {
   const referenceDate = context.referenceDate ?? null;
   const fiscalSummary = tryBuildFiscalSummary(fiscalProfile, context.revenues, referenceDate);
 
+  const currentPeriod = resolveCurrentDeclarationPeriod({
+    frequency: fiscalProfile.declaration_frequency,
+    referenceDate,
+  });
+  const declarationDossier = findDossierForPeriod(context.declarationDossiers, currentPeriod);
+
   const builderContext = {
     fiscalProfile,
     referenceDate,
     fiscalSummary,
+    declarationDossier,
     monthlyRevenue: context.monthlyRevenue,
     yearToDateRevenue: context.yearToDateRevenue,
     monthsWithData: context.monthsWithData,

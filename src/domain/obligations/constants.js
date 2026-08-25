@@ -5,25 +5,31 @@ export const SEVERITY = Object.freeze({
   info: "info",
 });
 
-// Obligation lifecycle. `completed` is defined for future use once the
-// database can persist a declared/paid state (LOT 10.2B section 5) -- no
-// builder in this module emits it yet, since doing so would fake persistence
-// that does not exist.
+// Obligation lifecycle. `declared` and `paid` are deliberately distinct,
+// non-equivalent terminal states (LOT 10.2D section 5): a user confirming
+// they declared does not imply payment, and neither transitions
+// automatically -- both require an explicit user-confirmed fact
+// (declaration_dossiers.declared_at / paid_at) from the declaration
+// dossier system (src/domain/declarationDossier/).
 export const OBLIGATION_STATUS = Object.freeze({
   upcoming: "upcoming",
   ready: "ready",
   dueSoon: "due_soon",
   due: "due",
   overdue: "overdue",
-  completed: "completed",
+  declared: "declared",
+  paid: "paid",
 });
 
-// Who/what asserted the current status of an action. Every builder in this
-// module produces systemDerived only today; userConfirmed/externallyVerified
-// are reserved for when a persisted declared/paid state exists.
+// Who/what asserted the current status of an action, and the trust level of
+// a given fact. documentSupported/externallyVerified are reserved for a
+// future Document Vault / official-API sync -- LOT 10.2D's own confirmation
+// flow only ever produces userConfirmed; an uploaded document must never be
+// labeled externallyVerified, and an estimate must never be labeled paid.
 export const COMPLETION_STATE = Object.freeze({
   systemDerived: "system_derived",
   userConfirmed: "user_confirmed",
+  documentSupported: "document_supported",
   externallyVerified: "externally_verified",
 });
 

@@ -36,10 +36,10 @@ const APPROVED_COUNTS = Object.freeze({
   // LOT 5.91A: root savingsGoal removed (0 remaining occurrences), dropping
   // 1 useMemo( call site.
   savingsGoal: 0,
-  useState: 81,
-  useEffect: 58,
+  useState: 86, // LOT 10.2D: +5 useState (declaration dossier UI state)
+  useEffect: 59, // LOT 10.2D: +1 useEffect (fetch declaration dossiers on user change)
   // LOT 10.2B: +1 useMemo for the canonical obligation/action priority shadow integration.
-  useMemo: 88,
+  useMemo: 92, // LOT 10.2D: +4 useMemo (declaration dossier view selectors)
   buildFiscalSummaryInput: 2,
   calculateFiscalSummary: 2,
 });

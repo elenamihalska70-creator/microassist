@@ -37,8 +37,8 @@ const APPROVED_APP_COUNTS = Object.freeze({
   buildFiscalSummaryInput: 2,
   calculateFiscalSummary: 2,
   createRuntimeParityEvidence: 2,
-  useState: 82,
-  useEffect: 59,
+  useState: 87, // LOT 10.2D: +5 useState (declaration dossier UI state)
+  useEffect: 60, // LOT 10.2D: +1 useEffect (fetch declaration dossiers on user change)
 });
 
 function sourceWithoutComments(source) {

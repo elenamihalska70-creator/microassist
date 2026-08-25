@@ -31,6 +31,19 @@ import {
 import { calculateFiscalSummary } from "./domain/calculations/facade/index.js";
 import { getPrioritizedActions } from "./domain/obligations/index.js";
 import { calculateNextReminderDate } from "./domain/rules/reminderSchedule.js";
+import {
+  buildDeclarationConfirmation,
+  buildPaymentConfirmation,
+  getCurrentDeclarationView,
+  getLastConfirmedDeclaration,
+  getDeclarationHistory,
+} from "./domain/declarationDossier/index.js";
+import { getOfficialAction } from "./domain/obligations/officialActionRegistry.js";
+import {
+  fetchDeclarationDossiers,
+  saveDeclarationConfirmation,
+  savePaymentConfirmation,
+} from "./application/adapters/declarationDossierRepository.js";
 import { showConsoleSignature } from "./consoleSignature.js";
 import { useAuth } from "./context/AuthContext.jsx";
 import jsPDF from "jspdf";
@@ -3056,6 +3069,14 @@ useEffect(() => {
   // Состояния для доходов
   const [showAddRevenue, setShowAddRevenue] = useState(false);
   const [revenues, setRevenues] = useState([]);
+  // LOT 10.2D: declaration dossier -- durable, user-confirmed declaration
+  // history (public.declaration_dossiers). Owner-scoped by RLS; fetched
+  // per-user like revenues below.
+  const [declarationDossiers, setDeclarationDossiers] = useState([]);
+  const [showDeclarationConfirmModal, setShowDeclarationConfirmModal] = useState(false);
+  const [declarationConfirmForm, setDeclarationConfirmForm] = useState(null);
+  const [isSavingDeclarationConfirmation, setIsSavingDeclarationConfirmation] = useState(false);
+  const [declarationConfirmError, setDeclarationConfirmError] = useState(null);
   const [dashboardSections, setDashboardSections] = useState(() => {
     try {
       const raw = localStorage.getItem(DASHBOARD_SECTIONS_KEY);
@@ -3805,6 +3826,21 @@ const refreshSubscriptionRecord = useCallback(async () => {
     }
   }, [user]);
 
+  const refreshDeclarationDossiers = useCallback(async () => {
+    if (!user) {
+      setDeclarationDossiers([]);
+      return;
+    }
+
+    try {
+      const dossiers = await fetchDeclarationDossiers(supabase, user.id);
+      setDeclarationDossiers(dossiers);
+    } catch (error) {
+      console.error("Unexpected error in refreshDeclarationDossiers:", error);
+      setDeclarationDossiers([]);
+    }
+  }, [user]);
+
   const refreshInvoices = useCallback(async () => {
     if (!user) {
       setInvoices([]);
@@ -4419,6 +4455,14 @@ const refreshSubscriptionRecord = useCallback(async () => {
     }
     refreshRevenues();
   }, [user, refreshRevenues]);
+
+  useEffect(() => {
+    if (!user) {
+      setDeclarationDossiers([]);
+      return;
+    }
+    refreshDeclarationDossiers();
+  }, [user, refreshDeclarationDossiers]);
 
   useEffect(() => {
     if (!user) {
@@ -6175,6 +6219,150 @@ useEffect(() => {
     revenues.length,
     tvaStatusHelper,
   ]);
+
+  // LOT 10.2D: declaration dossier -- minimal functional confirmation flow
+  // ("J'ai fait ma déclaration"). Additive: does not replace fiscalTimeline,
+  // smartAlerts, smartPriorities, or any other existing dashboard card.
+  const declarationFiscalProfile = useMemo(
+    () => ({
+      activity_type: dashboardAnswers.activity_type,
+      acre: dashboardAnswers.acre,
+      acre_start_date: dashboardAnswers.acre_start_date,
+      business_start_date: dashboardAnswers.business_start_date,
+      declaration_frequency: dashboardAnswers.declaration_frequency,
+    }),
+    [
+      dashboardAnswers.activity_type,
+      dashboardAnswers.acre,
+      dashboardAnswers.acre_start_date,
+      dashboardAnswers.business_start_date,
+      dashboardAnswers.declaration_frequency,
+    ],
+  );
+
+  const currentDeclarationView = useMemo(() => {
+    if (!hasProfileCore) return null;
+    try {
+      return getCurrentDeclarationView({
+        fiscalProfile: declarationFiscalProfile,
+        dossiers: declarationDossiers,
+        referenceDate: getTodayIsoDate(),
+      });
+    } catch {
+      return null;
+    }
+  }, [declarationFiscalProfile, declarationDossiers, hasProfileCore]);
+
+  const lastConfirmedDeclaration = useMemo(
+    () => getLastConfirmedDeclaration(declarationDossiers),
+    [declarationDossiers],
+  );
+
+  const declarationHistoryList = useMemo(
+    () => getDeclarationHistory(declarationDossiers),
+    [declarationDossiers],
+  );
+
+  const handleOpenDeclarationConfirm = useCallback(() => {
+    if (!user?.id || !currentDeclarationView?.period) return;
+    const todayIso = getTodayIsoDate();
+    setDeclarationConfirmError(null);
+
+    let preview = null;
+    try {
+      preview = buildDeclarationConfirmation({
+        userId: user.id,
+        period: currentDeclarationView.period,
+        fiscalProfile: declarationFiscalProfile,
+        revenues,
+        declaredAt: todayIso,
+      });
+    } catch {
+      preview = null;
+    }
+
+    setDeclarationConfirmForm({
+      declaredAt: todayIso,
+      declaredRevenue:
+        currentDeclarationView.dossier?.declared_revenue ?? preview?.declared_revenue ?? "",
+      actualContributions: currentDeclarationView.dossier?.actual_contributions ?? "",
+      notes: currentDeclarationView.dossier?.notes ?? "",
+      calculatedRevenuePreview: preview?.calculated_revenue ?? null,
+      estimatedContributionsPreview: preview?.estimated_contributions ?? null,
+    });
+    setShowDeclarationConfirmModal(true);
+  }, [user, currentDeclarationView, declarationFiscalProfile, revenues]);
+
+  const handleCloseDeclarationConfirm = useCallback(() => {
+    setShowDeclarationConfirmModal(false);
+    setDeclarationConfirmForm(null);
+    setDeclarationConfirmError(null);
+  }, []);
+
+  const handleSubmitDeclarationConfirm = useCallback(async () => {
+    if (!user?.id || !currentDeclarationView?.period || !declarationConfirmForm) return;
+
+    setIsSavingDeclarationConfirmation(true);
+    setDeclarationConfirmError(null);
+
+    try {
+      const payload = buildDeclarationConfirmation({
+        userId: user.id,
+        period: currentDeclarationView.period,
+        fiscalProfile: declarationFiscalProfile,
+        revenues,
+        declaredAt: declarationConfirmForm.declaredAt,
+        declaredRevenue:
+          declarationConfirmForm.declaredRevenue === "" ||
+          declarationConfirmForm.declaredRevenue === null
+            ? undefined
+            : Number(declarationConfirmForm.declaredRevenue),
+        actualContributions:
+          declarationConfirmForm.actualContributions === "" ||
+          declarationConfirmForm.actualContributions === null
+            ? null
+            : Number(declarationConfirmForm.actualContributions),
+        notes: declarationConfirmForm.notes || null,
+      });
+
+      await saveDeclarationConfirmation(supabase, payload);
+      await refreshDeclarationDossiers();
+      setShowDeclarationConfirmModal(false);
+      setDeclarationConfirmForm(null);
+    } catch (error) {
+      console.error("[declaration-confirm] error", error);
+      setDeclarationConfirmError(
+        "La confirmation n'a pas pu être enregistrée. Réessaie dans un instant.",
+      );
+    } finally {
+      setIsSavingDeclarationConfirmation(false);
+    }
+  }, [
+    user,
+    currentDeclarationView,
+    declarationConfirmForm,
+    declarationFiscalProfile,
+    revenues,
+    refreshDeclarationDossiers,
+  ]);
+
+  const handleConfirmDeclarationPayment = useCallback(async () => {
+    if (!user?.id || !currentDeclarationView?.dossier?.id) return;
+
+    try {
+      const payload = buildPaymentConfirmation({ paidAt: getTodayIsoDate() });
+      await savePaymentConfirmation(
+        supabase,
+        currentDeclarationView.dossier.id,
+        user.id,
+        payload,
+      );
+      await refreshDeclarationDossiers();
+    } catch (error) {
+      console.error("[declaration-payment-confirm] error", error);
+    }
+  }, [user, currentDeclarationView, refreshDeclarationDossiers]);
+
   const smartAlertEstimatedCharges =
     fiscalSummaryVisibleSlice.finalContributionAmount;
   const smartAlertRevenueTotal = fiscalSummaryVisibleSlice.revenueTotal;
@@ -14242,6 +14430,142 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 </div>
               )}
 
+              {/* Confirmation de déclaration -- LOT 10.2D */}
+              {showDeclarationConfirmModal && declarationConfirmForm && (
+                <div
+                  className="modalOverlay"
+                  onClick={handleCloseDeclarationConfirm}
+                >
+                  <div
+                    className="modalCard"
+                    style={{ maxWidth: "480px" }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="sectionHead">
+                      <h3>J’ai fait ma déclaration</h3>
+                      <button
+                        className="iconBtn"
+                        type="button"
+                        onClick={handleCloseDeclarationConfirm}
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div style={{ marginTop: 16, display: "grid", gap: 14 }}>
+                      <label style={{ display: "grid", gap: 6, fontSize: 13 }}>
+                        Date de déclaration
+                        <input
+                          type="date"
+                          className="formInput"
+                          value={declarationConfirmForm.declaredAt}
+                          onChange={(e) =>
+                            setDeclarationConfirmForm((prev) => ({
+                              ...prev,
+                              declaredAt: e.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+
+                      <label style={{ display: "grid", gap: 6, fontSize: 13 }}>
+                        Chiffre d’affaires déclaré
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="formInput"
+                          value={declarationConfirmForm.declaredRevenue}
+                          onChange={(e) =>
+                            setDeclarationConfirmForm((prev) => ({
+                              ...prev,
+                              declaredRevenue: e.target.value,
+                            }))
+                          }
+                        />
+                        {declarationConfirmForm.calculatedRevenuePreview != null && (
+                          <span style={{ fontSize: 12, color: "#64748b" }}>
+                            Calculé par Microassist :{" "}
+                            {getDisplayValue(
+                              declarationConfirmForm.calculatedRevenuePreview,
+                              "money",
+                            )}{" "}
+                            (modifiable)
+                          </span>
+                        )}
+                      </label>
+
+                      <label style={{ display: "grid", gap: 6, fontSize: 13 }}>
+                        Cotisations réelles (optionnel)
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="formInput"
+                          placeholder={
+                            declarationConfirmForm.estimatedContributionsPreview != null
+                              ? `Estimation Microassist : ${declarationConfirmForm.estimatedContributionsPreview}`
+                              : "Non estimé"
+                          }
+                          value={declarationConfirmForm.actualContributions}
+                          onChange={(e) =>
+                            setDeclarationConfirmForm((prev) => ({
+                              ...prev,
+                              actualContributions: e.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+
+                      <label style={{ display: "grid", gap: 6, fontSize: 13 }}>
+                        Notes (optionnel)
+                        <textarea
+                          className="formInput"
+                          rows={2}
+                          value={declarationConfirmForm.notes}
+                          onChange={(e) =>
+                            setDeclarationConfirmForm((prev) => ({
+                              ...prev,
+                              notes: e.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+
+                      {declarationConfirmError && (
+                        <div style={{ color: "#b91c1c", fontSize: 13 }}>
+                          {declarationConfirmError}
+                        </div>
+                      )}
+
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 12,
+                          flexWrap: "wrap",
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <button
+                          className="btn btnActionSecondary"
+                          type="button"
+                          onClick={handleCloseDeclarationConfirm}
+                          disabled={isSavingDeclarationConfirmation}
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          className="btn btnPrimary"
+                          type="button"
+                          onClick={handleSubmitDeclarationConfirm}
+                          disabled={isSavingDeclarationConfirmation}
+                        >
+                          {isSavingDeclarationConfirmation ? "Enregistrement..." : "Confirmer"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Repères fiscaux */}
               <div className="fiscalTimeline">
                 <div className="dashboardSectionHeader">
@@ -14284,6 +14608,162 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   })}
                 </div>
               </div>
+
+              {/* Ma déclaration -- LOT 10.2D minimal declaration dossier flow */}
+              {currentDeclarationView && (
+                <div className="dashboardSectionZone" style={{ marginTop: 16 }}>
+                  <div className="dashboardSectionHeader">
+                    <div className="dashboardSectionHeaderMain">
+                      <h3 className="dashboardSectionTitle">Ma déclaration</h3>
+                    </div>
+                  </div>
+
+                  {currentDeclarationView.firstDeclarationUnresolved ? (
+                    <div className="dashboardTrustCard">
+                      <div className="dashboardRecommendationTitle">
+                        Première déclaration à confirmer
+                      </div>
+                      <div className="dashboardRecommendationText">
+                        La date de ta toute première déclaration dépend de ta date de
+                        création d’activité et n’est pas encore calculée automatiquement
+                        ici. Consulte ton espace URSSAF pour connaître ta première
+                        échéance exacte.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="dashboardTrustCard">
+                      <div className="dashboardRecommendationTitle">
+                        {currentDeclarationView.status === "paid"
+                          ? "Déclarée et payée"
+                          : currentDeclarationView.status === "declared"
+                            ? "Déclaration confirmée"
+                            : "Prochaine déclaration"}
+                      </div>
+                      {currentDeclarationView.dueDate && (
+                        <div className="dashboardRecommendationText">
+                          Échéance :{" "}
+                          {new Date(currentDeclarationView.dueDate).toLocaleDateString(
+                            "fr-FR",
+                          )}
+                        </div>
+                      )}
+                      {currentDeclarationView.dossier?.declared_at && (
+                        <div className="dashboardHelperText" style={{ marginTop: 8 }}>
+                          Déclarée le{" "}
+                          {new Date(
+                            currentDeclarationView.dossier.declared_at,
+                          ).toLocaleDateString("fr-FR")}
+                          {currentDeclarationView.dossier.declared_revenue != null
+                            ? ` — CA déclaré : ${getDisplayValue(
+                                currentDeclarationView.dossier.declared_revenue,
+                                "money",
+                              )}`
+                            : ""}
+                        </div>
+                      )}
+                      {currentDeclarationView.dossier?.paid_at && (
+                        <div className="dashboardHelperText">
+                          Payée le{" "}
+                          {new Date(
+                            currentDeclarationView.dossier.paid_at,
+                          ).toLocaleDateString("fr-FR")}
+                        </div>
+                      )}
+
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 12,
+                          flexWrap: "wrap",
+                          marginTop: 12,
+                        }}
+                      >
+                        {getOfficialAction("urssafDeclaration") && (
+                          <a
+                            className="btn btnActionSecondary"
+                            href={getOfficialAction("urssafDeclaration").url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {getOfficialAction("urssafDeclaration").label}
+                          </a>
+                        )}
+
+                        {!currentDeclarationView.dossier?.declared_at && (
+                          <button
+                            className="btn btnPrimary"
+                            type="button"
+                            onClick={handleOpenDeclarationConfirm}
+                          >
+                            J’ai fait ma déclaration
+                          </button>
+                        )}
+
+                        {currentDeclarationView.dossier?.declared_at &&
+                          !currentDeclarationView.dossier?.paid_at && (
+                            <button
+                              className="btn btnActionSecondary"
+                              type="button"
+                              onClick={handleConfirmDeclarationPayment}
+                            >
+                              J’ai payé
+                            </button>
+                          )}
+                      </div>
+                    </div>
+                  )}
+
+                  {lastConfirmedDeclaration && (
+                    <div className="dashboardHelperText" style={{ marginTop: 12 }}>
+                      Dernière déclaration confirmée :{" "}
+                      {new Date(lastConfirmedDeclaration.period_start).toLocaleDateString(
+                        "fr-FR",
+                      )}{" "}
+                      –{" "}
+                      {new Date(lastConfirmedDeclaration.period_end).toLocaleDateString(
+                        "fr-FR",
+                      )}
+                    </div>
+                  )}
+
+                  {declarationHistoryList.length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <h4 style={{ margin: 0, fontSize: 14 }}>
+                        Historique des déclarations
+                      </h4>
+                      <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+                        {declarationHistoryList.slice(0, 5).map((dossier) => (
+                          <div key={dossier.id} className="timelineItem">
+                            <div className="timelineTop">
+                              <span className="timelineLabel">
+                                {new Date(dossier.period_start).toLocaleDateString(
+                                  "fr-FR",
+                                )}{" "}
+                                –{" "}
+                                {new Date(dossier.period_end).toLocaleDateString("fr-FR")}
+                              </span>
+                            </div>
+                            <div className="timelineValue">
+                              {dossier.declared_revenue != null
+                                ? getDisplayValue(dossier.declared_revenue, "money")
+                                : "—"}
+                            </div>
+                            <div className="timelineHint">
+                              Déclarée le{" "}
+                              {new Date(dossier.declared_at).toLocaleDateString("fr-FR")}
+                              {dossier.paid_at
+                                ? ` · Payée le ${new Date(
+                                    dossier.paid_at,
+                                  ).toLocaleDateString("fr-FR")}`
+                                : ""}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Analyse financière */}
               {isFiscalProfileComplete && computed.monthlyExpenses !== undefined && (

@@ -28,11 +28,11 @@ const RUNTIME_EVIDENCE_SOURCE = readFileSync(
 
 const APPROVED_COUNTS = Object.freeze({
   fiscalSummaryVisibleSlice: 15,
-  useState: 82,
-  useEffect: 59,
+  useState: 87, // LOT 10.2D: +5 useState (declaration dossier UI state)
+  useEffect: 60, // LOT 10.2D: +1 useEffect (fetch declaration dossiers on user change)
   // LOT 5.91A: root savingsGoal removed; useMemo drops by the 1 hook removed with it.
   // LOT 10.2B: +1 useMemo for the canonical obligation/action priority shadow integration.
-  useMemo: 89,
+  useMemo: 93, // LOT 10.2D: +4 useMemo (declaration dossier view selectors)
   buildFiscalSummaryInput: 2,
   calculateFiscalSummary: 2,
 });

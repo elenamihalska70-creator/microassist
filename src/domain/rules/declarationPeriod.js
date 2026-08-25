@@ -91,6 +91,41 @@ export function resolveCurrentDeclarationPeriod({ frequency, referenceDate } = {
 }
 
 /**
+ * Pure: the period immediately following an explicit period (e.g. for a
+ * future "Calendrier" view to show what's next after the current one).
+ * Does not consult referenceDate or any dossier/confirmation state -- it is
+ * purely "one calendar step forward", independent of whether the given
+ * period has been declared.
+ */
+export function getNextDeclarationPeriod(period) {
+  if (!period) return null;
+
+  if (period.type === "month" && Number.isInteger(period.year) && Number.isInteger(period.month0)) {
+    const nextMonth0 = period.month0 + 1;
+    return {
+      type: "month",
+      year: nextMonth0 > 11 ? period.year + 1 : period.year,
+      month0: nextMonth0 % 12,
+    };
+  }
+
+  if (
+    period.type === "quarter" &&
+    Number.isInteger(period.year) &&
+    Number.isInteger(period.quarter)
+  ) {
+    const nextQuarter = period.quarter + 1;
+    return {
+      type: "quarter",
+      year: nextQuarter > 4 ? period.year + 1 : period.year,
+      quarter: nextQuarter > 4 ? 1 : nextQuarter,
+    };
+  }
+
+  return null;
+}
+
+/**
  * Pure: computes the fixed due date and current daysLeft for an EXPLICIT,
  * already-identified declaration period, given a referenceDate.
  *
@@ -120,4 +155,36 @@ export function computeDeclarationDeadline({ period, referenceDate } = {}) {
   const daysLeft = differenceInCalendarDays(today, dueDate);
 
   return { dueDate, daysLeft };
+}
+
+/**
+ * Pure: the calendar span (first/last day, inclusive) an explicit,
+ * already-identified declaration period covers -- e.g. for the declaration
+ * dossier system (LOT 10.2D) to know exactly which revenue entries a given
+ * period's confirmation snapshot should total. Independent of
+ * computeDeclarationDeadline's due date (a different, later date).
+ */
+export function getDeclarationPeriodBounds(period) {
+  if (!period) return null;
+
+  if (period.type === "month" && Number.isInteger(period.year) && Number.isInteger(period.month0)) {
+    return {
+      start: new Date(period.year, period.month0, 1),
+      end: new Date(period.year, period.month0 + 1, 0),
+    };
+  }
+
+  if (
+    period.type === "quarter" &&
+    Number.isInteger(period.year) &&
+    Number.isInteger(period.quarter)
+  ) {
+    const startMonth0 = (period.quarter - 1) * 3;
+    return {
+      start: new Date(period.year, startMonth0, 1),
+      end: new Date(period.year, startMonth0 + 3, 0),
+    };
+  }
+
+  return null;
 }
