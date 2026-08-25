@@ -31,7 +31,8 @@ const APPROVED_COUNTS = Object.freeze({
   useState: 82,
   useEffect: 59,
   // LOT 5.91A: root savingsGoal removed; useMemo drops by the 1 hook removed with it.
-  useMemo: 88,
+  // LOT 10.2B: +1 useMemo for the canonical obligation/action priority shadow integration.
+  useMemo: 89,
   buildFiscalSummaryInput: 2,
   calculateFiscalSummary: 2,
 });

@@ -241,8 +241,12 @@ test("LOT 5.91A useEffect count is stable, never increased by this removal", () 
 });
 
 // useMemo dropped by exactly the one hook removed with the declaration.
+// LOT 10.2B added one new useMemo afterwards (canonical obligation/action
+// priority shadow integration), so this LOT's own baseline is now 88 -- the
+// "-1 from the removal" fact this test protects is unaffected by that later,
+// unrelated addition.
 test("LOT 5.91A useMemo count dropped by exactly one call site (the removed hook)", () => {
-  assert.equal(occurrences(CODE, /\buseMemo\(/g), 87);
+  assert.equal(occurrences(CODE, /\buseMemo\(/g), 88);
 });
 
 // 20. no new helper/shared function was introduced merging the two aliases

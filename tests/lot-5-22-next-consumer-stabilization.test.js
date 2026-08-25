@@ -36,7 +36,8 @@ const APPROVED_APP_COUNTS = Object.freeze({
   useState: 82,
   useEffect: 59,
   // LOT 5.91A: root savingsGoal removed, dropping 2 estimatedCharges reads (formula body + dependency array) and 1 useMemo hook.
-  useMemo: 88,
+  // LOT 10.2B: +1 useMemo for the canonical obligation/action priority shadow integration.
+  useMemo: 89,
 });
 
 function sourceWithoutComments(source) {

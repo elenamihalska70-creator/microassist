@@ -60,7 +60,8 @@ const APPROVED_APP_COUNTS = Object.freeze({
   createRuntimeParityEvidence: 2,
   useState: 82,
   useEffect: 59,
-  useMemo: 88,
+  // LOT 10.2B: +1 useMemo for the canonical obligation/action priority shadow integration.
+  useMemo: 89,
 });
 
 function sourceWithoutComments(source) {

@@ -22,7 +22,14 @@ import {
   createRuntimeParityEvidence,
   createRuntimeParityEvidenceStore,
 } from "./application/shadow/runtimeParityEvidence.js";
+import {
+  buildLegacyActionPrioritySnapshot,
+  buildCanonicalActionPrioritySnapshot,
+  createActionPriorityParityEvidence,
+  createActionPriorityParityEvidenceStore,
+} from "./application/shadow/actionPriorityParityEvidence.js";
 import { calculateFiscalSummary } from "./domain/calculations/facade/index.js";
+import { getPrioritizedActions } from "./domain/obligations/index.js";
 import { calculateNextReminderDate } from "./domain/rules/reminderSchedule.js";
 import { showConsoleSignature } from "./consoleSignature.js";
 import { useAuth } from "./context/AuthContext.jsx";
@@ -75,6 +82,15 @@ const SHADOW_PARITY_EVIDENCE_COLLECTION_ENABLED = true;
 const FISCAL_SUMMARY_FIRST_SLICE_VISIBLE_REPLACEMENT_ENABLED = true;
 const SHADOW_PARITY_EVIDENCE_STORE = createRuntimeParityEvidenceStore({
   enabled: SHADOW_PARITY_EVIDENCE_COLLECTION_ENABLED,
+});
+// LOT 10.2B: canonical obligation/action priority model, run in shadow mode
+// only -- it does not drive any rendered UI yet (see docs section 10, "shadow
+// migration strategy"). This records parity evidence comparing the legacy
+// urgency signals (computed.urgency/tvaStatus, premiumTriggerContext) against
+// the new canonical model's top-ranked action, without changing behavior.
+const ACTION_PRIORITY_SHADOW_ENABLED = true;
+const ACTION_PRIORITY_PARITY_EVIDENCE_STORE = createActionPriorityParityEvidenceStore({
+  enabled: ACTION_PRIORITY_SHADOW_ENABLED,
 });
 const FEEDBACK_FORM_URL =
   "https://docs.google.com/forms/d/e/1FAIpQLSfFLqWZajP6Dy0Zm5-bS9cnE5-joWecfCgfyIhzGRMbsk-jqA/viewform";
@@ -6217,6 +6233,58 @@ useEffect(() => {
       isPostEarlyAccessTrial,
     ],
   );
+
+  // LOT 10.2B shadow integration: computes the canonical obligation/action
+  // priority model alongside the legacy urgency systems above and records
+  // parity evidence. Read-only -- does not affect fiscalSummaryShadow,
+  // smartAlerts, smartPriorities, premiumTriggerContext, or any rendered UI.
+  useMemo(() => {
+    if (!ACTION_PRIORITY_SHADOW_ENABLED || !hasProfileCore || !fiscalSummaryShadow) {
+      return null;
+    }
+
+    try {
+      const prioritizedActions = getPrioritizedActions({
+        fiscalProfile: {
+          activity_type: dashboardAnswers.activity_type,
+          acre: dashboardAnswers.acre,
+          acre_start_date: dashboardAnswers.acre_start_date,
+          business_start_date: dashboardAnswers.business_start_date,
+          declaration_frequency: dashboardAnswers.declaration_frequency,
+        },
+        revenues,
+        referenceDate: getTodayIsoDate(),
+      });
+      const actionPriorityLegacySnapshot = buildLegacyActionPrioritySnapshot({
+        computed,
+        premiumTriggerContext,
+      });
+      const actionPriorityCanonicalSnapshot = buildCanonicalActionPrioritySnapshot(prioritizedActions);
+      const actionPriorityParityEvidence = createActionPriorityParityEvidence({
+        scenarioId: "app.dashboard.action-priority",
+        legacyActionSnapshot: actionPriorityLegacySnapshot,
+        canonicalActionSnapshot: actionPriorityCanonicalSnapshot,
+        observedAt: getTodayIsoDate(),
+      });
+      ACTION_PRIORITY_PARITY_EVIDENCE_STORE.record(actionPriorityParityEvidence);
+
+      return { prioritizedActions, actionPriorityParityEvidence };
+    } catch {
+      return null;
+    }
+  }, [
+    dashboardAnswers.activity_type,
+    dashboardAnswers.acre,
+    dashboardAnswers.acre_start_date,
+    dashboardAnswers.business_start_date,
+    dashboardAnswers.declaration_frequency,
+    revenues,
+    hasProfileCore,
+    fiscalSummaryShadow,
+    computed,
+    premiumTriggerContext,
+  ]);
+
   const sessionTriggerKey = premiumTriggerContext?.triggerType
     ? `microassist_premium_trigger_session_${premiumTriggerContext.triggerType}`
     : null;

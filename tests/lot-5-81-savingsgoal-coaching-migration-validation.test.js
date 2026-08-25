@@ -38,7 +38,8 @@ const APPROVED_COUNTS = Object.freeze({
   savingsGoal: 0,
   useState: 81,
   useEffect: 58,
-  useMemo: 87,
+  // LOT 10.2B: +1 useMemo for the canonical obligation/action priority shadow integration.
+  useMemo: 88,
   buildFiscalSummaryInput: 2,
   calculateFiscalSummary: 2,
 });
