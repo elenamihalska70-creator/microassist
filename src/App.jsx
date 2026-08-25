@@ -77,6 +77,19 @@ const EMAIL_EVENT_KEY_PREFIX = "microassist_email_event_";
 const BETA_SEEN_KEY = "beta_seen";
 const PROFILE_CONFLICT_STRATEGY_KEY = "microassist_profile_conflict_strategy";
 const SUBSCRIPTIONS_TABLE_ENABLED = false;
+// LOT 10.2C.1: the J-7/J-2 declaration-reminder useEffects below call
+// sendTrialEndingEmail(requestBody) -- but that callback (hardened in an
+// earlier, unrelated LOT for the trial-lifecycle-email flow) takes NO
+// parameters and sends a bare authenticated POST with no body; the Edge
+// Function derives its own event type solely from profiles.trial_ends_at,
+// with no concept of a declaration deadline. The declaration-specific
+// payload these useEffects build (eventType, subject, html, text) is
+// therefore discarded before it ever reaches the network -- this pathway
+// cannot send a declaration-reminder email under any circumstance. Kept
+// disabled (rather than deleted) until a dedicated, purpose-built, secured
+// declaration-email endpoint exists (mirroring the trial-email hardening
+// pattern) -- flip this flag once that endpoint is real.
+const DECLARATION_REMINDER_EMAILS_ENABLED = false;
 const FISCAL_SUMMARY_SHADOW_ENABLED = true;
 const SHADOW_PARITY_EVIDENCE_COLLECTION_ENABLED = true;
 const FISCAL_SUMMARY_FIRST_SLICE_VISIBLE_REPLACEMENT_ENABLED = true;
@@ -1331,50 +1344,24 @@ function getPremiumTrigger({
   return null;
 }
 
+// LOT 10.2C.1: a legal/fiscal compliance deadline must never be used as a
+// pressure mechanism for monetization. The "tva_exceeded" and
+// "declaration_urgent" triggers below used to be dead code (the deadline
+// engine could never actually produce a near/overdue value -- see LOT
+// 10.2C), so this auto-opening Premium modal had never fired from real
+// compliance urgency in production. Now that the deadline engine is fixed,
+// those two conditions ARE reachable, so they are removed here rather than
+// shipped: the user must always be able to see and act on the compliance
+// obligation (surfaced unconditionally in the "Repères fiscaux" dashboard
+// section, independent of Premium tier) without an unsolicited Premium
+// interruption. Other, non-compliance engagement triggers below (multiple
+// priorities, trial/early-access timing) are unrelated to this and unchanged.
 function getPremiumTriggerContext({
-  computed,
   smartPriorities,
   trialDaysLeft,
   isEarlyAccessEndingToday = false,
   isPostEarlyAccessTrial = false,
 }) {
-  if (computed?.tvaStatus === "exceeded") {
-    return {
-      triggerType: "tva_exceeded",
-      priorityLevel: "high",
-      message:
-        "Tu as dépassé le seuil TVA. Premium peut t’aider à anticiper la suite.",
-    };
-  }
-
-  if (
-    computed?.deadlineDate instanceof Date &&
-    !Number.isNaN(computed.deadlineDate.getTime())
-  ) {
-    const today = new Date();
-    const startOfToday = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate(),
-    );
-    const startOfDeadline = new Date(
-      computed.deadlineDate.getFullYear(),
-      computed.deadlineDate.getMonth(),
-      computed.deadlineDate.getDate(),
-    );
-    const diffMs = startOfDeadline.getTime() - startOfToday.getTime();
-    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays <= 2) {
-      return {
-        triggerType: "declaration_urgent",
-        priorityLevel: "high",
-        message:
-          "Ta déclaration approche. Premium te prévient avant les échéances importantes et t’aide à agir plus tôt.",
-      };
-    }
-  }
-
   if (Array.isArray(smartPriorities) && smartPriorities.length >= 2) {
     return {
       triggerType: "multiple_priorities",
@@ -6219,19 +6206,12 @@ useEffect(() => {
   const premiumTriggerContext = useMemo(
     () =>
       getPremiumTriggerContext({
-        computed,
         smartPriorities,
         trialDaysLeft,
         isEarlyAccessEndingToday,
         isPostEarlyAccessTrial,
       }),
-    [
-      computed,
-      smartPriorities,
-      trialDaysLeft,
-      isEarlyAccessEndingToday,
-      isPostEarlyAccessTrial,
-    ],
+    [smartPriorities, trialDaysLeft, isEarlyAccessEndingToday, isPostEarlyAccessTrial],
   );
 
   // LOT 10.2B shadow integration: computes the canonical obligation/action
@@ -7943,6 +7923,7 @@ useEffect(() => {
     user?.id,
   ]);
   useEffect(() => {
+    if (!DECLARATION_REMINDER_EMAILS_ENABLED) return;
     const nextDeclarationDate = computed?.deadlineDate;
 
     if (!user?.id || !user?.email) return;
@@ -8035,6 +8016,7 @@ useEffect(() => {
     user?.id,
   ]);
   useEffect(() => {
+    if (!DECLARATION_REMINDER_EMAILS_ENABLED) return;
     const nextDeclarationDate = computed?.deadlineDate;
 
     if (!user?.id || !user?.email) return;

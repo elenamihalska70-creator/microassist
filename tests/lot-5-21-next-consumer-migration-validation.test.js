@@ -295,7 +295,16 @@ test("LOT 5.21 validates the existing feature flag remains local and unique", ()
     code.match(/\bconst\s+[A-Z0-9_]*FEATURE[A-Z0-9_]*\s*=/g) ?? [],
     [],
   );
-  assert.doesNotMatch(code, /\bconst\s+[A-Z0-9_]*(URSSAF|DECLARATION)[A-Z0-9_]*\s*=/);
+  // LOT 10.2C.1: DECLARATION_REMINDER_EMAILS_ENABLED is an unrelated
+  // release-safety flag for the declaration-reminder EMAIL pathway (see
+  // tests/lot-10-2c-1-declaration-email-safety.test.js) -- it does not
+  // compete with or duplicate FISCAL_SUMMARY_FIRST_SLICE_VISIBLE_REPLACEMENT_ENABLED,
+  // which is what this assertion actually protects. Explicitly excluded by
+  // name so this still catches any OTHER URSSAF/DECLARATION-named flag.
+  assert.doesNotMatch(
+    code,
+    /\bconst\s+(?!DECLARATION_REMINDER_EMAILS_ENABLED\b)[A-Z0-9_]*(URSSAF|DECLARATION)[A-Z0-9_]*\s*=/,
+  );
   assert.doesNotMatch(block, /localStorage|sessionStorage|supabase|fetch|Date\.now|new Date|Math\.random/i);
 });
 
