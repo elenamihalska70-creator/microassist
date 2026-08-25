@@ -2,6 +2,10 @@
 
 import { calculateStandardContribution } from "../domain/calculations/contributions/index.js";
 import { calculateLegacyAcreContribution } from "../domain/calculations/acre/index.js";
+import {
+  resolveCurrentDeclarationPeriod,
+  computeDeclarationDeadline,
+} from "../domain/rules/declarationPeriod.js";
 
 function formatFR(date) {
   return date.toLocaleDateString("fr-FR", {
@@ -16,35 +20,6 @@ function formatMonthFR(date) {
     month: "long",
     year: "numeric",
   });
-}
-
-function daysBetween(a, b) {
-  const ms = b.getTime() - a.getTime();
-  return Math.ceil(ms / (1000 * 60 * 60 * 24));
-}
-
-function getQuarterIndex(m) {
-  if (m <= 2) return 1;
-  if (m <= 5) return 2;
-  if (m <= 8) return 3;
-  return 4;
-}
-
-function nextQuarterDeadline(today) {
-  const y = today.getFullYear();
-  const q = getQuarterIndex(today.getMonth());
-
-  if (q === 1) return new Date(y, 3, 30);
-  if (q === 2) return new Date(y, 6, 31);
-  if (q === 3) return new Date(y, 9, 31);
-  return new Date(y + 1, 0, 31);
-}
-
-function nextMonthlyDeadline(today) {
-  // dernier jour du mois suivant
-  const year = today.getFullYear();
-  const month = today.getMonth();
-  return new Date(year, month + 2, 0);
 }
 
 // Fonction pour calculer l'année d'activité
@@ -220,41 +195,40 @@ export function computeObligations(answers = {}) {
   }
 
   // ==================== DECLARATION DEADLINES ====================
+  // LOT 10.2C: the period currently declarable is resolved independently of
+  // the deadline itself (src/domain/rules/declarationPeriod.js), so a given
+  // period's deadline no longer drifts forward with "today" -- see that
+  // module and the LOT 10.2C final report for the verified rule and sources.
   const today = new Date();
   const freq = answers.declaration_frequency;
 
-  let deadlineDate = null;
+  const period = resolveCurrentDeclarationPeriod({ frequency: freq, referenceDate: today });
+  const deadline = period ? computeDeclarationDeadline({ period, referenceDate: today }) : null;
+
+  const deadlineDate = deadline?.dueDate ?? null;
+  const daysLeft = deadline?.daysLeft ?? null;
+
   let nextDeclaration = "Prochaine échéance : à définir";
 
   if (freq === "mensuel") {
-    deadlineDate = nextMonthlyDeadline(today);
     nextDeclaration = "Déclaration mensuelle";
   } else if (freq === "trimestriel") {
-    deadlineDate = nextQuarterDeadline(today);
     nextDeclaration = "Déclaration trimestrielle";
   }
 
   let periodLabel = null;
 
-  if (freq === "mensuel") {
-    periodLabel = `CA de ${formatMonthFR(today)}`;
-  } else if (freq === "trimestriel") {
-    const q = getQuarterIndex(today.getMonth());
-    periodLabel = `CA du trimestre T${q} ${today.getFullYear()}`;
-  }
-
-  let daysLeft = null;
-  if (deadlineDate) {
-    daysLeft = daysBetween(today, deadlineDate);
+  if (period?.type === "month") {
+    periodLabel = `CA de ${formatMonthFR(new Date(period.year, period.month0, 1))}`;
+  } else if (period?.type === "quarter") {
+    periodLabel = `CA du trimestre T${period.quarter} ${period.year}`;
   }
 
   let urgency = null;
 
-  if (deadlineDate) {
-    const diffMs = deadlineDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    if (diffDays < 0) urgency = "late";
-    else if (diffDays <= 7) urgency = "soon";
+  if (daysLeft !== null) {
+    if (daysLeft < 0) urgency = "late";
+    else if (daysLeft <= 7) urgency = "soon";
   }
 
   // ==================== RECOMMENDATIONS ====================

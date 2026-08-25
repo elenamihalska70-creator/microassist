@@ -8,9 +8,14 @@ import { calculateNextReminderDate } from "../src/domain/index.js";
 // primitives as the function under test so assertions stay timezone-
 // independent across CI machines, instead of hardcoding a UTC literal.
 
-test("monthly: returns last day of next month minus 7 days", () => {
-  const today = new Date(2026, 0, 15); // 15 Jan 2026
-  const expected = new Date(2026, 2, 0); // last day of Feb 2026
+// LOT 10.2C: monthly declarers report LAST calendar month's revenue, due by
+// the last day of the CURRENT month (previously this function -- like
+// obligations.js and deadlineRules.js -- anchored one month too far out,
+// so the reminder date could never land close to a real deadline).
+
+test("monthly: returns last day of the current month minus 7 days", () => {
+  const today = new Date(2026, 7, 25); // 25 Aug 2026 -> declaring July, due 31 Aug
+  const expected = new Date(today.getFullYear(), today.getMonth() + 1, 0); // last day of August 2026
   expected.setDate(expected.getDate() - 7);
 
   const result = calculateNextReminderDate("mensuel", today);
@@ -19,8 +24,8 @@ test("monthly: returns last day of next month minus 7 days", () => {
 });
 
 test("monthly: respects leap year (Feb 29) when computing the offset", () => {
-  const today = new Date(2028, 0, 15); // 2028 is a leap year
-  const expected = new Date(2028, 2, 0); // last day of Feb 2028 = 29
+  const today = new Date(2028, 1, 15); // 15 Feb 2028 -> declaring January 2028, due end of Feb 2028
+  const expected = new Date(today.getFullYear(), today.getMonth() + 1, 0); // last day of Feb 2028
   assert.equal(expected.getDate(), 29);
   expected.setDate(expected.getDate() - 7);
 

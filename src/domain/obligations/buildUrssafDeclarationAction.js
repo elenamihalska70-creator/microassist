@@ -1,4 +1,5 @@
 import { getDeadlineRule } from "../rules/deadlineRules.js";
+import { formatLocalDate } from "../calculations/dates.js";
 import { createAction } from "./actionObject.js";
 import { getOfficialAction } from "./officialActionRegistry.js";
 import {
@@ -11,12 +12,8 @@ import {
 } from "./constants.js";
 
 // Exported so the daysLeft -> status -> severity/tier mapping can be unit
-// tested directly with synthetic daysLeft values, independent of whatever
-// calendar dates the reused deadline rule (deadlineRules.js) can currently
-// produce -- see tests/lot-10-2b-obligation-action-priority.test.js for why
-// that matters (its due/due_soon/overdue branches are unreachable through
-// real dates today, a pre-existing property of the reused rule, not of this
-// mapping).
+// tested directly with synthetic daysLeft values, independent of whichever
+// calendar dates the deadline rule (deadlineRules.js) is exercised with.
 export function resolveStatus(daysLeft) {
   if (daysLeft === null) return null;
   if (daysLeft < 0) return OBLIGATION_STATUS.overdue;
@@ -44,9 +41,13 @@ export function resolveSeverityAndTier(status, daysLeft) {
   return { severity: SEVERITY.upcoming, priorityTier: PRIORITY_TIER.futurePreparation };
 }
 
+// LOT 10.2C: was `date.toISOString().slice(0, 10)`, which converts a LOCAL
+// midnight Date to UTC before slicing -- shifting the reported calendar day
+// backward by one for any timezone ahead of UTC (including France, this
+// app's actual market). formatLocalDate reads the Date's own local
+// components instead, matching how `deadlineDate` was constructed.
 function toIsoDate(date) {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
-  return date.toISOString().slice(0, 10);
+  return formatLocalDate(date);
 }
 
 /**

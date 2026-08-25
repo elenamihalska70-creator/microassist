@@ -18,21 +18,15 @@ import {
 import { buildFiscalSummaryInput } from "../src/application/adapters/index.js";
 import { calculateFiscalSummary } from "../src/domain/calculations/facade/index.js";
 
-// NOTE on scope: the declaration deadline itself (deadlineDate/daysLeft)
-// comes from the reused, unmodified src/domain/rules/deadlineRules.js. That
-// rule recomputes its target deadline relative to `today` every call (last
-// day of "next month", or the current quarter's fixed date) -- which means,
-// as currently implemented, it can never actually return daysLeft <= 7 or
-// negative through a real calendar date: by the time "today" would get
-// close to a deadline, the rule has already rolled forward to a later one
-// (e.g. once today enters April, a Q1 profile's deadline jumps from the
-// imminent Apr30 straight to Jul31). This is a pre-existing property of the
-// reused rule, not introduced here, and is out of scope for LOT 10.2B to
-// fix (see "protect the canonical fiscal engine" / "do not invent arbitrary
-// new legal deadlines"). Overdue/due-soon/due-today status MAPPING is
-// therefore verified directly against resolveStatus/resolveSeverityAndTier
-// (this module's own logic) below, while integration tests exercise the one
-// status that is reachable through real dates today: "upcoming".
+// NOTE on scope: as of LOT 10.2C, src/domain/rules/deadlineRules.js resolves
+// a period-anchored, stable deadline (src/domain/rules/declarationPeriod.js)
+// instead of one that rolled forward with "today" -- overdue/due-soon/due
+// are now reachable through real calendar dates (see the "REAL DATES,
+// REACHABLE STATES" block below and tests/lot-10-2c-declaration-deadline-lifecycle.test.js
+// for the full monthly/quarterly matrix). Status MAPPING (daysLeft ->
+// OBLIGATION_STATUS) is still verified directly against
+// resolveStatus/resolveSeverityAndTier below, since that's this module's own
+// logic, independent of whichever dates happen to produce a given daysLeft.
 
 test("resolveStatus maps daysLeft onto the obligation lifecycle", () => {
   assert.equal(resolveStatus(null), null);
@@ -183,6 +177,115 @@ test("NORMAL ACTIVE USER: declaration upcoming carries a real due date and the o
   assert.ok(declarationAction.dueDate);
   assert.equal(declarationAction.officialAction.url, "https://www.autoentrepreneur.urssaf.fr/");
   assert.equal(declarationAction.officialAction.provider, "urssaf");
+});
+
+// ---------------------------------------------------------------------
+// REAL DATES, REACHABLE STATES (LOT 10.2C) -- now that the deadline engine
+// is period-anchored instead of rolling forward with "today", the full
+// canonical model (getPrioritizedActions, not just the pure status mapper)
+// genuinely reaches DUE_SOON/DUE/OVERDUE through real calendar dates, and
+// ranks them correctly against a lower-tier action.
+// ---------------------------------------------------------------------
+
+test("REAL DATES: a monthly declarer 2 days from deadline is DUE_SOON at the mandatory-immediate tier", () => {
+  const actions = getPrioritizedActions({
+    fiscalProfile: { activity_type: "services", acre: "no", declaration_frequency: "mensuel" },
+    revenues: [],
+    referenceDate: "2026-08-29", // declaring July's revenue, due 31 Aug 2026
+  });
+
+  const declarationAction = actions.find((action) => action.type === ACTION_TYPE.urssafDeclaration);
+  assert.ok(declarationAction);
+  assert.equal(declarationAction.status, OBLIGATION_STATUS.dueSoon);
+  assert.equal(declarationAction.priorityTier, PRIORITY_TIER.mandatoryImmediate);
+  assert.equal(declarationAction.dueDate, "2026-08-31");
+  assert.equal(actions[0].id, declarationAction.id);
+});
+
+test("REAL DATES: a monthly declarer on deadline day is DUE, and it outranks a lower-tier tip", () => {
+  const actions = getPrioritizedActions({
+    fiscalProfile: { activity_type: "services", acre: "no", declaration_frequency: "mensuel" },
+    revenues: [],
+    referenceDate: "2026-08-31",
+  });
+  const tip = createAction({
+    id: "tip-1",
+    type: ACTION_TYPE.educationalTip,
+    severity: SEVERITY.info,
+    priorityTier: PRIORITY_TIER.optimizationEducation,
+    titleKey: "tip.generic",
+    source: "test",
+    reason: "test fixture",
+  });
+
+  const declarationAction = actions.find((action) => action.type === ACTION_TYPE.urssafDeclaration);
+  assert.equal(declarationAction.status, OBLIGATION_STATUS.due);
+
+  const ranked = prioritizeActions([...actions, tip]);
+  assert.equal(ranked[0].id, declarationAction.id);
+});
+
+// OVERDUE via getPrioritizedActions with only a referenceDate is NOT
+// reachable, and this is by design, not a gap: resolveCurrentDeclarationPeriod
+// has no persisted "was it actually declared" signal, so the moment a
+// window's last day (its deadline) passes, auto-selection advances to a
+// FRESH upcoming period rather than continuing to show the missed one as
+// increasingly overdue forever (which would be equally wrong for a user who
+// legitimately already declared on time). Sustained OVERDUE-until-confirmed
+// requires the future declaration-dossier system's persisted completion
+// state (explicitly out of scope for LOT 10.2C). computeDeclarationDeadline
+// itself DOES fully support OVERDUE for an explicit, already-identified
+// period (see tests/lot-10-2c-declaration-deadline-lifecycle.test.js) --
+// this test instead verifies the RANKING guarantee holds once an overdue
+// action exists by any means.
+test("REAL DATES: an OVERDUE declaration outranks DUE, DUE_SOON and missing information", () => {
+  const overdue = createAction({
+    id: "urssaf-declaration-overdue",
+    type: ACTION_TYPE.urssafDeclaration,
+    status: OBLIGATION_STATUS.overdue,
+    severity: SEVERITY.critical,
+    priorityTier: PRIORITY_TIER.preventHarm,
+    titleKey: "obligation.urssaf_declaration.overdue",
+    source: "test",
+    reason: "test fixture",
+  });
+  const due = createAction({
+    id: "urssaf-declaration-due",
+    type: ACTION_TYPE.urssafDeclaration,
+    status: OBLIGATION_STATUS.due,
+    severity: SEVERITY.critical,
+    priorityTier: PRIORITY_TIER.mandatoryImmediate,
+    titleKey: "obligation.urssaf_declaration.due",
+    source: "test",
+    reason: "test fixture",
+  });
+  const dueSoon = createAction({
+    id: "urssaf-declaration-due-soon",
+    type: ACTION_TYPE.urssafDeclaration,
+    status: OBLIGATION_STATUS.dueSoon,
+    severity: SEVERITY.urgent,
+    priorityTier: PRIORITY_TIER.approachingObligation,
+    titleKey: "obligation.urssaf_declaration.due_soon",
+    source: "test",
+    reason: "test fixture",
+  });
+  const missingInfo = createAction({
+    id: "missing-information-business_start_date",
+    type: ACTION_TYPE.missingInformation,
+    severity: SEVERITY.urgent,
+    priorityTier: PRIORITY_TIER.missingInformation,
+    titleKey: "obligation.missing_information.business_start_date",
+    source: "test",
+    reason: "test fixture",
+  });
+
+  // Full risk-first order required by LOT 10.2C section 10: OVERDUE > DUE >
+  // DUE_SOON > missing information.
+  const ranked = prioritizeActions([missingInfo, dueSoon, due, overdue]);
+  assert.deepEqual(
+    ranked.map((action) => action.id),
+    [overdue.id, due.id, dueSoon.id, missingInfo.id],
+  );
 });
 
 // ---------------------------------------------------------------------

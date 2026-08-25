@@ -1,78 +1,67 @@
 import { DECLARATION_FREQUENCIES } from "../constants.js";
 import { withRuleTrace } from "./ruleSet.js";
+import {
+  resolveCurrentDeclarationPeriod,
+  computeDeclarationDeadline,
+} from "./declarationPeriod.js";
 
-const DAY_MS = 1000 * 60 * 60 * 24;
+const SOON_THRESHOLD_DAYS = 7;
 
-function coerceDate(value) {
-  if (value instanceof Date) return value;
-  if (!value) return new Date();
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? new Date() : date;
-}
+function formatPeriodLabel(frequency, period) {
+  if (!period) return null;
 
-function getQuarterIndex(monthIndex) {
-  if (monthIndex <= 2) return 1;
-  if (monthIndex <= 5) return 2;
-  if (monthIndex <= 8) return 3;
-  return 4;
-}
+  if (period.type === "month") {
+    const monthDate = new Date(period.year, period.month0, 1);
+    return `CA de ${monthDate.toLocaleDateString("fr-FR", {
+      month: "long",
+      year: "numeric",
+    })}`;
+  }
 
-function nextQuarterDeadline(today) {
-  const year = today.getFullYear();
-  const quarter = getQuarterIndex(today.getMonth());
+  if (period.type === "quarter") {
+    return `CA du trimestre T${period.quarter} ${period.year}`;
+  }
 
-  if (quarter === 1) return new Date(year, 3, 30);
-  if (quarter === 2) return new Date(year, 6, 31);
-  if (quarter === 3) return new Date(year, 9, 31);
-  return new Date(year + 1, 0, 31);
-}
-
-function nextMonthlyDeadline(today) {
-  return new Date(today.getFullYear(), today.getMonth() + 2, 0);
+  return null;
 }
 
 export function getDeadlineRule(context = {}) {
   context = context || {};
   const frequency = context.frequency || context.declaration_frequency;
-  const today = coerceDate(context.today);
-  let deadlineDate = null;
-  let nextDeclaration = "Prochaine échéance : à définir";
-  let periodLabel = null;
+  const referenceDate = context.today;
 
-  if (frequency === DECLARATION_FREQUENCIES.monthly) {
-    deadlineDate = nextMonthlyDeadline(today);
-    nextDeclaration = "Déclaration mensuelle";
-    periodLabel = `CA de ${today.toLocaleDateString("fr-FR", {
-      month: "long",
-      year: "numeric",
-    })}`;
-  } else if (frequency === DECLARATION_FREQUENCIES.quarterly) {
-    deadlineDate = nextQuarterDeadline(today);
-    nextDeclaration = "Déclaration trimestrielle";
-    periodLabel = `CA du trimestre T${getQuarterIndex(today.getMonth())} ${today.getFullYear()}`;
-  }
-
-  const daysLeft = deadlineDate
-    ? Math.ceil((deadlineDate.getTime() - today.getTime()) / DAY_MS)
+  const period = resolveCurrentDeclarationPeriod({ frequency, referenceDate });
+  const deadline = period
+    ? computeDeclarationDeadline({ period, referenceDate })
     : null;
+
+  const deadlineDate = deadline?.dueDate ?? null;
+  const daysLeft = deadline?.daysLeft ?? null;
+  const periodLabel = formatPeriodLabel(frequency, period);
+  const nextDeclaration =
+    frequency === DECLARATION_FREQUENCIES.monthly
+      ? "Déclaration mensuelle"
+      : frequency === DECLARATION_FREQUENCIES.quarterly
+        ? "Déclaration trimestrielle"
+        : "Prochaine échéance : à définir";
   const urgency =
-    daysLeft === null ? null : daysLeft < 0 ? "late" : daysLeft <= 7 ? "soon" : null;
+    daysLeft === null ? null : daysLeft < 0 ? "late" : daysLeft <= SOON_THRESHOLD_DAYS ? "soon" : null;
 
   return withRuleTrace({
     ruleId:
       frequency === DECLARATION_FREQUENCIES.monthly
-        ? "DEADLINE_URSSAF_MONTHLY_LAST_DAY_NEXT_MONTH"
+        ? "DEADLINE_URSSAF_MONTHLY_PERIOD_ANCHORED"
         : frequency === DECLARATION_FREQUENCIES.quarterly
-          ? "DEADLINE_URSSAF_QUARTER_SIMPLIFIED"
+          ? "DEADLINE_URSSAF_QUARTER_PERIOD_ANCHORED"
           : "DEADLINE_URSSAF_UNKNOWN_FREQUENCY",
-    name: "Echeance URSSAF historique",
+    name: "Echeance URSSAF ancree sur la periode declaree",
     description:
-      "Expose la regle de date actuellement utilisee par computeObligations.",
+      "Identifie la periode (mois ou trimestre) actuellement declarable et calcule une echeance fixe pour cette periode, stable dans le temps (LOT 10.2C -- corrige le glissement permanent de l'echeance observe dans computeObligations avant cette date).",
     inputs: ["frequency", "today"],
     value: {
-      monthly: "Dernier jour du mois suivant",
+      monthly: "Dernier jour du mois suivant la periode declaree",
       quarterly: ["30/04", "31/07", "31/10", "31/01"],
-      soonThresholdDays: 7,
+      soonThresholdDays: SOON_THRESHOLD_DAYS,
     },
     output: {
       deadlineDate,
@@ -82,11 +71,14 @@ export function getDeadlineRule(context = {}) {
       urgency,
     },
     sourceReference:
-      "src/utils/obligations.js#nextMonthlyDeadline,#nextQuarterDeadline,#computeObligations",
+      "Verifie aupres d'entreprendre.service-public.gouv.fr (recupere le 2026-08-25) ; corrobore par autoentrepreneur.urssaf.fr. Voir le rapport final LOT 10.2C pour les citations completes.",
     reason:
-      "Preserve les echeances simplifiees existantes sans creer de Deadline Engine.",
+      "La periode declarable est desormais resolue independamment de la date d'echeance elle-meme (src/domain/rules/declarationPeriod.js), de sorte que l'echeance d'une periode donnee ne se deplace plus lorsque le temps avance.",
     fallback: deadlineDate ? null : "unknown_frequency_no_deadline",
-    warnings: ["Echeances simplifiees, provenance reglementaire non verifiee dans ce lot."],
-    confidence: deadlineDate ? "medium" : "low",
+    warnings: [
+      "Ne modelise pas encore la premiere declaration apres creation d'activite (regle non etablie de maniere fiable aupres d'une source primaire -- voir rapport LOT 10.2C).",
+      "Ne modelise pas le report d'echeance en cas de week-end ou jour ferie.",
+    ],
+    confidence: deadlineDate ? "high" : "low",
   });
 }

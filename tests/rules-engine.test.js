@@ -323,24 +323,47 @@ test("deadline rules match current monthly and quarterly behavior", () => {
 });
 
 test("deadline edge cases cover year rollover, February and end of month", () => {
+  // Monthly: declaring January's revenue during February -- non-leap year,
+  // deadline lands on the last day of February.
+  assert.equal(
+    dateOnly(getDeadlineRule({
+      frequency: "mensuel",
+      today: new Date("2026-02-15T12:00:00"),
+    }).output.deadlineDate),
+    "2026-02-28",
+  );
+  // Monthly: same scenario in a leap year -- deadline lands on 29 February.
+  assert.equal(
+    dateOnly(getDeadlineRule({
+      frequency: "mensuel",
+      today: new Date("2028-02-15T12:00:00"),
+    }).output.deadlineDate),
+    "2028-02-29",
+  );
+  // Monthly: the last day of a month IS the deadline for the period
+  // declared during that month (December's revenue, declared through
+  // January, due on its last day) -- exercises the exact-boundary case.
   assert.equal(
     dateOnly(getDeadlineRule({
       frequency: "mensuel",
       today: new Date("2026-01-31T12:00:00"),
     }).output.deadlineDate),
-    "2026-02-28",
+    "2026-01-31",
   );
-  assert.equal(
-    dateOnly(getDeadlineRule({
-      frequency: "mensuel",
-      today: new Date("2028-01-31T12:00:00"),
-    }).output.deadlineDate),
-    "2028-02-29",
-  );
+  // Quarterly: mid-Q4 (not the window month), still showing Q4's own
+  // upcoming deadline, which rolls into the following calendar year.
   assert.equal(
     dateOnly(getDeadlineRule({
       frequency: "trimestriel",
       today: new Date("2026-12-15T12:00:00"),
+    }).output.deadlineDate),
+    "2027-01-31",
+  );
+  // Quarterly: January IS the window month for Q4 of the previous year.
+  assert.equal(
+    dateOnly(getDeadlineRule({
+      frequency: "trimestriel",
+      today: new Date("2027-01-15T12:00:00"),
     }).output.deadlineDate),
     "2027-01-31",
   );
