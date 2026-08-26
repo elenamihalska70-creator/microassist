@@ -1411,7 +1411,7 @@ function getPremiumTriggerContext({
       triggerType: "early_access_ending",
       priorityLevel: "medium",
       message:
-        "Ton accès complet se termine aujourd’hui. Premium te permet de continuer avec toutes les alertes.",
+        "Ton accès complet se termine aujourd’hui. Premium te permet de continuer avec les priorités avancées.",
     };
   }
 
@@ -1420,6 +1420,26 @@ function getPremiumTriggerContext({
       triggerType: "post_early_access",
       priorityLevel: "medium",
       message: "Certaines fonctionnalités sont maintenant en Premium.",
+    };
+  }
+
+  return null;
+}
+
+function buildPremiumInlineNotice(premiumTriggerContext, premiumTrigger) {
+  if (premiumTriggerContext?.triggerType) {
+    return {
+      triggerType: premiumTriggerContext.triggerType,
+      priorityLevel: premiumTriggerContext.priorityLevel,
+      message: premiumTriggerContext.message,
+    };
+  }
+
+  if (premiumTrigger) {
+    return {
+      triggerType: premiumTrigger,
+      priorityLevel: "low",
+      message: "Des options Premium sont disponibles si tu veux les découvrir.",
     };
   }
 
@@ -6464,6 +6484,9 @@ useEffect(() => {
       }),
     [smartPriorities, trialDaysLeft, isEarlyAccessEndingToday, isPostEarlyAccessTrial],
   );
+  const premiumInlineNotice = buildPremiumInlineNotice(premiumTriggerContext, premiumTrigger);
+  const premiumInlineNoticeTriggerType = premiumInlineNotice?.triggerType || null;
+  const premiumInlineNoticePriorityLevel = premiumInlineNotice?.priorityLevel || null;
 
   // LOT 10.2B shadow integration: computes the canonical obligation/action
   // priority model alongside the legacy urgency systems above and records
@@ -6520,8 +6543,8 @@ useEffect(() => {
     premiumTriggerContext,
   ]);
 
-  const sessionTriggerKey = premiumTriggerContext?.triggerType
-    ? `microassist_premium_trigger_session_${premiumTriggerContext.triggerType}`
+  const sessionTriggerKey = premiumInlineNoticeTriggerType
+    ? `microassist_premium_trigger_session_${premiumInlineNoticeTriggerType}`
     : null;
   const smartPrioritiesCountLimit =
     accessProfile?.features?.smart_priorities_count === "all"
@@ -7566,8 +7589,8 @@ useEffect(() => {
           line2:
             "Ton espace reste disponible gratuitement : revenus, factures, exports et suivi de base.",
           line3:
-            "SMS et rappels avancés bientôt en Premium.",
-          cta: "Activer les rappels automatiques",
+            "SMS et automatisations avancées bientôt en Premium.",
+          cta: "Découvrir Premium",
         };
       case "premium_active":
         return {
@@ -7582,7 +7605,7 @@ useEffect(() => {
           line1: "⭐ Rappels en phase de test",
           line2:
             "Ton espace reste disponible gratuitement : revenus, factures, exports et suivi de base.",
-          line3: "SMS et rappels avancés bientôt en Premium.",
+          line3: "SMS et automatisations avancées bientôt en Premium.",
           cta: "Gérer mes rappels",
         };
     }
@@ -7597,8 +7620,8 @@ useEffect(() => {
           "Tu as dépassé le seuil TVA. Premium t’aide à voir plus clair et à anticiper les prochaines étapes.",
         heroTitle: "TVA à anticiper",
         heroText:
-          "Microassist te prévient avant les échéances importantes et t’aide à agir plus tôt.",
-        firstBenefit: "✔ Alertes TVA et priorités complètes",
+          "Microassist met en avant les signaux TVA déjà détectés dans ton tableau de bord.",
+        firstBenefit: "✔ Suivi TVA visible dans le tableau de bord",
       };
     }
 
@@ -7606,11 +7629,11 @@ useEffect(() => {
       return {
         title: "Ne rate pas ton échéance",
         intro:
-          "Ta déclaration approche. Premium te prévient avant les échéances importantes et t’aide à agir plus tôt.",
+          "Ta déclaration approche. Microassist garde cette priorité visible dans ton tableau de bord.",
         heroTitle: "Échéance à préparer",
         heroText:
           "Garde une vue claire sur ce qui devient urgent avant qu’il ne soit trop tard.",
-        firstBenefit: "✔ Alertes avant échéances importantes",
+        firstBenefit: "✔ Priorité de déclaration visible",
       };
     }
 
@@ -7630,8 +7653,8 @@ useEffect(() => {
       return {
         title: "Ne laisse pas une échéance te surprendre",
         intro:
-          "Premium te montre toutes les priorités importantes et t’envoie des alertes avant les échéances.",
-        heroTitle: "Priorités complètes + alertes",
+          "Premium te montre toutes les priorités importantes dans ton tableau de bord.",
+        heroTitle: "Priorités complètes",
         heroText:
           "Tu sais quoi faire, quand agir, et ce qu’il ne faut pas oublier.",
         firstBenefit: "✔ Toutes les Smart Priorités",
@@ -7642,11 +7665,11 @@ useEffect(() => {
       return {
         title: "Ton accès complet se termine aujourd’hui",
         intro:
-          "Certaines fonctionnalités vont devenir Premium. Active Premium pour garder toutes les alertes et priorités.",
+          "Certaines fonctionnalités vont devenir Premium. Active Premium pour garder les priorités avancées disponibles.",
         heroTitle: "Garde l’accès complet",
         heroText:
-          "Continue à recevoir les alertes utiles au bon moment après ta période découverte.",
-        firstBenefit: "✔ Alertes et priorités Premium conservées",
+          "Continue à voir les signaux avancés après ta période découverte.",
+        firstBenefit: "✔ Priorités Premium conservées",
       };
     }
 
@@ -7654,11 +7677,11 @@ useEffect(() => {
       return {
         title: "Retrouve toutes les fonctionnalités",
         intro:
-          "Premium te prévient automatiquement avant les échéances importantes pour éviter les oublis.",
+          "Premium garde visibles les fonctionnalités avancées passées en accès payant.",
         heroTitle: "Premium pour anticiper",
         heroText:
-          "Retrouve les alertes automatiques, les priorités complètes et un accompagnement plus proactif.",
-        firstBenefit: "✔ Alertes automatiques et Smart Priorités complètes",
+          "Retrouve les priorités complètes et les signaux avancés dans ton espace fiscal.",
+        firstBenefit: "✔ Smart Priorités complètes",
       };
     }
 
@@ -7678,11 +7701,11 @@ useEffect(() => {
       return {
         title: "Premium pour anticiper la TVA",
         intro:
-          "Reçois des alertes email et des priorités plus visibles pour préparer ta facturation au bon moment.",
-        heroTitle: "Alerte TVA prioritaire",
+          "Vois les signaux TVA plus clairement pour préparer ta facturation au bon moment.",
+        heroTitle: "Signal TVA prioritaire",
         heroText:
           "Un suivi plus direct pour anticiper l’activation TVA sans manquer une étape clé.",
-        firstBenefit: "✔ Alertes TVA et priorités complètes",
+        firstBenefit: "✔ Priorités TVA plus visibles",
       };
     }
 
@@ -7702,11 +7725,11 @@ useEffect(() => {
       return {
         title: "Premium pour anticiper la fin ACRE",
         intro:
-          "Prépare la sortie ACRE avec des alertes plus ciblées avant l’évolution de tes cotisations.",
-        heroTitle: "Alerte ACRE personnalisée",
+          "Prépare la sortie ACRE avec un signal dédié avant l’évolution de tes cotisations.",
+        heroTitle: "Signal ACRE personnalisé",
         heroText:
-          "Des rappels plus précis pour anticiper la transition et ajuster ton suivi fiscal à temps.",
-        firstBenefit: "✔ Alertes personnalisées avant la fin ACRE",
+          "Une lecture plus précise pour anticiper la transition et ajuster ton suivi fiscal à temps.",
+        firstBenefit: "✔ Signal ACRE personnalisé",
       };
     }
 
@@ -7725,11 +7748,11 @@ useEffect(() => {
     return {
       title: "Premium pour anticiper",
       intro:
-        "Premium te prévient automatiquement avant les échéances importantes pour éviter les oublis.",
-      heroTitle: "Alertes et priorités",
+        "Premium met en avant les signaux importants déjà détectés dans ton espace fiscal.",
+      heroTitle: "Signaux et priorités",
       heroText:
         "Garde une vue claire sur ce qui compte vraiment avant les échéances importantes.",
-      firstBenefit: "✔ Alertes email avant échéance",
+      firstBenefit: "✔ Priorités importantes plus visibles",
     };
   }, [premiumModalSource]);
   const premiumModalPrimaryCtaLabel = useMemo(() => {
@@ -7739,28 +7762,27 @@ useEffect(() => {
       case "tva_exceeded":
         return "Voir les options à venir";
       case "declaration_urgent":
-        return "Activer les rappels automatiques";
+        return "Découvrir Premium";
       case "multiple_priorities":
       case "smart_priorities_lock":
-        return "Activer les rappels automatiques";
+        return "Découvrir Premium";
       case "early_access_ending":
-        return "Garder mes rappels actifs";
+        return "Garder mes priorités avancées";
       case "post_early_access":
         return "Gérer mes rappels";
       default:
-        return "Découvrir les rappels avancés";
+        return "Découvrir Premium";
     }
   }, [premiumModalSource]);
   const premiumModalBenefits = useMemo(
     () =>
       [
         premiumModalContent.firstBenefit,
-        "✔ Alertes email avant échéance",
-        "✔ Accompagnement proactif avant les échéances",
-        "✔ Suivi TVA + ACRE + CFE intelligent",
+        "✔ Suivi TVA + ACRE + CFE dans le tableau de bord",
         "✔ Smart Priorités complètes",
-        "✔ Alertes intelligentes par email",
-        "✔ Priorités et rappels avancés",
+        "✔ Exports PDF et CSV illimités",
+        "✔ Historique illimité des revenus",
+        "✔ Suivi des factures impayées",
       ].filter((benefit, index, benefits) => benefit && benefits.indexOf(benefit) === index),
     [premiumModalContent.firstBenefit],
   );
@@ -7791,7 +7813,7 @@ useEffect(() => {
         visible:
           computed?.tvaStatus === "soon" || computed?.tvaStatus === "exceeded",
         blockedBy: "tva-threshold",
-        text: "Passe à Premium pour recevoir les alertes TVA et SMS automatiques",
+        text: "Passe à Premium pour mieux voir les priorités TVA et SMS à venir",
         source: "premium_tva_context",
       },
       {
@@ -7803,7 +7825,7 @@ useEffect(() => {
       {
         visible: acreMonthsLeft !== null && acreMonthsLeft <= 2,
         blockedBy: "acre-ending",
-        text: "Anticipe la fin ACRE avec alertes personnalisées Premium",
+        text: "Anticipe la fin ACRE avec un signal personnalisé Premium",
         source: "premium_acre_context",
       },
       {
@@ -7853,82 +7875,40 @@ useEffect(() => {
       return;
     }
 
-    if (premiumTriggerContext?.triggerType && sessionTriggerKey) {
-      console.info("[premium-trigger] detected", premiumTriggerContext);
-
-      try {
-        if (sessionStorage.getItem(sessionTriggerKey)) {
-          return;
-        }
-      } catch {
-        // ignore sessionStorage parsing issues
-      }
-
-      trackEvent("premium_modal_open", {
-        triggerType: premiumTriggerContext.triggerType,
-        priorityLevel: premiumTriggerContext.priorityLevel,
-      });
-      console.info("[premium-analytics]", {
-        event: "premium_modal_open",
-        triggerType: premiumTriggerContext.triggerType,
-        priorityLevel: premiumTriggerContext.priorityLevel,
-      });
-      openPremiumModal(premiumTriggerContext.triggerType);
-
-      try {
-        sessionStorage.setItem(
-          sessionTriggerKey,
-          JSON.stringify({
-            trigger: premiumTriggerContext.triggerType,
-            at: Date.now(),
-          }),
-        );
-      } catch {
-        // ignore sessionStorage write issues
-      }
-
-      return;
-    }
-
-    if (!premiumTrigger) return;
-
-    const storageKey = "microassist_premium_trigger_last";
-    const cooldownMs = 24 * 60 * 60 * 1000;
+    if (!premiumInlineNoticeTriggerType || !sessionTriggerKey) return;
 
     try {
-      const raw = localStorage.getItem(storageKey);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (
-          parsed?.trigger === premiumTrigger &&
-          typeof parsed?.at === "number" &&
-          Date.now() - parsed.at < cooldownMs
-        ) {
-          return;
-        }
+      if (sessionStorage.getItem(sessionTriggerKey)) {
+        return;
       }
     } catch {
-      // ignore storage parsing issues
+      // ignore sessionStorage parsing issues
     }
 
-    openPremiumModal(premiumTrigger);
+    trackEvent("premium_inline_notice", {
+      triggerType: premiumInlineNoticeTriggerType,
+      priorityLevel: premiumInlineNoticePriorityLevel,
+    });
+    console.info("[premium-trigger] inline notice available", {
+      triggerType: premiumInlineNoticeTriggerType,
+      priorityLevel: premiumInlineNoticePriorityLevel,
+    });
 
     try {
-      localStorage.setItem(
-        storageKey,
+      sessionStorage.setItem(
+        sessionTriggerKey,
         JSON.stringify({
-          trigger: premiumTrigger,
+          trigger: premiumInlineNoticeTriggerType,
           at: Date.now(),
         }),
       );
     } catch {
-      // ignore storage write issues
+      // ignore sessionStorage write issues
     }
   }, [
     billingUiState,
-    openPremiumModal,
-    premiumTrigger,
-    premiumTriggerContext,
+    premiumInlineNoticePriorityLevel,
+    premiumInlineNoticeTriggerType,
     sessionTriggerKey,
   ]);
   useEffect(() => {
@@ -13088,8 +13068,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   </div>
                   <ul className="discoveryBannerList">
                     <li>Smart priorités avancées</li>
-                    <li>alertes intelligentes</li>
-                    <li>rappels automatiques</li>
+                    <li>signaux intelligents</li>
+                    <li>automatisations avancées</li>
                   </ul>
                   <div className="discoveryBannerActions">
                     <button
@@ -13142,7 +13122,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                       type="button"
                       onClick={() => openPremiumModal("early_access_end")}
                     >
-                      Activer les rappels automatiques
+                      Découvrir Premium
                     </button>
                   </div>
                 </div>
@@ -13609,10 +13589,10 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                       <li>mal anticiper la TVA</li>
                       <li>devoir payer d’un coup</li>
                     </ul>
-                    <p>👉 Microassist te prévient avant que ça arrive</p>
+                    <p>👉 Microassist garde ces signaux visibles dans ton espace</p>
                     <ul>
-                      <li>✔ Rappel J-7 et J-1</li>
-                      <li>✔ Alerte TVA automatique</li>
+                      <li>✔ Rappels configurables</li>
+                      <li>✔ Signal TVA visible</li>
                       <li>✔ Suivi sans oubli</li>
                     </ul>
                   </div>
@@ -13622,7 +13602,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                       type="button"
                       onClick={() => openPremiumModal("dashboard_protection")}
                     >
-                      Activer les rappels automatiques
+                      Découvrir Premium
                     </button>
                     <p className="dashboardPremiumTestNote">
                       Gratuit pendant la phase de test. Les tarifs seront définis plus tard.
@@ -14098,12 +14078,12 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                         Tu vois ta priorité la plus urgente
                       </div>
                       <div className="priorityMessage">
-                        Microassist peut te prévenir automatiquement avant les
-                        échéances importantes.
+                        Microassist garde tes échéances importantes visibles
+                        dans ton tableau de bord.
                       </div>
                       <div className="dashboardHelperText" style={{ marginTop: 8 }}>
-                        Sans alerte automatique, tu peux oublier une déclaration
-                        importante.
+                        Une déclaration importante reste à surveiller dans ton
+                        tableau de bord.
                       </div>
                       <button
                         className="btn btnActionSecondary btnSmall"
@@ -14111,7 +14091,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                         onClick={() => openPremiumModal("smart_priorities_lock")}
                         style={{ marginTop: 12 }}
                       >
-                        Activer les alertes automatiques
+                        Découvrir Premium
                       </button>
                       <div className="dashboardHelperText" style={{ marginTop: 8 }}>
                         Gratuit pendant la phase de test

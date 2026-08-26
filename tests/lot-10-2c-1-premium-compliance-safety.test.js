@@ -59,16 +59,19 @@ test("getPremiumTriggerContext no longer reads `computed` at all -- it has no co
   assert.doesNotMatch(block, /\bcomputed\b/);
 });
 
-test("getPremiumTriggerContext's non-compliance engagement triggers are untouched", () => {
+test("getPremiumTriggerContext still detects non-compliance inline notice triggers", () => {
   const block = premiumTriggerContextBlock();
   assert.match(block, /multiple_priorities/);
   assert.match(block, /early_access_ending/);
   assert.match(block, /post_early_access/);
 });
 
-test("the auto-opening Premium modal effect still exists for the remaining (non-compliance) triggers", () => {
+test("the remaining non-compliance triggers are rendered as inline notices, not automatic modal opens", () => {
   const code = sourceWithoutComments(APP_SOURCE);
-  assert.match(code, /openPremiumModal\(premiumTriggerContext\.triggerType\)/);
+  assert.match(code, /buildPremiumInlineNotice\(premiumTriggerContext,\s*premiumTrigger\)/);
+  assert.match(code, /premium_inline_notice/);
+  assert.doesNotMatch(code, /openPremiumModal\(premiumTriggerContext\.triggerType\)/);
+  assert.doesNotMatch(code, /openPremiumModal\(premiumTrigger\)/);
 });
 
 test("the 'Repères fiscaux' dashboard section (the compliance action's own surface) renders unconditionally, not behind a Premium/tier gate", () => {
@@ -221,7 +224,7 @@ test("THE ORIGINAL LOOPHOLE, closed: declaration urgency + one non-compliance pr
   assert.equal(trigger, null);
 });
 
-test("INVARIANT 4: legitimate non-compliance multiple_priorities behavior is UNCHANGED (two real non-compliance priorities still trigger it)", () => {
+test("INVARIANT 4: legitimate non-compliance multiple_priorities behavior is preserved as an inline notice candidate", () => {
   const { buildSmartPriorities, getPremiumTriggerContext } = loadCompliancePremiumFunctions();
   const smartPriorities = buildSmartPriorities({
     deadlineDate: null,
