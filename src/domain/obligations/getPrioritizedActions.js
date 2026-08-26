@@ -57,6 +57,11 @@ function tryBuildFiscalSummary(fiscalProfile, revenues, referenceDate) {
  *     Supabase). When the CURRENT declaration period has a matching row
  *     with declared_at set, that period is represented as DECLARED/PAID
  *     instead of an active DUE/DUE_SOON/OVERDUE action.
+ *   userId: LOT 10.2D.1 -- defense in depth on top of the caller's own
+ *     fetch already being scoped to one user and RLS (the real security
+ *     boundary): when provided, a dossier is only ever matched if its own
+ *     user_id also agrees, so a mixed-user declarationDossiers array can
+ *     never leak another user's dossier into this user's obligation.
  * }
  */
 export function getPrioritizedActions(context = {}) {
@@ -68,7 +73,9 @@ export function getPrioritizedActions(context = {}) {
     frequency: fiscalProfile.declaration_frequency,
     referenceDate,
   });
-  const declarationDossier = findDossierForPeriod(context.declarationDossiers, currentPeriod);
+  const declarationDossier = findDossierForPeriod(context.declarationDossiers, currentPeriod, {
+    userId: context.userId ?? null,
+  });
 
   const builderContext = {
     fiscalProfile,
@@ -89,7 +96,15 @@ export function getPrioritizedActions(context = {}) {
 
   const actions = [...missingInformationActions];
 
-  if (!blockingFields.has("declaration_frequency")) {
+  // LOT 10.2D.1 section 6: a blocking "first declaration period unresolved"
+  // finding must suppress the declaration action exactly like a missing/
+  // invalid declaration_frequency does -- otherwise a brand-new business
+  // would still get a fabricated DUE/DUE_SOON/OVERDUE claim for a period
+  // that predates their own business_start_date.
+  if (
+    !blockingFields.has("declaration_frequency") &&
+    !blockingFields.has("first_declaration_period")
+  ) {
     const declarationAction = buildUrssafDeclarationAction(builderContext);
     if (declarationAction) actions.push(declarationAction);
   }

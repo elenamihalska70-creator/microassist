@@ -234,7 +234,7 @@ test("LOT 5.91A assistant-context code has no savingsGoal reference", () => {
 test("LOT 5.91A useState count is stable, never increased by this removal", () => {
   // Removing a useMemo declaration cannot add a useState call; this locks in
   // that no incidental useState was introduced alongside the removal.
-  assert.equal(occurrences(CODE, /\buseState\(/g), 86);
+  assert.equal(occurrences(CODE, /\buseState\(/g), 87);
 });
 
 // 19. no new useEffect was introduced

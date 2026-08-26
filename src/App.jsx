@@ -3077,6 +3077,9 @@ useEffect(() => {
   const [declarationConfirmForm, setDeclarationConfirmForm] = useState(null);
   const [isSavingDeclarationConfirmation, setIsSavingDeclarationConfirmation] = useState(false);
   const [declarationConfirmError, setDeclarationConfirmError] = useState(null);
+  // LOT 10.2D.1 section 5: guards handleConfirmDeclarationPayment against a
+  // double-click firing two concurrent confirm_declaration_payment calls.
+  const [isSavingDeclarationPayment, setIsSavingDeclarationPayment] = useState(false);
   const [dashboardSections, setDashboardSections] = useState(() => {
     try {
       const raw = localStorage.getItem(DASHBOARD_SECTIONS_KEY);
@@ -6347,21 +6350,19 @@ useEffect(() => {
   ]);
 
   const handleConfirmDeclarationPayment = useCallback(async () => {
-    if (!user?.id || !currentDeclarationView?.dossier?.id) return;
+    if (!user?.id || !currentDeclarationView?.dossier?.id || isSavingDeclarationPayment) return;
 
+    setIsSavingDeclarationPayment(true);
     try {
       const payload = buildPaymentConfirmation({ paidAt: getTodayIsoDate() });
-      await savePaymentConfirmation(
-        supabase,
-        currentDeclarationView.dossier.id,
-        user.id,
-        payload,
-      );
+      await savePaymentConfirmation(supabase, currentDeclarationView.dossier.id, payload.paid_at);
       await refreshDeclarationDossiers();
     } catch (error) {
       console.error("[declaration-payment-confirm] error", error);
+    } finally {
+      setIsSavingDeclarationPayment(false);
     }
-  }, [user, currentDeclarationView, refreshDeclarationDossiers]);
+  }, [user, currentDeclarationView, isSavingDeclarationPayment, refreshDeclarationDossiers]);
 
   const smartAlertEstimatedCharges =
     fiscalSummaryVisibleSlice.finalContributionAmount;
@@ -6422,6 +6423,8 @@ useEffect(() => {
         },
         revenues,
         referenceDate: getTodayIsoDate(),
+        declarationDossiers,
+        userId: user?.id ?? null,
       });
       const actionPriorityLegacySnapshot = buildLegacyActionPrioritySnapshot({
         computed,
@@ -6447,6 +6450,8 @@ useEffect(() => {
     dashboardAnswers.business_start_date,
     dashboardAnswers.declaration_frequency,
     revenues,
+    declarationDossiers,
+    user?.id,
     hasProfileCore,
     fiscalSummaryShadow,
     computed,
@@ -14705,8 +14710,9 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                               className="btn btnActionSecondary"
                               type="button"
                               onClick={handleConfirmDeclarationPayment}
+                              disabled={isSavingDeclarationPayment}
                             >
-                              J’ai payé
+                              {isSavingDeclarationPayment ? "Enregistrement..." : "J’ai payé"}
                             </button>
                           )}
                       </div>

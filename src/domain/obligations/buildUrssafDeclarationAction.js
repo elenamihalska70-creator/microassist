@@ -82,6 +82,17 @@ export function buildUrssafDeclarationAction(context = {}) {
   const isPaid = Boolean(dossier?.paid_at);
   const isDeclared = isPaid || Boolean(dossier?.declared_at);
 
+  // LOT 10.2D.1 section 8: once a dossier exists, its own persisted
+  // due_date (snapshotted at confirmation time, already a "YYYY-MM-DD"
+  // string from the date column) is the historical source of truth for
+  // THIS period -- preferred over the live-recomputed deadlineDate so a
+  // future revision to the deadline rule can never make an already-
+  // confirmed period's displayed due date silently diverge from what was
+  // actually true when the user confirmed it. A period with no matching
+  // dossier (not yet confirmed) has no snapshot to prefer, so the live
+  // engine remains authoritative for it, exactly as before.
+  const effectiveDueDateIso = dossier?.due_date ?? toIsoDate(deadlineDate);
+
   const status = isPaid
     ? OBLIGATION_STATUS.paid
     : isDeclared
@@ -105,14 +116,14 @@ export function buildUrssafDeclarationAction(context = {}) {
       : "estimated";
 
   return createAction({
-    id: `urssaf-declaration-${toIsoDate(deadlineDate) ?? "unknown"}`,
+    id: `urssaf-declaration-${effectiveDueDateIso ?? "unknown"}`,
     type: ACTION_TYPE.urssafDeclaration,
     status,
     severity,
     priorityTier,
     titleKey: `obligation.urssaf_declaration.${status}`,
     period: periodLabel ? { frequency, label: periodLabel } : null,
-    dueDate: toIsoDate(deadlineDate),
+    dueDate: effectiveDueDateIso,
     amount,
     amountKind,
     confidence: summary && summary.calculable === false ? "low" : deadlineRule.confidence,
