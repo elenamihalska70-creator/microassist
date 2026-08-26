@@ -70,9 +70,22 @@ test("FIRST DECLARATION: a business that started AFTER the auto-selected period 
 });
 
 test("FIRST DECLARATION: a business that started BEFORE the auto-selected period begins resolves normally (no false unresolved flag)", () => {
+  // LOT 10.2E.1A: a confirmed Q1 dossier is the checkpoint
+  // resolveActiveDeclarationPeriod() stops its backward walk at -- this
+  // isolates the test to its own actual concern (the current period's
+  // own resolution) rather than incidentally exercising the separate
+  // missed-declaration-persistence walk (covered in
+  // tests/lot-10-2e-1a-missed-declaration-persistence.test.js).
+  const q1Dossier = {
+    id: "d-q1",
+    declaration_type: "urssaf_ca",
+    period_start: "2026-01-01",
+    period_end: "2026-03-31",
+    declared_at: "2026-04-20T00:00:00.000Z",
+  };
   const view = getCurrentDeclarationView({
     fiscalProfile: { ...QUARTERLY_PROFILE, business_start_date: "2020-01-01" }, // long-established
-    dossiers: [],
+    dossiers: [q1Dossier],
     referenceDate: "2026-07-29",
   });
 

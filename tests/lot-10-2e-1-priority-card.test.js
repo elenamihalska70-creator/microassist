@@ -106,13 +106,13 @@ test("COPY: OVERDUE", () => {
 
   assert.equal(viewModel.key, "overdue");
   assert.equal(viewModel.severity, "critical");
-  assert.equal(viewModel.title, "Déclaration URSSAF en retard");
+  assert.equal(viewModel.title, "Déclaration URSSAF à vérifier");
   assert.equal(
     viewModel.explanation,
-    "Cette déclaration devait être faite avant le 31 juillet 2026.",
+    "Nous n'avons pas encore de confirmation que la déclaration due le 31 juillet 2026 a été effectuée.",
   );
   assert.equal(viewModel.dateLabel, "31 juillet 2026");
-  assert.equal(viewModel.secondaryCta.label, "J'ai fait ma déclaration");
+  assert.equal(viewModel.secondaryCta.label, "J'ai déjà déclaré");
 });
 
 test("COPY: DUE", () => {

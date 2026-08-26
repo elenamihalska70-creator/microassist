@@ -1,7 +1,7 @@
 import { buildFiscalSummaryInput } from "../../application/adapters/buildFiscalSummaryInput.js";
 import { calculateFiscalSummary } from "../calculations/facade/calculateFiscalSummary.js";
-import { resolveCurrentDeclarationPeriod } from "../rules/declarationPeriod.js";
 import { findDossierForPeriod } from "../declarationDossier/dossierIdentity.js";
+import { resolveActiveDeclarationPeriod } from "../declarationDossier/resolveActiveDeclarationPeriod.js";
 import { buildMissingInformationActions } from "./buildMissingInformationActions.js";
 import { buildUrssafDeclarationAction } from "./buildUrssafDeclarationAction.js";
 import { buildTvaThresholdAction } from "./buildTvaThresholdAction.js";
@@ -54,9 +54,11 @@ function tryBuildFiscalSummary(fiscalProfile, revenues, referenceDate) {
  *   monthlyRevenue, yearToDateRevenue, monthsWithData: for the VAT projection,
  *   declarationDossiers: [...] -- LOT 10.2D: the user's own dossier rows
  *     (already fetched by the caller; this function does not query
- *     Supabase). When the CURRENT declaration period has a matching row
- *     with declared_at set, that period is represented as DECLARED/PAID
- *     instead of an active DUE/DUE_SOON/OVERDUE action.
+ *     Supabase). When the ACTIVE declaration period (LOT 10.2E.1A: the
+ *     current period, UNLESS an older period is still unconfirmed and
+ *     past its own deadline -- see resolveActiveDeclarationPeriod.js) has
+ *     a matching row with declared_at set, that period is represented as
+ *     DECLARED/PAID instead of an active DUE/DUE_SOON/OVERDUE action.
  *   userId: LOT 10.2D.1 -- defense in depth on top of the caller's own
  *     fetch already being scoped to one user and RLS (the real security
  *     boundary): when provided, a dossier is only ever matched if its own
@@ -69,11 +71,18 @@ export function getPrioritizedActions(context = {}) {
   const referenceDate = context.referenceDate ?? null;
   const fiscalSummary = tryBuildFiscalSummary(fiscalProfile, context.revenues, referenceDate);
 
-  const currentPeriod = resolveCurrentDeclarationPeriod({
-    frequency: fiscalProfile.declaration_frequency,
+  // LOT 10.2E.1A: prefer an older, still-unconfirmed-and-overdue period
+  // over the plain auto-selected current one -- otherwise a missed
+  // declaration silently disappears the moment the calendar advances
+  // (see resolveActiveDeclarationPeriod.js). Falls back to the exact
+  // same auto-resolution as before when nothing older is unresolved.
+  const activePeriod = resolveActiveDeclarationPeriod({
+    fiscalProfile,
+    dossiers: context.declarationDossiers,
     referenceDate,
+    userId: context.userId ?? null,
   });
-  const declarationDossier = findDossierForPeriod(context.declarationDossiers, currentPeriod, {
+  const declarationDossier = findDossierForPeriod(context.declarationDossiers, activePeriod, {
     userId: context.userId ?? null,
   });
 
@@ -82,6 +91,7 @@ export function getPrioritizedActions(context = {}) {
     referenceDate,
     fiscalSummary,
     declarationDossier,
+    declarationPeriod: activePeriod,
     monthlyRevenue: context.monthlyRevenue,
     yearToDateRevenue: context.yearToDateRevenue,
     monthsWithData: context.monthsWithData,

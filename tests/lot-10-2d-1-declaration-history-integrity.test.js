@@ -91,10 +91,24 @@ test("FIRST DECLARATION: getPrioritizedActions suppresses the URSSAF declaration
 });
 
 test("FIRST DECLARATION: once the business start date is safely before the period, the declaration action resolves normally again", () => {
+  // LOT 10.2E.1A: a confirmed Q1 dossier is the checkpoint
+  // resolveActiveDeclarationPeriod() stops its backward walk at -- this
+  // isolates the test to its own actual concern (the current period's
+  // own resolution) rather than incidentally exercising the separate
+  // missed-declaration-persistence walk (covered in
+  // tests/lot-10-2e-1a-missed-declaration-persistence.test.js).
+  const q1Dossier = {
+    id: "d-q1",
+    declaration_type: "urssaf_ca",
+    period_start: "2026-01-01",
+    period_end: "2026-03-31",
+    declared_at: "2026-04-20T00:00:00.000Z",
+  };
   const actions = getPrioritizedActions({
     fiscalProfile: { ...QUARTERLY_PROFILE_MID_Q2_START, business_start_date: "2020-01-01" },
     revenues: [],
     referenceDate: Q2_WINDOW_REFERENCE_DATE,
+    declarationDossiers: [q1Dossier],
   });
 
   const declarationAction = actions.find((action) => action.type === ACTION_TYPE.urssafDeclaration);

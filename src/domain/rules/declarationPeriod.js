@@ -158,6 +158,42 @@ export function computeDeclarationDeadline({ period, referenceDate } = {}) {
 }
 
 /**
+ * Pure: the period immediately preceding an explicit period -- the exact
+ * mirror of getNextDeclarationPeriod above (LOT 10.2E.1A: walking
+ * backward from the auto-selected "current" period is how an unconfirmed,
+ * still-overdue older obligation is found without a second deadline
+ * engine). Does not consult referenceDate or any dossier/confirmation
+ * state -- purely "one calendar step backward".
+ */
+export function getPreviousDeclarationPeriod(period) {
+  if (!period) return null;
+
+  if (period.type === "month" && Number.isInteger(period.year) && Number.isInteger(period.month0)) {
+    const previousMonth0 = period.month0 - 1;
+    return {
+      type: "month",
+      year: previousMonth0 < 0 ? period.year - 1 : period.year,
+      month0: (previousMonth0 + 12) % 12,
+    };
+  }
+
+  if (
+    period.type === "quarter" &&
+    Number.isInteger(period.year) &&
+    Number.isInteger(period.quarter)
+  ) {
+    const previousQuarter = period.quarter - 1;
+    return {
+      type: "quarter",
+      year: previousQuarter < 1 ? period.year - 1 : period.year,
+      quarter: previousQuarter < 1 ? 4 : previousQuarter,
+    };
+  }
+
+  return null;
+}
+
+/**
  * Pure: the calendar span (first/last day, inclusive) an explicit,
  * already-identified declaration period covers -- e.g. for the declaration
  * dossier system (LOT 10.2D) to know exactly which revenue entries a given

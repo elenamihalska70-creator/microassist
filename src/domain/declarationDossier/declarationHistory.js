@@ -7,6 +7,7 @@ import {
 } from "../rules/declarationPeriod.js";
 import { resolveDossierStatus } from "./resolveDossierStatus.js";
 import { findDossierForPeriod } from "./dossierIdentity.js";
+import { resolveActiveDeclarationPeriod } from "./resolveActiveDeclarationPeriod.js";
 
 /**
  * Clean, React-free application/domain API (LOT 10.2D section 12) for a
@@ -22,8 +23,12 @@ import { findDossierForPeriod } from "./dossierIdentity.js";
  * user-confirmed dossier exists).
  */
 export function getCurrentDeclarationView({ fiscalProfile, dossiers, referenceDate } = {}) {
-  const frequency = fiscalProfile?.declaration_frequency ?? null;
-  const period = resolveCurrentDeclarationPeriod({ frequency, referenceDate });
+  // LOT 10.2E.1A: prefer an older, still-unconfirmed-and-overdue period
+  // over the plain auto-selected current one, so a missed declaration
+  // never silently disappears once the calendar moves into a new period.
+  // Falls back to the exact same auto-resolution as before when nothing
+  // older is unresolved (the common case).
+  const period = resolveActiveDeclarationPeriod({ fiscalProfile, dossiers, referenceDate });
   if (!period) return null;
 
   // LOT 10.2D section 13: the auto-selected "current" period is always

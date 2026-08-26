@@ -30,7 +30,14 @@ export function getDeadlineRule(context = {}) {
   const frequency = context.frequency || context.declaration_frequency;
   const referenceDate = context.today;
 
-  const period = resolveCurrentDeclarationPeriod({ frequency, referenceDate });
+  // LOT 10.2E.1A: when an explicit period is supplied, evaluate THAT
+  // period's deadline instead of auto-resolving "today"'s period --
+  // otherwise an unconfirmed obligation from an older period can never be
+  // computed as overdue, since resolveCurrentDeclarationPeriod always
+  // advances to a fresh, still-upcoming period once its own window
+  // closes. Omitting `period` keeps every existing call site's behavior
+  // unchanged (auto-resolution, as before).
+  const period = context.period ?? resolveCurrentDeclarationPeriod({ frequency, referenceDate });
   const deadline = period
     ? computeDeclarationDeadline({ period, referenceDate })
     : null;

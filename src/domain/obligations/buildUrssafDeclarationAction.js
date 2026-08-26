@@ -60,11 +60,18 @@ function toIsoDate(date) {
  * LOT 10.2D: context.declarationDossier is the dossier row (if any) already
  * matched by the caller (getPrioritizedActions, via
  * domain/declarationDossier/dossierIdentity.js#findDossierForPeriod) to the
- * SAME period this function independently resolves via getDeadlineRule. A
- * dossier with declared_at set means the user has confirmed submission --
- * the period must no longer surface as an active DUE/DUE_SOON/OVERDUE
- * action once that is true (LOT 10.2D section 11); paid_at (a separate,
- * never-implied fact) additionally marks it PAID.
+ * SAME period this function evaluates. A dossier with declared_at set
+ * means the user has confirmed submission -- the period must no longer
+ * surface as an active DUE/DUE_SOON/OVERDUE action once that is true
+ * (LOT 10.2D section 11); paid_at (a separate, never-implied fact)
+ * additionally marks it PAID.
+ *
+ * LOT 10.2E.1A: context.declarationPeriod, when supplied, is the period to
+ * evaluate -- normally the caller's own resolveActiveDeclarationPeriod()
+ * result, which may be an OLDER period than "today"'s auto-resolved one
+ * when an earlier obligation is still unconfirmed and past due. Omitting
+ * it keeps this function auto-resolving "today"'s period exactly as
+ * before (every existing call site that doesn't pass it).
  *
  * Returns null when the declaration frequency is unknown -- that gap is
  * represented by a missing-information action instead (see
@@ -75,7 +82,11 @@ export function buildUrssafDeclarationAction(context = {}) {
   const frequency = fiscalProfile.declaration_frequency ?? null;
   if (!frequency) return null;
 
-  const deadlineRule = getDeadlineRule({ frequency, today: context.referenceDate });
+  const deadlineRule = getDeadlineRule({
+    frequency,
+    today: context.referenceDate,
+    period: context.declarationPeriod ?? null,
+  });
   const { deadlineDate, daysLeft, periodLabel } = deadlineRule.output;
 
   const dossier = context.declarationDossier ?? null;

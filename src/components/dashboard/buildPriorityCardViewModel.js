@@ -46,18 +46,26 @@ function buildDeclarationViewModel(action) {
 
   switch (action.status) {
     case OBLIGATION_STATUS.overdue:
+      // LOT 10.2E.1A: the deadline having passed IS a verifiable fact (the
+      // badge below states it plainly), but whether the declaration was
+      // actually filed is NOT something MicroAssist can verify -- a
+      // missing dossier means "no confirmation on file", never "the
+      // administration confirms it wasn't done" (section 5). Title and
+      // explanation are worded to preserve that distinction; the CTA
+      // label reflects that this may be a retrospective confirmation
+      // ("J'ai déjà déclaré"), not a same-day one.
       return {
         key: "overdue",
         severity: "critical",
         badgeLabel: "En retard",
         icon: "⚠",
-        title: "Déclaration URSSAF en retard",
+        title: "Déclaration URSSAF à vérifier",
         explanation: dueDateLabel
-          ? `Cette déclaration devait être faite avant le ${dueDateLabel}.`
-          : "Cette déclaration devait déjà être faite.",
+          ? `Nous n'avons pas encore de confirmation que la déclaration due le ${dueDateLabel} a été effectuée.`
+          : "Nous n'avons pas encore de confirmation que cette déclaration a été effectuée.",
         dateLabel: dueDateLabel,
         primaryCta: officialLinkCta(action),
-        secondaryCta: { kind: "confirm_declaration", label: "J'ai fait ma déclaration" },
+        secondaryCta: { kind: "confirm_declaration", label: "J'ai déjà déclaré" },
         showDetailLink: true,
       };
 
