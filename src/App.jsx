@@ -1371,13 +1371,33 @@ function getPremiumTrigger({
 // section, independent of Premium tier) without an unsolicited Premium
 // interruption. Other, non-compliance engagement triggers below (multiple
 // priorities, trial/early-access timing) are unrelated to this and unchanged.
+//
+// LOT 10.2E.2A: that principle had a remaining loophole -- buildSmartPriorities()
+// still pushes a "Déclaration urgente" (actionKey "deadline") and/or "TVA
+// dépassée"/"TVA proche du seuil" (actionKey "tva") entry into
+// smartPriorities for the exact same compliance conditions, and the
+// "multiple_priorities" trigger below counted smartPriorities.length
+// unconditionally -- so an urgent declaration combined with any other
+// priority could still auto-open Premium indirectly, through this trigger
+// instead of the direct one LOT 10.2C.1 already closed. COMPLIANCE_ACTION_KEYS
+// is excluded from that count ONLY -- smartPriorities itself is never
+// filtered or mutated, so the compliance items still render, unsuppressed,
+// wherever the dashboard already shows them.
+const COMPLIANCE_ACTION_KEYS = new Set(["deadline", "tva"]);
+
+function countNonComplianceSmartPriorities(smartPriorities) {
+  if (!Array.isArray(smartPriorities)) return 0;
+  return smartPriorities.filter((priority) => !COMPLIANCE_ACTION_KEYS.has(priority?.actionKey))
+    .length;
+}
+
 function getPremiumTriggerContext({
   smartPriorities,
   trialDaysLeft,
   isEarlyAccessEndingToday = false,
   isPostEarlyAccessTrial = false,
 }) {
-  if (Array.isArray(smartPriorities) && smartPriorities.length >= 2) {
+  if (countNonComplianceSmartPriorities(smartPriorities) >= 2) {
     return {
       triggerType: "multiple_priorities",
       priorityLevel: "medium",
@@ -12989,6 +13009,35 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
           ) : appView === "dashboard" ? (
 
             <section ref={fiscalRef} className="card dashboardCard">
+              {/* LOT 10.2E.2A: page heading kept first for accessibility
+                  context, immediately followed by the canonical
+                  PriorityCard -- the user's actual administrative
+                  obligation now outranks every marketing/discovery/Premium
+                  surface below. JSX ordering only: none of those surfaces'
+                  logic, copy, eligibility, or CSS was changed, only where
+                  they render relative to PriorityCard. */}
+              <div className="sectionHead">
+                <div>
+                  <h2>Mon espace fiscal</h2>
+                  <p className="muted" style={{ marginTop: 6 }}>
+                    Revenus, charges et échéances au même endroit.
+                  </p>
+                </div>
+              </div>
+
+              {(hasProfileCore || simpleAssistantProfile) && priorityCardViewModel && (
+                <div style={{ marginBottom: 20 }}>
+                  <PriorityCard
+                    viewModel={priorityCardViewModel}
+                    isSavingPayment={isSavingDeclarationPayment}
+                    onConfirmDeclaration={handleOpenDeclarationConfirm}
+                    onConfirmPayment={handleConfirmDeclarationPayment}
+                    onEditProfile={handleEditProfile}
+                    onViewDetail={handleViewDeclarationDetail}
+                  />
+                </div>
+              )}
+
               {isFounder && (
                 <div
                   className="dashboardFounderBanner"
@@ -13100,10 +13149,6 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               ) : null}
               <div className="sectionHead">
                 <div>
-                  <h2>Mon espace fiscal</h2>
-                  <p className="muted" style={{ marginTop: 6 }}>
-                    Revenus, charges et échéances au même endroit.
-                  </p>
                   <div
                     style={{
                       marginTop: 12,
@@ -13144,23 +13189,6 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   </div>
                 </div>
               </div>
-
-              {/* LOT 10.2E.1: first visible canonical-priority component.
-                  Additive -- coexists with the legacy "Action prioritaire"
-                  hero below during this migration LOT; nothing below is
-                  reordered or removed. */}
-              {(hasProfileCore || simpleAssistantProfile) && priorityCardViewModel && (
-                <div style={{ marginBottom: 20 }}>
-                  <PriorityCard
-                    viewModel={priorityCardViewModel}
-                    isSavingPayment={isSavingDeclarationPayment}
-                    onConfirmDeclaration={handleOpenDeclarationConfirm}
-                    onConfirmPayment={handleConfirmDeclarationPayment}
-                    onEditProfile={handleEditProfile}
-                    onViewDetail={handleViewDeclarationDetail}
-                  />
-                </div>
-              )}
 
               {(hasProfileCore || simpleAssistantProfile) && (
                 <section className="dashboardCockpit">
