@@ -251,7 +251,7 @@ test("LOT 5.91A useEffect count is stable, never increased by this removal", () 
 // "-1 from the removal" fact this test protects is unaffected by those
 // later, unrelated additions.
 test("LOT 5.91A useMemo count dropped by exactly one call site (the removed hook)", () => {
-  assert.equal(occurrences(CODE, /\buseMemo\(/g), 92);
+  assert.equal(occurrences(CODE, /\buseMemo\(/g), 94);
 });
 
 // 20. no new helper/shared function was introduced merging the two aliases

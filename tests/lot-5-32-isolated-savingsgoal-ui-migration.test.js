@@ -31,7 +31,7 @@ const APPROVED_APP_COUNTS = Object.freeze({
   useState: 88, // LOT 10.2D: +5 useState (declaration dossier UI state); LOT 10.2D.1: +1 (payment confirm loading guard)
   useEffect: 60, // LOT 10.2D: +1 useEffect (fetch declaration dossiers on user change)
   // LOT 10.2B: +1 useMemo for the canonical obligation/action priority shadow integration.
-  useMemo: 93, // LOT 10.2D: +4 useMemo (declaration dossier view selectors)
+  useMemo: 95, // LOT 10.2D: +4 useMemo (declaration dossier view selectors); LOT 10.2E.1: +2 (dashboardPrioritizedActions, priorityCardViewModel)
 });
 
 function sourceWithoutComments(source) {

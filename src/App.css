@@ -523,6 +523,128 @@ section[id] {
   background: linear-gradient(180deg, #f8fcfa 0%, #ffffff 100%);
 }
 
+/* ===== PRIORITY CARD (LOT 10.2E.1) =====
+   Restrained by design: one neutral card, one severity accent (left
+   border + badge color), no gradients, no decorative shadow beyond the
+   app's existing subtle card elevation. Severity is never carried by
+   color alone -- the badge text and icon both restate it. */
+.priorityCard {
+  display: grid;
+  gap: 10px;
+  padding: 22px;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  border-left-width: 4px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.priorityCard--critical {
+  border-left-color: #dc2626;
+}
+
+.priorityCard--urgent {
+  border-left-color: #d97706;
+}
+
+.priorityCard--attention {
+  border-left-color: #4f46e5;
+}
+
+.priorityCard--calm {
+  border-left-color: #94a3b8;
+}
+
+.priorityCard--positive {
+  border-left-color: #16a34a;
+}
+
+.priorityCardStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.priorityCardIcon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.priorityCardBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.priorityCard--critical .priorityCardBadge {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.priorityCard--urgent .priorityCardBadge {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.priorityCard--attention .priorityCardBadge {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.priorityCard--positive .priorityCardBadge {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.priorityCardTitle {
+  margin: 0;
+  color: #0f172a;
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+.priorityCardExplanation {
+  margin: 0;
+  color: #334155;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.priorityCardDate {
+  margin: 0;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.priorityCardDateLabel {
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  margin-right: 6px;
+}
+
+.priorityCardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+  align-items: center;
+}
+
+.priorityCardDetailLink {
+  margin-left: auto;
+}
+
 .dashboardHeroEyebrow {
   margin: 0 0 6px;
   color: #64748b;
@@ -1141,6 +1263,28 @@ section[id] {
 
   .expertViewGrid {
     grid-template-columns: 1fr;
+  }
+
+  .priorityCard {
+    padding: 18px;
+  }
+
+  .priorityCardTitle {
+    font-size: 19px;
+  }
+
+  .priorityCardActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .priorityCardActions .btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .priorityCardDetailLink {
+    margin-left: 0;
   }
 }
 

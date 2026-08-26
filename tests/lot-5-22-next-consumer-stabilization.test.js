@@ -37,7 +37,7 @@ const APPROVED_APP_COUNTS = Object.freeze({
   useEffect: 60, // LOT 10.2D: +1 useEffect (fetch declaration dossiers on user change)
   // LOT 5.91A: root savingsGoal removed, dropping 2 estimatedCharges reads (formula body + dependency array) and 1 useMemo hook.
   // LOT 10.2B: +1 useMemo for the canonical obligation/action priority shadow integration.
-  useMemo: 93, // LOT 10.2D: +4 useMemo (declaration dossier view selectors)
+  useMemo: 95, // LOT 10.2D: +4 useMemo (declaration dossier view selectors); LOT 10.2E.1: +2 (dashboardPrioritizedActions, priorityCardViewModel)
 });
 
 function sourceWithoutComments(source) {

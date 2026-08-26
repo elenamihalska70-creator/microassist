@@ -66,6 +66,8 @@ import PricingPage from "./components/PricingPage.jsx";
 import ExpertDashboard from "./components/ExpertDashboard";
 import MainNavigation from "./navigation/MainNavigation.jsx";
 import AppShell from "./shell/AppShell.jsx";
+import PriorityCard from "./components/dashboard/PriorityCard.jsx";
+import { buildPriorityCardViewModel } from "./components/dashboard/buildPriorityCardViewModel.js";
 // Добавьте после других констант:
 const LS_KEY = "microassist_v1";
 const LS_VERSION = 1;
@@ -6363,6 +6365,46 @@ useEffect(() => {
       setIsSavingDeclarationPayment(false);
     }
   }, [user, currentDeclarationView, isSavingDeclarationPayment, refreshDeclarationDossiers]);
+
+  // LOT 10.2E.1: the first VISIBLE consumer of the canonical priority
+  // model. Independent of the LOT 10.2B shadow useMemo below (which stays
+  // parity-evidence-only, gated behind ACTION_PRIORITY_SHADOW_ENABLED) --
+  // this one always runs once there's enough profile to be worth ranking,
+  // and its result is what PriorityCard actually renders. Same
+  // getPrioritizedActions call, same inputs as the shadow path; no second
+  // priority engine.
+  const dashboardPrioritizedActions = useMemo(() => {
+    if (!hasProfileCore && !simpleAssistantProfile) return [];
+    try {
+      return getPrioritizedActions({
+        fiscalProfile: declarationFiscalProfile,
+        revenues,
+        referenceDate: getTodayIsoDate(),
+        declarationDossiers,
+        userId: user?.id ?? null,
+      });
+    } catch {
+      return [];
+    }
+  }, [
+    hasProfileCore,
+    simpleAssistantProfile,
+    declarationFiscalProfile,
+    revenues,
+    declarationDossiers,
+    user,
+  ]);
+
+  const priorityCardViewModel = useMemo(
+    () => buildPriorityCardViewModel(dashboardPrioritizedActions[0] ?? null),
+    [dashboardPrioritizedActions],
+  );
+
+  const handleViewDeclarationDetail = useCallback(() => {
+    document
+      .getElementById("declaration-detail-section")
+      ?.scrollIntoView({ behavior: "smooth" });
+  }, []);
 
   const smartAlertEstimatedCharges =
     fiscalSummaryVisibleSlice.finalContributionAmount;
@@ -13103,6 +13145,23 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 </div>
               </div>
 
+              {/* LOT 10.2E.1: first visible canonical-priority component.
+                  Additive -- coexists with the legacy "Action prioritaire"
+                  hero below during this migration LOT; nothing below is
+                  reordered or removed. */}
+              {(hasProfileCore || simpleAssistantProfile) && priorityCardViewModel && (
+                <div style={{ marginBottom: 20 }}>
+                  <PriorityCard
+                    viewModel={priorityCardViewModel}
+                    isSavingPayment={isSavingDeclarationPayment}
+                    onConfirmDeclaration={handleOpenDeclarationConfirm}
+                    onConfirmPayment={handleConfirmDeclarationPayment}
+                    onEditProfile={handleEditProfile}
+                    onViewDetail={handleViewDeclarationDetail}
+                  />
+                </div>
+              )}
+
               {(hasProfileCore || simpleAssistantProfile) && (
                 <section className="dashboardCockpit">
                   <div
@@ -14614,9 +14673,14 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 </div>
               </div>
 
-              {/* Ma déclaration -- LOT 10.2D minimal declaration dossier flow */}
+              {/* Ma déclaration -- LOT 10.2D minimal declaration dossier flow.
+                  id targeted by PriorityCard's "Voir le détail" (LOT 10.2E.1). */}
               {currentDeclarationView && (
-                <div className="dashboardSectionZone" style={{ marginTop: 16 }}>
+                <div
+                  id="declaration-detail-section"
+                  className="dashboardSectionZone"
+                  style={{ marginTop: 16 }}
+                >
                   <div className="dashboardSectionHeader">
                     <div className="dashboardSectionHeaderMain">
                       <h3 className="dashboardSectionTitle">Ma déclaration</h3>
