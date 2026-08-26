@@ -1,0 +1,15 @@
+# LOT MICROASSIST SEO.2
+#
+# This is the authenticated MicroAssist SaaS application
+# (https://microassist.vercel.app), not the public marketing site.
+# It has no public/indexable content of its own -- the public,
+# indexable acquisition site is https://microassist.digitallab.studio
+# and controls its own robots.txt in its own repository.
+#
+# This entire application is a single-page, client-rendered app shell
+# with no distinct public routes to selectively allow, so it is blocked
+# from crawling in full as defense-in-depth alongside the <meta
+# name="robots" content="noindex, nofollow"> tag in index.html.
+
+User-agent: *
+Disallow: /
