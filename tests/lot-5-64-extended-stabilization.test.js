@@ -41,7 +41,7 @@ test("LOT 5.64 stabilizes the reserve-low Shadow baseline contract", () => {
   const app = sourceWithoutComments(APP_SOURCE);
   const smartAlerts = sourceWithoutComments(smartAlertsBlock());
 
-  assert.equal(occurrences(app, /\bfiscalSummaryVisibleSlice\b/g), 15);
+  assert.equal(occurrences(app, /\bfiscalSummaryVisibleSlice\b/g), 13);
   assert.equal(
     occurrences(app, /const smartAlertEstimatedCharges =\s*fiscalSummaryVisibleSlice\.finalContributionAmount;/g),
     1,

@@ -242,7 +242,7 @@ test("LOT 5.34 validates the exact target consumer and Shadow source", () => {
 test("LOT 5.34 validates Shadow baseline includes the approved progress bar and weekly rate occurrences", () => {
   const code = sourceWithoutComments(APP_SOURCE);
 
-  assert.equal(occurrences(code, /\bfiscalSummaryVisibleSlice\b/g), 15);
+  assert.equal(occurrences(code, /\bfiscalSummaryVisibleSlice\b/g), 13);
   assert.equal(
     occurrences(
       code,

@@ -32,7 +32,7 @@ const RUNTIME_EVIDENCE_SOURCE = readFileSync(
 );
 
 const APPROVED_COUNTS = Object.freeze({
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   // LOT 5.91A: root savingsGoal removed (0 remaining occurrences), dropping
   // 1 useMemo( call site.
   savingsGoal: 0,
@@ -425,7 +425,7 @@ test("LOT 5.81 validates Shadow baseline fourteen and no fifteenth occurrence", 
 
   assert.equal(occurrences(app, /\bfiscalSummaryVisibleSlice\b/g), APPROVED_COUNTS.fiscalSummaryVisibleSlice);
   assert.equal(occurrences(app, /\bsavingsGoal\b/g), APPROVED_COUNTS.savingsGoal);
-  assert.equal(occurrences(appWithoutVisibleSlice(), /\bfiscalSummaryVisibleSlice\b/g), 14);
+  assert.equal(occurrences(appWithoutVisibleSlice(), /\bfiscalSummaryVisibleSlice\b/g), 12);
   assert.match(alias, /fiscalSummaryVisibleSlice\.finalContributionAmount \* 3/);
 });
 

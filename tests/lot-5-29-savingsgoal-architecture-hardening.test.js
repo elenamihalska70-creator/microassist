@@ -28,7 +28,7 @@ const APPROVED_APP_COUNTS = Object.freeze({
   estimatedCharges: 12,
   savingsGoal: 0,
   savingsProgress: 7,
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   buildFiscalSummaryInput: 2,
   calculateFiscalSummary: 2,
   createRuntimeParityEvidence: 2,

@@ -31,7 +31,7 @@ const RUNTIME_EVIDENCE_SOURCE = readFileSync(
 );
 
 const APPROVED_COUNTS = Object.freeze({
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
 });
 const REFERENCE_DATE = "2026-07-20";
 const ALERT_ON = "ALERT_ON";
@@ -385,7 +385,7 @@ test("LOT 5.68 confirms approved smart alert revenue migration remains source-on
   assert.match(smartCall, /currentMonthTotal: smartAlertRevenueTotal/);
   assert.match(smartCall, /smartAlertRevenueTotal,\s*\n\s*\]/);
   assert.doesNotMatch(smartCall, /revenueTotal:\s*fiscalSummaryVisibleSlice\.revenueTotal/);
-  assert.equal(occurrences(appWithoutVisibleSlice(), /fiscalSummaryVisibleSlice\.revenueTotal/g), 6);
+  assert.equal(occurrences(appWithoutVisibleSlice(), /fiscalSummaryVisibleSlice\.revenueTotal/g), 4);
 });
 
 test("LOT 5.68 confirms no propagation to retained Legacy revenue consumers", () => {

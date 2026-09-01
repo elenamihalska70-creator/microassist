@@ -33,7 +33,7 @@ test("LOT 5.47 locks the approved tenth fiscalSummaryVisibleSlice occurrence", (
   const code = sourceWithoutComments(APP_SOURCE);
   const weekly = sourceWithoutComments(weeklyRecapBlock());
 
-  assert.equal(occurrences(code, /\bfiscalSummaryVisibleSlice\b/g), 15);
+  assert.equal(occurrences(code, /\bfiscalSummaryVisibleSlice\b/g), 13);
   assert.equal(
     occurrences(code, /const weeklyRecapEffectiveRate = fiscalSummaryVisibleSlice\.effectiveRate;/g),
     1,

@@ -71,11 +71,11 @@ test("LOT 5.13 visible dashboard reads use the visible slice values", () => {
 
   assert.match(displayBlock, /getDisplayValue\(fiscalSummaryVisibleSlice\.revenueTotal, "money"\)/);
   assert.match(displayBlock, /fiscalSummaryVisibleSlice\.finalContributionAmount/);
-  assert.match(
+  assert.doesNotMatch(
     APP_SOURCE,
-    /Montant à déclarer : \{getDisplayValue\(fiscalSummaryVisibleSlice\.revenueTotal, "money"\)\}/,
+    /dashboardDeclareHelper|Montant à déclarer : \{getDisplayValue\(fiscalSummaryVisibleSlice\.revenueTotal, "money"\)\}/,
   );
-  assert.match(APP_SOURCE, /: dashboardChargesDisplay/);
+  assert.match(APP_SOURCE, /dashboardChargesDisplay/);
 });
 
 test("LOT 5.13 visible replacement block has no state, persistence, payload or export side effect", () => {

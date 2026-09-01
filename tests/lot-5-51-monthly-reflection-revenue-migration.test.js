@@ -24,7 +24,7 @@ const RUNTIME_EVIDENCE_SOURCE = readFileSync(
 );
 
 const APPROVED_COUNTS = Object.freeze({
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   monthlyReflectionRevenueTotalAlias: 1,
   monthlyReflectionChargesAmountAlias: 1,
   monthlyReflectionRevenueTotalConsumers: 3,
@@ -175,7 +175,7 @@ test("LOT 5.51A remains stable with the approved twelve Shadow occurrences and r
     ),
     APPROVED_COUNTS.monthlyReflectionChargesAmountAlias,
   );
-  assert.equal(occurrences(appOutsideSelector, /fiscalSummaryVisibleSlice\.revenueTotal/g), 6);
+  assert.equal(occurrences(appOutsideSelector, /fiscalSummaryVisibleSlice\.revenueTotal/g), 4);
   assert.equal(occurrences(appOutsideSelector, /fiscalSummaryVisibleSlice\.finalContributionAmount/g), 7);
   assert.match(app, /const smartAlertEstimatedCharges =\s*fiscalSummaryVisibleSlice\.finalContributionAmount;/);
 });

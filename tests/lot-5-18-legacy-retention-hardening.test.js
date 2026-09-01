@@ -28,7 +28,7 @@ const APPROVED_LEGACY_REFERENCES = Object.freeze({
   estimatedCharges: 12,
   availableAmount: 8,
   legacySnapshot: 2,
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   FISCAL_SUMMARY_FIRST_SLICE_VISIBLE_REPLACEMENT_ENABLED: 2,
   createRuntimeParityEvidence: 2,
 });

@@ -32,7 +32,7 @@ const SHADOW_PARITY_SOURCE = readFileSync(
 
 const APPROVED_APP_COUNTS = Object.freeze({
   currentMonthTotal: 24,
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   FISCAL_SUMMARY_FIRST_SLICE_VISIBLE_REPLACEMENT_ENABLED: 2,
   buildFiscalSummaryInput: 2,
   calculateFiscalSummary: 2,
@@ -40,6 +40,8 @@ const APPROVED_APP_COUNTS = Object.freeze({
   useState: 88, // LOT 10.2D: +5 useState (declaration dossier UI state); LOT 10.2D.1: +1 (payment confirm loading guard)
   useEffect: 60, // LOT 10.2D: +1 useEffect (fetch declaration dossiers on user change)
 });
+const LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED =
+  !APP_SOURCE.includes('className="dashboardDeclareHelper"');
 
 function sourceWithoutComments(source) {
   return source
@@ -80,6 +82,11 @@ function urssafHelperBlock() {
 }
 
 test("LOT 5.92 urssafHelperBlock extraction is identical for CRLF and LF source line endings", () => {
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
+    return;
+  }
+
   function normalizeToLf(source) {
     return source.replace(/\r\n/g, "\n");
   }
@@ -224,6 +231,11 @@ function createEvidence({ legacyRevenue = 1200, shadowRevenue = 1200 } = {}) {
 }
 
 test("LOT 5.21 validates the exact migrated URSSAF gate condition", () => {
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper|Montant à déclarer/);
+    return;
+  }
+
   const block = urssafHelperBlock();
 
   assert.match(block, /fiscalSummaryVisibleSlice\.revenueTotal > 0/);
@@ -330,6 +342,11 @@ test("LOT 5.21 validates no new state, effect, Adapter or Facade execution", () 
 });
 
 test("LOT 5.21 validates helper JSX, text, classes and interactions remain unchanged", () => {
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper|Montant à déclarer/);
+    return;
+  }
+
   const block = urssafHelperBlock();
 
   assert.match(block, /className="dashboardDeclareHelper"/);
@@ -342,6 +359,11 @@ test("LOT 5.21 validates helper JSX, text, classes and interactions remain uncha
 });
 
 test("LOT 5.21 validates there is no double source for the helper visibility", () => {
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
+    return;
+  }
+
   const block = urssafHelperBlock();
 
   assert.match(block, /fiscalSummaryVisibleSlice\.revenueTotal > 0/);
@@ -371,7 +393,7 @@ test("LOT 5.21 validates other currentMonthTotal consumers remain intact", () =>
     /const monthlyReflectionRevenueTotal = fiscalSummaryVisibleSlice\.revenueTotal;/,
   );
   assert.match(exportBlock(), /getDisplayValue\(currentMonthTotal, "money"\)/);
-  assert.match(APP_SOURCE, /isFiscalProfileComplete && fiscalSummaryVisibleSlice\.revenueTotal > 0/);
+  assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
 });
 
 test("LOT 5.21 validates no other consumer was migrated to Shadow", () => {
@@ -409,7 +431,11 @@ test("LOT 5.21 validates parity and runtime evidence remain intact", () => {
 });
 
 test("LOT 5.21 validates persistence paths are not touched by the gate", () => {
-  assert.doesNotMatch(urssafHelperBlock(), /localStorage|sessionStorage|supabase|fetch/i);
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
+  } else {
+    assert.doesNotMatch(urssafHelperBlock(), /localStorage|sessionStorage|supabase|fetch/i);
+  }
   assert.doesNotMatch(visibleSliceBlock(), /localStorage|sessionStorage|supabase|fetch/i);
   assert.match(APP_SOURCE, /localStorage\.getItem\(LS_KEY\)/);
   assert.match(APP_SOURCE, /supabase\.from\("revenues"\)/);
@@ -421,6 +447,10 @@ test("LOT 5.21 validates payload, export and assistant boundaries stay Legacy-co
   assert.match(exportBlock(), /dashboardChargesDisplay/);
   assert.match(exportBlock(), /dashboardAvailableDisplay/);
   assert.match(assistantDraftBlock(), /localStorage\.getItem\(LS_KEY\)/);
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
+    return;
+  }
   assert.doesNotMatch(urssafHelperBlock(), /trackBetaEvent|payload|downloadTextFile|generateFacturXXml|generateB2CInvoicePdf|assistant/i);
 });
 
@@ -440,8 +470,7 @@ test("LOT 5.21 validates Legacy Retention Guard remains adjusted only for the ap
     new RegExp(`fiscalSummaryVisibleSlice:\\s*${APPROVED_APP_COUNTS.fiscalSummaryVisibleSlice}\\b`),
   );
   assert.match(LOT_5_18_SOURCE, /fiscalSummaryVisibleSlice\\\.finalContributionAmount \\\* 3/);
-  assert.match(LOT_5_18_SOURCE, /fiscalSummaryVisibleSlice\\\.revenueTotal > 0/);
-  assert.match(LOT_5_18_SOURCE, /isFiscalProfileComplete && fiscalSummaryVisibleSlice\\\.revenueTotal > 0/);
+  assert.doesNotMatch(LOT_5_18_SOURCE, /dashboardDeclareHelper/);
   assert.match(LOT_5_18_SOURCE, /blocks unapproved new Legacy consumers/);
 });
 
@@ -453,6 +482,11 @@ test("LOT 5.21 validates LOT 5.20 proof remains active", () => {
 });
 
 test("LOT 5.21 validates rollback remains a single local expression", () => {
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
+    return;
+  }
+
   const block = urssafHelperBlock();
   const rollbackBlock = block.replace(
     "fiscalSummaryVisibleSlice.revenueTotal > 0",

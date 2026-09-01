@@ -316,9 +316,9 @@ test("LOT 5.14 validates visible dashboard reads are isolated to the approved sl
 
   assert.match(block, /getDisplayValue\(fiscalSummaryVisibleSlice\.revenueTotal, "money"\)/);
   assert.match(block, /fiscalSummaryVisibleSlice\.finalContributionAmount/);
-  assert.match(
+  assert.doesNotMatch(
     APP_SOURCE,
-    /Montant à déclarer : \{getDisplayValue\(fiscalSummaryVisibleSlice\.revenueTotal, "money"\)\}/,
+    /dashboardDeclareHelper|Montant à déclarer : \{getDisplayValue\(fiscalSummaryVisibleSlice\.revenueTotal, "money"\)\}/,
   );
   assert.doesNotMatch(block, /fiscalSummaryVisibleSlice\.(tva|cfe|deadline|assistant|export|invoice|available)/i);
 });

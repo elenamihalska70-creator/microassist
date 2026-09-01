@@ -53,7 +53,7 @@ const APPROVED_APP_COUNTS = Object.freeze({
   estimatedCharges: 12,
   availableAmount: 8,
   legacySnapshot: 2,
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   FISCAL_SUMMARY_FIRST_SLICE_VISIBLE_REPLACEMENT_ENABLED: 2,
   buildFiscalSummaryInput: 2,
   calculateFiscalSummary: 2,
@@ -63,6 +63,8 @@ const APPROVED_APP_COUNTS = Object.freeze({
   // LOT 10.2B: +1 useMemo for the canonical obligation/action priority shadow integration.
   useMemo: 95, // LOT 10.2D: +4 useMemo (declaration dossier view selectors); LOT 10.2E.1: +2 (dashboardPrioritizedActions, priorityCardViewModel)
 });
+const LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED =
+  !APP_SOURCE.includes('className="dashboardDeclareHelper"');
 
 function sourceWithoutComments(source) {
   return source
@@ -119,6 +121,11 @@ function urssafHelperBlock() {
 }
 
 test("LOT 5.92 urssafHelperBlock extraction is identical for CRLF and LF source line endings", () => {
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
+    return;
+  }
+
   function normalizeToLf(source) {
     return source.replace(/\r\n/g, "\n");
   }
@@ -272,7 +279,7 @@ test("LOT 5.25 validates the exact Shadow-backed progress gate", () => {
   assert.doesNotMatch(block, /currentMonthTotal > 0/);
   assert.equal(occurrences(block, /fiscalSummaryVisibleSlice\.revenueTotal > 0/g), 1);
   assert.equal(occurrences(APP_SOURCE, /currentMonthTotal > 0/g), 0);
-  assert.equal(occurrences(APP_SOURCE, /fiscalSummaryVisibleSlice\.revenueTotal > 0/g), 2);
+  assert.equal(occurrences(APP_SOURCE, /fiscalSummaryVisibleSlice\.revenueTotal > 0/g), 1);
 });
 
 test("LOT 5.25 validates isFiscalProfileComplete definition and order remain intact", () => {
@@ -389,13 +396,17 @@ test("LOT 5.25 validates progress indicator JSX and values remain unchanged outs
 
 test("LOT 5.25 validates visible selector and URSSAF gate remain within approved Shadow list", () => {
   const selector = fiscalSummaryVisibleSliceBlock();
-  const urssaf = urssafHelperBlock();
 
   assert.match(selector, /Boolean\(shadowResult\)/);
   assert.match(selector, /revenueTotal:[\s\S]*shadowResult\.revenue\.total[\s\S]*currentMonthTotal/);
   assert.match(selector, /finalContributionAmount:[\s\S]*shadowResult\.summary\.finalContributionAmount[\s\S]*estimatedCharges/);
-  assert.match(urssaf, /fiscalSummaryVisibleSlice\.revenueTotal > 0/);
-  assert.match(urssaf, /getDisplayValue\(fiscalSummaryVisibleSlice\.revenueTotal, "money"\)/);
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper|Montant à déclarer/);
+  } else {
+    const urssaf = urssafHelperBlock();
+    assert.match(urssaf, /fiscalSummaryVisibleSlice\.revenueTotal > 0/);
+    assert.match(urssaf, /getDisplayValue\(fiscalSummaryVisibleSlice\.revenueTotal, "money"\)/);
+  }
   assert.doesNotMatch(APP_SOURCE, /shadowResult\.(tva|cfe|deadline|annual|savings|available|invoice|assistant)/i);
 });
 
@@ -484,7 +495,7 @@ test("LOT 5.25 validates LOT 5.18 through LOT 5.24 guard adjustments stay narrow
   );
   assert.match(LOT_5_18_SOURCE, /fiscalSummaryVisibleSlice\\\.finalContributionAmount \\\* 3/);
   assert.match(LOT_5_18_SOURCE, /blocks unapproved new Legacy consumers/);
-  assert.match(LOT_5_18_SOURCE, /isFiscalProfileComplete && fiscalSummaryVisibleSlice\\\.revenueTotal > 0/);
+  assert.doesNotMatch(LOT_5_18_SOURCE, /dashboardDeclareHelper/);
   assert.doesNotMatch(LOT_5_18_SOURCE, /APPROVED_LEGACY_REFERENCES[\s\S]*currentMonthTotal:\s*28/);
 
   assert.match(LOT_5_20_SOURCE, currentMonthTotalPattern);
@@ -504,7 +515,7 @@ test("LOT 5.25 validates rollback remains local to the progress gate", () => {
 
   assert.match(rollbackBlock, /isFiscalProfileComplete && currentMonthTotal > 0/);
   assert.doesNotMatch(rollbackBlock, /isFiscalProfileComplete && fiscalSummaryVisibleSlice\.revenueTotal > 0/);
-  assert.match(APP_SOURCE, /fiscalSummaryVisibleSlice\.revenueTotal > 0 \? \(/);
+  assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
   assert.equal(occurrences(block, /fiscalSummaryVisibleSlice\.revenueTotal > 0/g), 1);
 });
 

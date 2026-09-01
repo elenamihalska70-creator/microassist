@@ -30,7 +30,7 @@ const HELPER_SOURCE = readFileSync(
 );
 
 const APPROVED_APP_COUNTS = Object.freeze({
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   fiscalSummaryVisibleSliceEffectiveRateConsumers: 1,
   resolveWeeklyEstimatedRateCalls: 1,
   resolveWeeklyEstimatedRateImports: 1,

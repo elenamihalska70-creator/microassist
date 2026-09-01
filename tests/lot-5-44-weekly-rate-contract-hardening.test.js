@@ -21,7 +21,7 @@ const MATCH = "MATCH";
 const MISMATCH = "MISMATCH";
 
 const APPROVED_APP_COUNTS = Object.freeze({
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   fiscalSummaryVisibleSliceEffectiveRateConsumers: 1,
 });
 

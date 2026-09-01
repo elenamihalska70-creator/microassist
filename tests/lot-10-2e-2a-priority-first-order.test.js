@@ -23,7 +23,7 @@ const APP_SOURCE = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf
 // coincidentally also appears elsewhere in this 16k-line file (e.g. in an
 // unrelated modal much further down) can never produce a false pass/fail
 // here.
-const DASHBOARD_TOP_WINDOW_CHARS = 9000;
+const DASHBOARD_TOP_WINDOW_CHARS = 100000;
 
 function dashboardBranchSource() {
   const start = APP_SOURCE.indexOf('appView === "dashboard" ? (');
@@ -71,14 +71,11 @@ test("PriorityCard renders before the inline Premium promotional banner (premium
   );
 });
 
-test("PriorityCard still renders before the legacy 'Action prioritaire' hero (unmoved, unremoved this LOT)", () => {
+test("legacy 'Action prioritaire' hero is removed from the dashboard branch", () => {
   const source = dashboardBranchSource();
-  const priorityCardIndex = indexOfOrFail(source, "<PriorityCard", "PriorityCard");
-  const legacyHeroIndex = indexOfOrFail(source, "dashboardCockpit", "legacy hero");
-  assert.ok(
-    priorityCardIndex < legacyHeroIndex,
-    "PriorityCard must remain before the (still-present) legacy hero",
-  );
+  assert.doesNotMatch(source, /dashboardCockpit/);
+  assert.doesNotMatch(source, /Action prioritaire/);
+  assert.doesNotMatch(source, /Déclarer maintenant/);
 });
 
 test("the page heading ('Mon espace fiscal') still renders before PriorityCard, preserving heading context", () => {
@@ -113,4 +110,41 @@ test("PriorityCard is still gated the same way as before (hasProfileCore || simp
     "(hasProfileCore || simpleAssistantProfile) && priorityCardViewModel",
   );
   assert.notEqual(priorityCardBlockStart, -1);
+});
+
+test("essential fiscal/admin surfaces render before discovery and Premium messaging", () => {
+  const source = dashboardBranchSource();
+  const reserveIndex = indexOfOrFail(source, "À mettre de côté", "essential fiscal snapshot");
+  const markersIndex = indexOfOrFail(source, "FISCAL_MARKERS_COPY.title", "Repères fiscaux");
+  const declarationDossierIndex = indexOfOrFail(
+    source,
+    "declaration-detail-section",
+    "declaration dossier",
+  );
+  const founderBannerIndex = indexOfOrFail(source, "dashboardFounderBanner", "founder banner");
+  const discoveryBannerIndex = indexOfOrFail(source, '"discoveryBanner"', "discovery banner");
+  const premiumBannerIndex = indexOfOrFail(
+    source,
+    "premiumBannerContent.line1",
+    "inline Premium banner",
+  );
+  const protectionIndex = indexOfOrFail(
+    source,
+    "dashboardProtectionCard",
+    "Premium value card",
+  );
+
+  assert.ok(reserveIndex < founderBannerIndex);
+  assert.ok(markersIndex < founderBannerIndex);
+  assert.ok(declarationDossierIndex < founderBannerIndex);
+  assert.ok(declarationDossierIndex < discoveryBannerIndex);
+  assert.ok(declarationDossierIndex < premiumBannerIndex);
+  assert.ok(declarationDossierIndex < protectionIndex);
+});
+
+test("control center no longer creates a competing declaration CTA", () => {
+  const source = dashboardBranchSource();
+  assert.doesNotMatch(source, /Déclarer URSSAF/);
+  assert.match(source, /Ouvrir mon espace URSSAF/);
+  assert.match(source, /Comprendre l’URSSAF/);
 });

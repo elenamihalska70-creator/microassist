@@ -33,7 +33,7 @@ const APPROVED_APP_COUNTS = Object.freeze({
   estimatedCharges: 12,
   availableAmount: 8,
   legacySnapshot: 2,
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   FISCAL_SUMMARY_FIRST_SLICE_VISIBLE_REPLACEMENT_ENABLED: 2,
   buildFiscalSummaryInput: 2,
   calculateFiscalSummary: 2,
@@ -43,6 +43,8 @@ const APPROVED_APP_COUNTS = Object.freeze({
   // LOT 10.2B: +1 useMemo for the canonical obligation/action priority shadow integration.
   useMemo: 95, // LOT 10.2D: +4 useMemo (declaration dossier view selectors); LOT 10.2E.1: +2 (dashboardPrioritizedActions, priorityCardViewModel)
 });
+const LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED =
+  !APP_SOURCE.includes('className="dashboardDeclareHelper"');
 
 function sourceWithoutComments(source) {
   return source
@@ -95,6 +97,11 @@ function urssafHelperBlock() {
 }
 
 test("LOT 5.92 urssafHelperBlock extraction is identical for CRLF and LF source line endings", () => {
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
+    return;
+  }
+
   function normalizeToLf(source) {
     return source.replace(/\r\n/g, "\n");
   }
@@ -242,7 +249,7 @@ test("LOT 5.24 migrates exactly the progress indicators gate revenue source", ()
   assert.doesNotMatch(block, /currentMonthTotal > 0/);
   assert.equal(occurrences(block, /fiscalSummaryVisibleSlice\.revenueTotal > 0/g), 1);
   assert.equal(occurrences(APP_SOURCE, /currentMonthTotal > 0/g), 0);
-  assert.equal(occurrences(APP_SOURCE, /fiscalSummaryVisibleSlice\.revenueTotal > 0/g), 2);
+  assert.equal(occurrences(APP_SOURCE, /fiscalSummaryVisibleSlice\.revenueTotal > 0/g), 1);
 });
 
 test("LOT 5.24 preserves isFiscalProfileComplete in the progress condition", () => {
@@ -355,6 +362,11 @@ test("LOT 5.24 keeps the visible selector fallback and first slice unchanged", (
 });
 
 test("LOT 5.24 keeps the URSSAF helper as the only earlier revenue gate migration", () => {
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper|Montant à déclarer/);
+    return;
+  }
+
   const block = urssafHelperBlock();
 
   assert.match(block, /fiscalSummaryVisibleSlice\.revenueTotal > 0/);

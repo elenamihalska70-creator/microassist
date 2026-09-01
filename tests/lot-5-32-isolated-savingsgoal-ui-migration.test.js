@@ -24,7 +24,7 @@ const APPROVED_APP_COUNTS = Object.freeze({
   // (formula body + dependency array) and 1 useMemo hook.
   savingsGoal: 0,
   estimatedCharges: 12,
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   buildFiscalSummaryInput: 2,
   calculateFiscalSummary: 2,
   createRuntimeParityEvidence: 2,

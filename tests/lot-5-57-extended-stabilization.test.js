@@ -75,7 +75,7 @@ test("LOT 5.57 locks the approved Shadow baseline at twelve with the reserve-low
 
   assert.match(LOT_5_55_SOURCE, /Dashboard monthly reflection - charges amount/);
   assert.match(LOT_5_56_SOURCE, /Shadow Baseline 10 -> 11/);
-  assert.equal(occurrences(app, /\bfiscalSummaryVisibleSlice\b/g), 15);
+  assert.equal(occurrences(app, /\bfiscalSummaryVisibleSlice\b/g), 13);
   assert.equal(
     occurrences(outsideSelector, /fiscalSummaryVisibleSlice\.finalContributionAmount/g),
     7,

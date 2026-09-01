@@ -190,12 +190,12 @@ test("LOT 5.91A no dependency array references savingsGoal", () => {
   assert.doesNotMatch(CODE, /\[\s*[^\]]*\bsavingsGoal\b[^\]]*\]/);
 });
 
-// 13 & 14. fiscalSummaryVisibleSlice occurs exactly 15 times, recomputed from source; no 16th
-test("LOT 5.91A fiscalSummaryVisibleSlice occurs exactly 15 times with no 16th occurrence", () => {
+// 13 & 14. fiscalSummaryVisibleSlice occurs exactly 13 times, recomputed from source; no 16th
+test("LOT 5.91A fiscalSummaryVisibleSlice occurs exactly 13 times with no 16th occurrence", () => {
   const indexes = [...CODE.matchAll(/\bfiscalSummaryVisibleSlice\b/g)].map((match) => match.index);
 
-  assert.equal(indexes.length, 15);
-  assert.equal(indexes[15], undefined);
+  assert.equal(indexes.length, 13);
+  assert.equal(indexes[13], undefined);
 });
 
 // 15. persistence code is unchanged / has no savingsGoal reference

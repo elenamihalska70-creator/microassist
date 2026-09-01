@@ -41,7 +41,7 @@ const APPROVED_APP_COUNTS = Object.freeze({
   estimatedCharges: 12,
   availableAmount: 8,
   legacySnapshot: 2,
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   FISCAL_SUMMARY_FIRST_SLICE_VISIBLE_REPLACEMENT_ENABLED: 2,
   buildFiscalSummaryInput: 2,
   calculateFiscalSummary: 2,
@@ -99,41 +99,9 @@ function objectiveSavingsTextBlock() {
   );
 }
 
-function urssafHelperBlock() {
-  return extractBlock(
-    '<div className="dashboardDeclareHelper">',
-    "                        </>\n                      ) : (\n                        <>\n                          <button",
-  );
-}
-
-test("LOT 5.92 urssafHelperBlock extraction is identical for CRLF and LF source line endings", () => {
-  function normalizeToLf(source) {
-    return source.replace(/\r\n/g, "\n");
-  }
-
-  function extractFrom(source, startText, endText) {
-    const start = source.indexOf(startText);
-    assert.notEqual(start, -1, startText);
-    const end = source.indexOf(endText, start);
-    assert.notEqual(end, -1, endText);
-    return source.slice(start, end);
-  }
-
-  const URSSAF_START = '<div className="dashboardDeclareHelper">';
-  const URSSAF_END =
-    "                        </>\n                      ) : (\n                        <>\n                          <button";
-
-  const rawCrlfSource = readFileSync(
-    new URL("../src/App.jsx", import.meta.url),
-    "utf8",
-  ).replace(/\r?\n/g, "\r\n");
-  const rawLfSource = rawCrlfSource.replace(/\r\n/g, "\n");
-
-  const blockFromCrlf = extractFrom(normalizeToLf(rawCrlfSource), URSSAF_START, URSSAF_END);
-  const blockFromLf = extractFrom(normalizeToLf(rawLfSource), URSSAF_START, URSSAF_END);
-
-  assert.equal(blockFromCrlf, blockFromLf);
-  assert.equal(blockFromCrlf, urssafHelperBlock());
+test("LOT 10.2E.3 removes the legacy URSSAF helper source block", () => {
+  assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
+  assert.doesNotMatch(APP_SOURCE, /Montant à déclarer : \{getDisplayValue\(fiscalSummaryVisibleSlice\.revenueTotal, "money"\)\}/);
 });
 
 function feedbackBlock() {
@@ -274,7 +242,7 @@ test("LOT 5.26 keeps the progress indicators gate exact and single-source", () =
   assert.doesNotMatch(block, /shadowResult|legacySnapshot/);
   assert.equal(occurrences(block, /fiscalSummaryVisibleSlice\.revenueTotal > 0/g), 1);
   assert.equal(occurrences(APP_SOURCE, /currentMonthTotal > 0/g), 0);
-  assert.equal(occurrences(APP_SOURCE, /fiscalSummaryVisibleSlice\.revenueTotal > 0/g), 2);
+  assert.equal(occurrences(APP_SOURCE, /fiscalSummaryVisibleSlice\.revenueTotal > 0/g), 1);
 });
 
 test("LOT 5.26 keeps isFiscalProfileComplete unchanged", () => {
@@ -421,10 +389,9 @@ test("LOT 5.26 keeps visible selector fallback, feature flag and approved Shadow
 });
 
 test("LOT 5.26 keeps approved Shadow consumers limited and no new consumer appears", () => {
-  const urssaf = urssafHelperBlock();
   const progress = progressIndicatorsBlock();
 
-  assert.match(urssaf, /fiscalSummaryVisibleSlice\.revenueTotal > 0/);
+  assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
   assert.match(progress, /fiscalSummaryVisibleSlice\.revenueTotal > 0/);
   assert.doesNotMatch(APP_SOURCE, /shadowResult\.(tva|cfe|deadline|annual|savings|available|invoice|assistant)/i);
   assert.match(LOT_5_24_SOURCE, /migrates exactly the progress indicators gate revenue source/);
@@ -507,7 +474,7 @@ test("LOT 5.26 keeps Legacy guards strict", () => {
   );
   assert.match(LOT_5_18_SOURCE, /fiscalSummaryVisibleSlice\\\.finalContributionAmount \\\* 3/);
   assert.match(LOT_5_18_SOURCE, /blocks unapproved new Legacy consumers/);
-  assert.match(LOT_5_18_SOURCE, /isFiscalProfileComplete && fiscalSummaryVisibleSlice\\\.revenueTotal > 0/);
+  assert.doesNotMatch(LOT_5_18_SOURCE, /dashboardDeclareHelper/);
   assert.doesNotMatch(LOT_5_18_SOURCE, /APPROVED_LEGACY_REFERENCES[\s\S]*currentMonthTotal:\s*28/);
 });
 

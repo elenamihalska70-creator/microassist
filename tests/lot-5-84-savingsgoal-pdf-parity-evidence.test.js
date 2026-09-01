@@ -20,7 +20,7 @@ const RUNTIME_EVIDENCE_SOURCE = readFileSync(
 );
 
 const APPROVED_COUNTS = Object.freeze({
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   // LOT 5.91A: root savingsGoal removed (0 remaining occurrences).
   savingsGoal: 0,
   pdfSavingsGoal: 5,
@@ -461,12 +461,12 @@ test("LOT 5.84 keeps persistence payload assistant and feedback isolated", () =>
   assert.doesNotMatch(pdfExport, /localStorage|sessionStorage|supabase|fetch|feedbackContextSnapshot|simpleAssistantGuidance/);
 });
 
-test("LOT 5.84 keeps baseline Shadow fifteen and no sixteenth occurrence", () => {
+test("LOT 5.84 keeps baseline Shadow fifteen and no fourteenth occurrence", () => {
   const app = sourceWithoutComments(APP_SOURCE);
   const pdfAlias = sourceWithoutComments(pdfSavingsGoalBlock());
 
   assert.equal(occurrences(app, /\bfiscalSummaryVisibleSlice\b/g), APPROVED_COUNTS.fiscalSummaryVisibleSlice);
-  assert.equal(occurrences(appWithoutVisibleSlice(), /\bfiscalSummaryVisibleSlice\b/g), 14);
+  assert.equal(occurrences(appWithoutVisibleSlice(), /\bfiscalSummaryVisibleSlice\b/g), 12);
   assert.equal(occurrences(pdfAlias, /\bfiscalSummaryVisibleSlice\b/g), 1);
   assert.equal(occurrences(app, /\bsavingsGoal\b/g), APPROVED_COUNTS.savingsGoal);
   assert.equal(occurrences(app, /\bpdfSavingsGoal\b/g), APPROVED_COUNTS.pdfSavingsGoal);

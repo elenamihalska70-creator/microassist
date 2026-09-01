@@ -506,7 +506,7 @@ test("LOT 5.30 keeps Legacy Retention intact", () => {
   // drops by 2 (formula body + dependency array) as a direct consequence.
   assert.equal(occurrences(code, /\bsavingsGoal\b/g), 0);
   assert.equal(occurrences(code, /\bestimatedCharges\b/g), 12);
-  assert.equal(occurrences(code, /\bfiscalSummaryVisibleSlice\b/g), 15);
+  assert.equal(occurrences(code, /\bfiscalSummaryVisibleSlice\b/g), 13);
   assert.equal(
     occurrences(
       code,

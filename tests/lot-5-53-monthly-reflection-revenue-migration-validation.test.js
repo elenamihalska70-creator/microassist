@@ -32,7 +32,7 @@ const RUNTIME_EVIDENCE_SOURCE = readFileSync(
 );
 
 const APPROVED_COUNTS = Object.freeze({
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   monthlyReflectionRevenueTotalAssignment: 1,
   monthlyReflectionChargesAmountAssignment: 1,
   monthlyReflectionRevenueTotalReferences: 3,
@@ -263,7 +263,7 @@ test("LOT 5.53 validates Shadow baseline twelve with monthly reflection charges 
     occurrences(APP_SOURCE, /\bmonthlyReflectionRevenueTotal\b/g),
     APPROVED_COUNTS.monthlyReflectionRevenueTotalReferences,
   );
-  assert.equal(occurrences(appOutsideSelector, /fiscalSummaryVisibleSlice\.revenueTotal/g), 6);
+  assert.equal(occurrences(appOutsideSelector, /fiscalSummaryVisibleSlice\.revenueTotal/g), 4);
   assert.match(LOT_5_52_SOURCE, /fiscalSummaryVisibleSlice = 10/);
   assert.match(LOT_5_52_SOURCE, /No 11th fiscalSummaryVisibleSlice occurrence/);
 });

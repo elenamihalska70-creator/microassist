@@ -28,7 +28,7 @@ const PLAYWRIGHT_CONFIG = readFileSync(
 
 const APPROVED_APP_COUNTS = Object.freeze({
   currentMonthTotal: 24,
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   FISCAL_SUMMARY_FIRST_SLICE_VISIBLE_REPLACEMENT_ENABLED: 2,
   buildFiscalSummaryInput: 2,
   calculateFiscalSummary: 2,
@@ -39,6 +39,8 @@ const APPROVED_APP_COUNTS = Object.freeze({
   // LOT 10.2B: +1 useMemo for the canonical obligation/action priority shadow integration.
   useMemo: 95, // LOT 10.2D: +4 useMemo (declaration dossier view selectors); LOT 10.2E.1: +2 (dashboardPrioritizedActions, priorityCardViewModel)
 });
+const LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED =
+  !APP_SOURCE.includes('className="dashboardDeclareHelper"');
 
 function sourceWithoutComments(source) {
   return source
@@ -79,6 +81,11 @@ function urssafHelperBlock() {
 }
 
 test("LOT 5.92 urssafHelperBlock extraction is identical for CRLF and LF source line endings", () => {
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
+    return;
+  }
+
   function normalizeToLf(source) {
     return source.replace(/\r\n/g, "\n");
   }
@@ -241,6 +248,11 @@ function createEvidence({ legacyRevenue = 1200, shadowRevenue = 1200 } = {}) {
 }
 
 test("LOT 5.22 keeps the URSSAF gate Shadow-backed and exact", () => {
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper|Montant à déclarer/);
+    return;
+  }
+
   const block = urssafHelperBlock();
 
   assert.match(block, /fiscalSummaryVisibleSlice\.revenueTotal > 0/);
@@ -420,6 +432,11 @@ test("LOT 5.22 keeps React counts, Adapter execution and Facade execution stable
 });
 
 test("LOT 5.22 keeps helper JSX unchanged outside the approved gate", () => {
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper|Montant à déclarer/);
+    return;
+  }
+
   const block = urssafHelperBlock();
 
   assert.match(block, /className="dashboardDeclareHelper"/);
@@ -455,6 +472,10 @@ test("LOT 5.22 keeps parity inputs, traces, warnings and fixtures unaffected by 
   assert.match(LOT_5_21_SOURCE, /validates parity and runtime evidence remain intact/);
   assert.match(LOT_5_21_SOURCE, /validates persistence paths are not touched by the gate/);
   assert.match(LOT_5_21_SOURCE, /validates payload, export and assistant boundaries stay Legacy-compatible/);
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
+    return;
+  }
   assert.doesNotMatch(urssafHelperBlock(), /trace|warnings|fixture|shadowInput|legacySnapshot/i);
 });
 
@@ -475,7 +496,7 @@ test("LOT 5.22 keeps Legacy retention guards strict and adjusted only for the ap
   );
   assert.match(LOT_5_18_SOURCE, /fiscalSummaryVisibleSlice\\\.finalContributionAmount \\\* 3/);
   assert.match(LOT_5_18_SOURCE, /blocks unapproved new Legacy consumers/);
-  assert.match(LOT_5_18_SOURCE, /isFiscalProfileComplete && fiscalSummaryVisibleSlice\\\.revenueTotal > 0/);
+  assert.doesNotMatch(LOT_5_18_SOURCE, /dashboardDeclareHelper/);
   assert.equal(occurrences(APP_SOURCE, /currentMonthTotal > 0/g), 0);
 });
 
@@ -518,7 +539,11 @@ test("LOT 5.22 keeps other Shadow consumers out of scope", () => {
 });
 
 test("LOT 5.22 keeps persistence isolated from the migrated gate", () => {
-  assert.doesNotMatch(urssafHelperBlock(), /localStorage|sessionStorage|supabase|fetch/i);
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
+  } else {
+    assert.doesNotMatch(urssafHelperBlock(), /localStorage|sessionStorage|supabase|fetch/i);
+  }
   assert.doesNotMatch(visibleSliceBlock(), /localStorage|sessionStorage|supabase|fetch/i);
   assert.match(APP_SOURCE, /localStorage\.getItem\(LS_KEY\)/);
   assert.match(APP_SOURCE, /supabase\.from\("revenues"\)/);
@@ -530,10 +555,19 @@ test("LOT 5.22 keeps payloads, exports and assistant boundaries unchanged", () =
   assert.match(exportBlock(), /dashboardChargesDisplay/);
   assert.match(exportBlock(), /dashboardAvailableDisplay/);
   assert.match(assistantDraftBlock(), /localStorage\.getItem\(LS_KEY\)/);
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
+    return;
+  }
   assert.doesNotMatch(urssafHelperBlock(), /trackBetaEvent|payload|downloadTextFile|generateFacturXXml|generateB2CInvoicePdf|assistant/i);
 });
 
 test("LOT 5.22 keeps rollback local to the helper gate expression", () => {
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
+    return;
+  }
+
   const block = urssafHelperBlock();
   const rollbackBlock = block.replace(
     "fiscalSummaryVisibleSlice.revenueTotal > 0",
@@ -561,7 +595,9 @@ test("LOT 5.22 dependency inventory remains stable", () => {
     parity: shadowBlock(),
     runtimeEvidence: shadowBlock(),
     dashboard: APP_SOURCE,
-    helperJsx: urssafHelperBlock(),
+    helperJsx: LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED
+      ? "LOT 10.2E.3 removed dashboardDeclareHelper"
+      : urssafHelperBlock(),
     legacyRollbackPath: visibleSliceBlock(),
   };
 

@@ -28,7 +28,7 @@ const RUNTIME_EVIDENCE_SOURCE = readFileSync(
 );
 
 const APPROVED_COUNTS = Object.freeze({
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   monthlyReflectionRevenueTotalAssignment: 1,
   monthlyReflectionChargesAmountAssignment: 1,
   monthlyReflectionRevenueTotalReferences: 3,
@@ -172,7 +172,7 @@ test("LOT 5.54 keeps Shadow baseline at twelve with charges and reserve-low occu
     occurrences(APP_SOURCE, /\bmonthlyReflectionRevenueTotal\b/g),
     APPROVED_COUNTS.monthlyReflectionRevenueTotalReferences,
   );
-  assert.equal(occurrences(appWithoutVisibleSlice(), /fiscalSummaryVisibleSlice\.revenueTotal/g), 6);
+  assert.equal(occurrences(appWithoutVisibleSlice(), /fiscalSummaryVisibleSlice\.revenueTotal/g), 4);
 });
 
 test("LOT 5.54 keeps formatter and monthly reflection text stable", () => {

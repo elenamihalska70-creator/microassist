@@ -28,7 +28,7 @@ const RUNTIME_EVIDENCE_SOURCE = readFileSync(
 );
 
 const APPROVED_COUNTS = Object.freeze({
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   useState: 87, // LOT 10.2D: +5 useState (declaration dossier UI state); LOT 10.2D.1: +1 (payment confirm loading guard)
   useEffect: 59, // LOT 10.2D: +1 useEffect (fetch declaration dossiers on user change)
   // LOT 5.91A: root savingsGoal removed, dropping 1 useMemo( call site.
@@ -157,7 +157,7 @@ test("LOT 5.70 locks Shadow baseline at thirteen with exact thirteenth consumer 
     occurrences(app, /const smartAlertRevenueTotal = fiscalSummaryVisibleSlice\.revenueTotal;/g),
     1,
   );
-  assert.equal(occurrences(appWithoutVisibleSlice(), /fiscalSummaryVisibleSlice\.revenueTotal/g), 6);
+  assert.equal(occurrences(appWithoutVisibleSlice(), /fiscalSummaryVisibleSlice\.revenueTotal/g), 4);
   assert.doesNotMatch(smartCall, /fiscalSummaryVisibleSlice\.finalContributionAmount[\s\S]*fiscalSummaryVisibleSlice\.finalContributionAmount/);
 });
 

@@ -28,7 +28,7 @@ const RUNTIME_EVIDENCE_SOURCE = readFileSync(
 );
 
 const APPROVED_COUNTS = Object.freeze({
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   // LOT 5.91A: root savingsGoal removed (0 remaining occurrences), dropping
   // 1 useMemo( call site.
   savingsGoal: 0,
@@ -281,13 +281,13 @@ test("LOT 5.82 keeps the Shadow source and denominator alias stable", () => {
   assert.doesNotMatch(alias, /savingsGoal|Math\.round|Math\.min|\|\||\?\?|Number\(|parseFloat|toLocaleString/);
 });
 
-test("LOT 5.82 keeps Shadow baseline fifteen with no sixteenth occurrence", () => {
+test("LOT 5.82 keeps Shadow baseline thirteen with no fourteenth occurrence", () => {
   const app = sourceWithoutComments(APP_SOURCE);
   const alias = sourceWithoutComments(coachingSavingsGoalBlock());
   const pdfAlias = sourceWithoutComments(pdfSavingsGoalBlock());
 
   assert.equal(occurrences(app, /\bfiscalSummaryVisibleSlice\b/g), APPROVED_COUNTS.fiscalSummaryVisibleSlice);
-  assert.equal(occurrences(appWithoutVisibleSlice(), /\bfiscalSummaryVisibleSlice\b/g), 14);
+  assert.equal(occurrences(appWithoutVisibleSlice(), /\bfiscalSummaryVisibleSlice\b/g), 12);
   assert.match(alias, /fiscalSummaryVisibleSlice\.finalContributionAmount \* 3/);
   assert.match(pdfAlias, /fiscalSummaryVisibleSlice\.finalContributionAmount \* 3/);
   assert.equal(occurrences(pdfAlias, /\bfiscalSummaryVisibleSlice\b/g), 1);

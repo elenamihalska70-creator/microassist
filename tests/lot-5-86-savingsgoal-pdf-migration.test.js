@@ -20,7 +20,7 @@ const RUNTIME_EVIDENCE_SOURCE = readFileSync(
 );
 
 const APPROVED_COUNTS = Object.freeze({
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   // LOT 5.91A: root savingsGoal removed (0 remaining occurrences), dropping
   // 1 useMemo( call site.
   savingsGoal: 0,
@@ -235,13 +235,13 @@ test("LOT 5.86A keeps PDF parity shadow parity and runtime evidence intact", () 
   assert.match(RUNTIME_EVIDENCE_SOURCE, /runtime parity evidence has no UI, state, persistence, network or implicit time access/);
 });
 
-test("LOT 5.86A locks Shadow baseline fifteen and the exact fifteenth consumer", () => {
+test("LOT 5.86A locks Shadow baseline thirteen and the exact thirteenth consumer", () => {
   const app = sourceWithoutComments(APP_SOURCE);
   const alias = sourceWithoutComments(pdfSavingsGoalBlock());
   const coachingAlias = sourceWithoutComments(fiscalCoachingSavingsGoalBlock());
 
   assert.equal(occurrences(app, /\bfiscalSummaryVisibleSlice\b/g), APPROVED_COUNTS.fiscalSummaryVisibleSlice);
-  assert.equal(occurrences(appWithoutVisibleSlice(), /\bfiscalSummaryVisibleSlice\b/g), 14);
+  assert.equal(occurrences(appWithoutVisibleSlice(), /\bfiscalSummaryVisibleSlice\b/g), 12);
   assert.equal(occurrences(alias, /\bfiscalSummaryVisibleSlice\b/g), 1);
   assert.equal(occurrences(coachingAlias, /\bfiscalSummaryVisibleSlice\b/g), 1);
   assert.equal(occurrences(app, /\bpdfSavingsGoal\b/g), APPROVED_COUNTS.pdfSavingsGoal);

@@ -31,7 +31,7 @@ const RUNTIME_EVIDENCE_SOURCE = readFileSync(
 );
 
 const APPROVED_COUNTS = Object.freeze({
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   useState: 88, // LOT 10.2D: +5 useState (declaration dossier UI state); LOT 10.2D.1: +1 (payment confirm loading guard)
   useEffect: 60, // LOT 10.2D: +1 useEffect (fetch declaration dossiers on user change)
   // LOT 5.91A: root savingsGoal removed; useMemo drops by the 1 hook removed with it.
@@ -285,7 +285,7 @@ test("LOT 5.65 validates Shadow baseline thirteen after approved revenue input m
   assert.equal(occurrences(smartCall, /smartAlertEstimatedCharges/g), 2);
   assert.equal(occurrences(smartCall, /fiscalSummaryVisibleSlice\.finalContributionAmount/g), 0);
   assert.equal(occurrences(app, /const smartAlertRevenueTotal = fiscalSummaryVisibleSlice\.revenueTotal;/g), 1);
-  assert.match(LOT_5_64_SOURCE, /occurrences\(app, \/\\bfiscalSummaryVisibleSlice\\b\/g\), 15/);
+  assert.match(LOT_5_64_SOURCE, /occurrences\(app, \/\\bfiscalSummaryVisibleSlice\\b\/g\), 13/);
 });
 
 test("LOT 5.65 validates estimatedCharges Legacy retention outside reserve-low input; confirms root savingsGoal removed", () => {

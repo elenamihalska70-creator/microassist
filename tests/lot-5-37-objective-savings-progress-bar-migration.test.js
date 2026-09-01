@@ -20,7 +20,7 @@ const SHADOW_PARITY_SOURCE = readFileSync(
 );
 
 const APPROVED_APP_COUNTS = Object.freeze({
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   // LOT 5.91A: root savingsGoal removed; useMemo drops by the 1 hook removed with it.
   savingsGoal: 0,
   useState: 88, // LOT 10.2D: +5 useState (declaration dossier UI state); LOT 10.2D.1: +1 (payment confirm loading guard)

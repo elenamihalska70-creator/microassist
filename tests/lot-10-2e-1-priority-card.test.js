@@ -412,9 +412,14 @@ test("WIRING: App.jsx renders PriorityCard from the FIRST (top-ranked) canonical
   assert.match(APP_SOURCE, /buildPriorityCardViewModel\(dashboardPrioritizedActions\[0\] \?\? null\)/);
 });
 
-test("ADDITIVE MIGRATION: the legacy 'Action prioritaire' hero is not removed by this LOT", () => {
-  assert.match(APP_SOURCE, /Action prioritaire/);
-  assert.match(APP_SOURCE, /dashboardCockpit/);
+test("CONSOLIDATION: the legacy 'Action prioritaire' hero is not a second dashboard action surface", () => {
+  const dashboardStart = APP_SOURCE.indexOf('appView === "dashboard" ? (');
+  assert.notEqual(dashboardStart, -1);
+  const dashboardBranch = APP_SOURCE.slice(dashboardStart, dashboardStart + 9000);
+
+  assert.doesNotMatch(dashboardBranch, /Action prioritaire/);
+  assert.doesNotMatch(dashboardBranch, /dashboardCockpit/);
+  assert.doesNotMatch(dashboardBranch, /Déclarer maintenant/);
 });
 
 test("NO NEW MIGRATION: no new Supabase migration file references PriorityCard or its view-model", () => {

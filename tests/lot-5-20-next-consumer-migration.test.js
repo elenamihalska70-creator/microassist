@@ -24,11 +24,13 @@ const APPROVED_REFERENCE_COUNTS = Object.freeze({
   estimatedCharges: 12,
   availableAmount: 8,
   legacySnapshot: 2,
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   FISCAL_SUMMARY_FIRST_SLICE_VISIBLE_REPLACEMENT_ENABLED: 2,
   buildFiscalSummaryInput: 2,
   calculateFiscalSummary: 2,
 });
+const LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED =
+  !APP_SOURCE.includes('className="dashboardDeclareHelper"');
 
 function sourceWithoutComments(source) {
   return source
@@ -69,6 +71,11 @@ function urssafHelperBlock() {
 }
 
 test("LOT 5.92 urssafHelperBlock extraction is identical for CRLF and LF source line endings", () => {
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
+    return;
+  }
+
   function normalizeToLf(source) {
     return source.replace(/\r\n/g, "\n");
   }
@@ -216,6 +223,12 @@ function createEvidence({ legacyRevenue = 1200, shadowRevenue = 1200 } = {}) {
 }
 
 test("LOT 5.20 migrates only the URSSAF helper gate away from direct Legacy revenue", () => {
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper|Montant à déclarer/);
+    assert.equal(occurrences(APP_SOURCE, /currentMonthTotal > 0/g), 0);
+    return;
+  }
+
   const block = urssafHelperBlock();
 
   assert.match(block, /fiscalSummaryVisibleSlice\.revenueTotal > 0/);
@@ -226,6 +239,11 @@ test("LOT 5.20 migrates only the URSSAF helper gate away from direct Legacy reve
 });
 
 test("LOT 5.20 keeps URSSAF helper text, formatter and actions unchanged", () => {
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper|Montant à déclarer/);
+    return;
+  }
+
   const block = urssafHelperBlock();
 
   assert.match(block, /Montant à déclarer : \{getDisplayValue\(fiscalSummaryVisibleSlice\.revenueTotal, "money"\)\}/);
@@ -300,6 +318,11 @@ test("LOT 5.20 does not add a flag, state, effect, Adapter execution or Facade e
 });
 
 test("LOT 5.20 does not add fallback or normalization to the migrated gate", () => {
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
+    return;
+  }
+
   const block = urssafHelperBlock();
 
   assert.doesNotMatch(block, /\|\| 0|\?\? 0|Boolean\s*\(|Number\s*\(|parseFloat\s*\(|parseInt\s*\(/);
@@ -340,6 +363,10 @@ test("LOT 5.20 keeps persistence, payloads, exports and assistant boundaries unc
   assert.match(feedbackBlock(), /totalRevenues: currentMonthTotal \|\| 0/);
   assert.match(exportBlock(), /getDisplayValue\(currentMonthTotal, "money"\)/);
   assert.match(assistantDraftBlock(), /localStorage\.getItem\(LS_KEY\)/);
+  if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
+    assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
+    return;
+  }
   assert.doesNotMatch(urssafHelperBlock(), /localStorage|sessionStorage|supabase|fetch|trackEvent|payload/i);
 });
 

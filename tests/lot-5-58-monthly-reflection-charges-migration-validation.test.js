@@ -27,7 +27,7 @@ const RUNTIME_EVIDENCE_SOURCE = readFileSync(
 );
 
 const APPROVED_COUNTS = Object.freeze({
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   monthlyReflectionRevenueTotalAssignment: 1,
   monthlyReflectionChargesAmountAssignment: 1,
   monthlyReflectionChargesAmountReferences: 3,

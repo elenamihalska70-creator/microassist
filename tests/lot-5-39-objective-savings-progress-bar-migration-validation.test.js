@@ -8,7 +8,7 @@ const APP_SOURCE = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf
 );
 
 const APPROVED_APP_COUNTS = Object.freeze({
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   // LOT 5.91A: root savingsGoal removed (0 remaining occurrences).
   savingsGoal: 0,
   directShadowResultConsumersOutsideSelector: 0,

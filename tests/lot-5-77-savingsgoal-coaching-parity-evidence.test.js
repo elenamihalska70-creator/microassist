@@ -11,7 +11,7 @@ const APP_SOURCE = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf
 );
 
 const APPROVED_COUNTS = Object.freeze({
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
 });
 const REFERENCE_DATE = "2026-07-20";
 const LOW_RESERVE_MESSAGE_KEY = "roleBasedTips.dailyFiscalTip.lowReserve";
@@ -526,7 +526,7 @@ test("LOT 5.77 tracks the approved coaching Shadow consumer and baseline fourtee
   const coaching = sourceWithoutComments(coachingBlock());
 
   assert.equal(occurrences(app, /\bfiscalSummaryVisibleSlice\b/g), APPROVED_COUNTS.fiscalSummaryVisibleSlice);
-  assert.equal(occurrences(appWithoutVisibleSlice(), /\bfiscalSummaryVisibleSlice\b/g), 14);
+  assert.equal(occurrences(appWithoutVisibleSlice(), /\bfiscalSummaryVisibleSlice\b/g), 12);
   assert.doesNotMatch(coaching, /fiscalSummaryVisibleSlice|shadowResult|finalContributionAmount/);
   assert.match(app, /const fiscalCoachingSavingsGoal = Math\.max\(\s*fiscalSummaryVisibleSlice\.finalContributionAmount \* 3,\s*500,\s*\);/);
 });

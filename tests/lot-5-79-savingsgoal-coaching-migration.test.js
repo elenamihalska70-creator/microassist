@@ -20,7 +20,7 @@ const RUNTIME_EVIDENCE_SOURCE = readFileSync(
 );
 
 const APPROVED_COUNTS = Object.freeze({
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   useState: 87, // LOT 10.2D: +5 useState (declaration dossier UI state); LOT 10.2D.1: +1 (payment confirm loading guard)
   useEffect: 59, // LOT 10.2D: +1 useEffect (fetch declaration dossiers on user change)
   // LOT 5.91A: root savingsGoal removed, dropping 1 useMemo( call site.
@@ -285,7 +285,7 @@ test("LOT 5.79 has no fifteenth occurrence and rollback remains local", () => {
 
   // LOT 5.86A approved exactly one further consumer (the PDF export alias),
   // raising the baseline from 14 to 15 with no 16th occurrence.
-  assert.equal(occurrences(app, /\bfiscalSummaryVisibleSlice\b/g), 15);
+  assert.equal(occurrences(app, /\bfiscalSummaryVisibleSlice\b/g), 13);
   assert.match(alias, /const fiscalCoachingSavingsGoal = Math\.max\(\s*fiscalSummaryVisibleSlice\.finalContributionAmount \* 3/);
   assert.match(alias, /const pdfSavingsGoal = Math\.max\(\s*fiscalSummaryVisibleSlice\.finalContributionAmount \* 3/);
   assert.match(branch, /fiscalCoachingSavingsGoal > 0/);

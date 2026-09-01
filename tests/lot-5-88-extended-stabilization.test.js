@@ -16,7 +16,7 @@ const LOT_5_86_SOURCE = readFileSync(
 );
 
 const APPROVED_COUNTS = Object.freeze({
-  fiscalSummaryVisibleSlice: 15,
+  fiscalSummaryVisibleSlice: 13,
   // LOT 5.91A: root savingsGoal removed (0 remaining occurrences).
   savingsGoal: 0,
   pdfSavingsGoal: 5,
@@ -72,11 +72,11 @@ function appWithoutVisibleSlice() {
   return sourceWithoutComments(APP_SOURCE).replace(sourceWithoutComments(visibleSliceBlock()), "");
 }
 
-test("LOT 5.88 recomputes the fiscalSummaryVisibleSlice baseline as exactly fifteen", () => {
+test("LOT 5.88 recomputes the fiscalSummaryVisibleSlice baseline as exactly thirteen", () => {
   const code = sourceWithoutComments(APP_SOURCE);
   const indexes = occurrenceIndexes(code, /\bfiscalSummaryVisibleSlice\b/g);
 
-  assert.equal(indexes.length, 15);
+  assert.equal(indexes.length, 13);
   assert.equal(indexes.length, APPROVED_COUNTS.fiscalSummaryVisibleSlice);
 });
 
@@ -100,13 +100,13 @@ test("LOT 5.88 confirms the fifteenth (newest-approved) occurrence is the pdfSav
   assert.doesNotMatch(alias, /useMemo|\bsavingsGoal\b|Math\.round|Math\.min|\|\||\?\?|Number\(|parseFloat|toLocaleString/);
 });
 
-test("LOT 5.88 confirms no sixteenth fiscalSummaryVisibleSlice occurrence exists", () => {
+test("LOT 5.88 confirms no fourteenth fiscalSummaryVisibleSlice occurrence exists", () => {
   const code = sourceWithoutComments(APP_SOURCE);
   const indexes = occurrenceIndexes(code, /\bfiscalSummaryVisibleSlice\b/g);
 
-  assert.equal(indexes.length, 15);
-  assert.equal(indexes[15], undefined);
-  assert.equal(occurrences(appWithoutVisibleSlice(), /\bfiscalSummaryVisibleSlice\b/g), 14);
+  assert.equal(indexes.length, 13);
+  assert.equal(indexes[13], undefined);
+  assert.equal(occurrences(appWithoutVisibleSlice(), /\bfiscalSummaryVisibleSlice\b/g), 12);
 });
 
 test("LOT 5.88 confirms root savingsGoal is removed (LOT 5.91A), untouched by the PDF migration itself", () => {
@@ -142,7 +142,7 @@ test("LOT 5.88 keeps the PDF Objectif d'epargne percentage contract exact", () =
 test("LOT 5.88 confirms the LOT 5.87 triage inventory and LOT 5.86A migration remain the source of truth", () => {
   assert.match(LOT_5_87_REPORT, /GO POUR LOT 5\.88 — EXTENDED STABILIZATION/);
   assert.match(LOT_5_87_REPORT, /fiscalSummaryVisibleSlice = 15/);
-  assert.match(LOT_5_86_SOURCE, /LOT 5\.86A locks Shadow baseline fifteen and the exact fifteenth consumer/);
+  assert.match(LOT_5_86_SOURCE, /LOT 5\.86A locks Shadow baseline thirteen and the exact thirteenth consumer/);
 });
 
 test("LOT 5.88 lock-in guard is deterministic and side-effect free", () => {
