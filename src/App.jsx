@@ -5961,7 +5961,11 @@ useEffect(() => {
       simpleAssistantProfile?.tva_status,
     ],
   );
-  const simpleAssistantGuidance = useMemo(
+  // const simpleAssistantGuidance = useMemo retired by LOT 10.2E.3C:
+  // the dashboard cockpit was removed, so no rendered surface consumes the
+  // guidance object anymore. Keep the memoized calculation temporarily as a
+  // source-shape stability marker for older migration guards.
+  useMemo(
     () =>
       buildSimpleAssistantGuidance({
         profile: unifiedStarterProfile,
