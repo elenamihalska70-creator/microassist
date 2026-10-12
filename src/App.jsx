@@ -3350,7 +3350,7 @@ const handleRecoveryComplete = useCallback(() => {
       setUserProfile(null);
       setSubscriptionRecord(null);
       setFiscalProfile(null);
-      setFiscalProfileLoaded(false);
+      setFiscalProfileLoad({ status: "loading", userId: null });
       fiscalProfileFetchRef.current = {
         inFlight: null,
         userId: null,
@@ -3455,7 +3455,15 @@ const handleRecoveryComplete = useCallback(() => {
   );
   const [subscriptionRecord, setSubscriptionRecord] = useState(null);
   const [fiscalProfile, setFiscalProfile] = useState(null);
-  const [fiscalProfileLoaded, setFiscalProfileLoaded] = useState(false);
+  const [fiscalProfileLoad, setFiscalProfileLoad] = useState({
+    status: "loading",
+    userId: null,
+  });
+  const fiscalProfileLoadStatus = fiscalProfileLoad.userId === user?.id
+    ? fiscalProfileLoad.status
+    : "loading";
+  const fiscalProfileLoaded =
+    fiscalProfileLoadStatus === "found" || fiscalProfileLoadStatus === "absent";
   const [localPremiumStatus, setLocalPremiumStatus] = useState(() =>
     readLocalPremiumStatus(),
   );
@@ -3915,7 +3923,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
     const { force = false } = options;
     if (!user) {
       setFiscalProfile(null);
-      setFiscalProfileLoaded(false);
+      setFiscalProfileLoad({ status: "loading", userId: null });
       fiscalProfileFetchRef.current = {
         inFlight: null,
         userId: null,
@@ -3928,66 +3936,96 @@ const refreshSubscriptionRecord = useCallback(async () => {
     const fetchState = fiscalProfileFetchRef.current;
     const now = Date.now();
 
-    if (!force && fetchState.inFlight && fetchState.userId === user.id) {
+    if (fetchState.inFlight && fetchState.userId === user.id) {
       return fetchState.inFlight;
     }
 
     if (
       !force &&
       fetchState.userId === user.id &&
+      (fetchState.status === "found" || fetchState.status === "absent") &&
       now - fetchState.lastFetchedAt < 500
     ) {
       return fetchState.lastData;
     }
 
-    try {
-      setFiscalProfileLoaded(false);
+    // Invalidate scheduled saves before React processes the state update.
+    fetchState.userId = user.id;
+    fetchState.status = "loading";
+    setFiscalProfileLoad({ status: "loading", userId: user.id });
 
-      const request = (async () => {
+    const request = (async () => {
+      try {
         const { data, error } = await supabase
           .from("fiscal_profiles")
           .select("*")
           .eq("user_id", user.id)
           .maybeSingle();
 
-      if (error) {
-        console.error("Load fiscal profile error:", error.message);
-        setFiscalProfile(null);
-        setFiscalProfileLoaded(true);
+        if (error) throw error;
+        // Ignore results belonging to a previous account or reset.
+        if (fiscalProfileFetchRef.current !== fetchState) return null;
+
+        const normalizedData = data
+          ? {
+              ...data,
+              activity_type: data.activity_type
+                ? normalizeActivityType(data.activity_type)
+                : null,
+            }
+          : null;
+        const localDraftAnswers = readLocalDraftAnswers();
+        const strategy = readProfileConflictStrategy();
+        const hasLocalStructuredProfile = Boolean(
+          localDraftAnswers?.activity_type ||
+          localDraftAnswers?.declaration_frequency ||
+          localDraftAnswers?.acre ||
+          localDraftAnswers?.business_start_date,
+        );
+        const hasRemoteStructuredProfile = Boolean(
+          normalizedData?.activity_type ||
+          normalizedData?.declaration_frequency ||
+          normalizedData?.acre ||
+          normalizedData?.business_start_date,
+        );
+        fetchState.conflictPending = strategy === "keep_local" || strategy === "detected";
+        if (
+          strategy !== "use_remote" && strategy !== "keep_local" &&
+          hasLocalStructuredProfile && hasRemoteStructuredProfile &&
+          hasFiscalProfileConflict(localDraftAnswers, normalizedData)
+        ) {
+          fetchState.conflictPending = true;
+          setProfileSyncBlocked(true);
+          setProfileConflictState({
+            open: true,
+            localAnswers: localDraftAnswers,
+            remoteProfile: normalizedData,
+          });
+          writeProfileConflictStrategy("detected");
+        }
+
+        setFiscalProfile(normalizedData);
+        fetchState.status = normalizedData ? "found" : "absent";
         fetchState.lastFetchedAt = Date.now();
-        fetchState.lastData = null;
+        fetchState.lastData = normalizedData;
+        setFiscalProfileLoad({ status: fetchState.status, userId: user.id });
+        return normalizedData;
+      } catch (error) {
+        if (fiscalProfileFetchRef.current !== fetchState) return null;
+        console.error("Load fiscal profile error:", error.message);
+        // Keep the draft and last profile; failure is never confirmed absence.
+        fetchState.status = "failed";
+        fetchState.lastFetchedAt = 0;
+        setFiscalProfileLoad({ status: "failed", userId: user.id });
         return null;
       }
-
-      const normalizedData = data
-        ? {
-            ...data,
-            activity_type: data.activity_type
-              ? normalizeActivityType(data.activity_type)
-              : null,
-          }
-        : null;
-      setFiscalProfile(normalizedData);
-      setFiscalProfileLoaded(true);
-      fetchState.lastFetchedAt = Date.now();
-      fetchState.lastData = normalizedData;
-      return normalizedData;
-      })();
-
-      fetchState.userId = user.id;
-      fetchState.inFlight = request;
-
+    })();
+    fetchState.inFlight = request;
+    try {
       return await request;
-    } catch (error) {
-      console.error("Unexpected error in refreshFiscalProfile:", error);
-      setFiscalProfile(null);
-      setFiscalProfileLoaded(true);
-      fiscalProfileFetchRef.current.lastFetchedAt = Date.now();
-      fiscalProfileFetchRef.current.lastData = null;
-      return null;
     } finally {
-      if (fiscalProfileFetchRef.current.userId === user.id) {
-        fiscalProfileFetchRef.current.inFlight = null;
+      if (fiscalProfileFetchRef.current === fetchState && fetchState.inFlight === request) {
+        fetchState.inFlight = null;
       }
     }
   }, [user]);
@@ -4091,8 +4129,15 @@ const refreshSubscriptionRecord = useCallback(async () => {
       return { ok: false, skipped: true, reason: "missing_user" };
     }
 
-    if (!fiscalProfileLoaded) {
+    const loadState = fiscalProfileFetchRef.current;
+    if (
+      !fiscalProfileLoaded || loadState.userId !== user.id ||
+      (loadState.status !== "found" && loadState.status !== "absent")
+    ) {
       return { ok: false, skipped: true, reason: "profile_not_loaded" };
+    }
+    if (loadState.conflictPending) {
+      return { ok: false, skipped: true, reason: "profile_conflict" };
     }
     const payload = buildFiscalProfilePayload(user.id, normalizedProfileAnswers);
 
@@ -4269,6 +4314,11 @@ const refreshSubscriptionRecord = useCallback(async () => {
         localDraftAnswers?.business_start_date,
       );
       const remoteProfile = await refreshFiscalProfile({ force: true });
+      const loadState = fiscalProfileFetchRef.current;
+      if (
+        loadState.userId !== user.id ||
+        (loadState.status !== "found" && loadState.status !== "absent")
+      ) return false;
       const hasRemoteStructuredProfile = Boolean(
         remoteProfile?.activity_type ||
         remoteProfile?.declaration_frequency ||
@@ -5106,6 +5156,11 @@ useEffect(() => {
 
   useEffect(() => {
     if (!hydrated) return;
+    const loadState = fiscalProfileFetchRef.current;
+    if (loadState.userId && (
+      (loadState.status !== "found" && loadState.status !== "absent") ||
+      (loadState.conflictPending && readProfileConflictStrategy() === "detected")
+    )) return;
     if (messages.length === 0) return;
 
     try {
@@ -5290,11 +5345,21 @@ useEffect(() => {
 
   useEffect(() => {
     if (!hydrated || authLoading) return;
+    if (user && !fiscalProfileLoaded) {
+      setShowSimpleOnboarding(false);
+      return;
+    }
     if (appView === "dashboard") {
       setShowSimpleOnboarding(false);
       return;
     }
     if (hasProfileCore || fiscalProfile) {
+      setShowSimpleOnboarding(false);
+      return;
+    }
+    if (user && Object.values(readLocalDraftAnswers() || {}).some(
+      (value) => value !== null && value !== undefined && value !== "",
+    )) {
       setShowSimpleOnboarding(false);
       return;
     }
@@ -5328,6 +5393,8 @@ useEffect(() => {
     fiscalProfile,
     hasProfileCore,
     hydrated,
+    user,
+    fiscalProfileLoaded,
     simpleAssistantProfile?.activity_type,
   ]);
 
@@ -8933,6 +9000,7 @@ useEffect(() => {
     setAnswers(remoteAnswers);
     setHasDraft(Boolean(remoteAnswers && Object.keys(remoteAnswers).length > 0));
     setProfileSyncBlocked(false);
+    fiscalProfileFetchRef.current.conflictPending = false;
     writeProfileConflictStrategy("use_remote");
     setProfileConflictState({
       open: false,
@@ -9282,10 +9350,11 @@ useEffect(() => {
   }
 
   setFiscalProfile(null);
-  setFiscalProfileLoaded(false);
+  setFiscalProfileLoad({ status: "loading", userId: null });
   fiscalProfileFetchRef.current = {
     inFlight: null,
-    userId: null,
+    userId: currentUserId,
+    status: "loading",
     lastFetchedAt: 0,
     lastData: null,
   };
@@ -9311,7 +9380,8 @@ useEffect(() => {
 
   setReminderPrefs(DEFAULT_REMINDER_PREFS);
   setSelectedMonth("all");
-  setAnswers({});
+  // Preserve the startup draft so remote hydration can evaluate a real conflict.
+  setAnswers(currentUserId ? readLocalDraftAnswers() || {} : {});
   setStepIndex(0);
   setMessages(buildInitialAssistantMessages());
   setInput("");
@@ -9424,7 +9494,7 @@ useEffect(() => {
       setGuestInvoices([]);
       setReminderPrefs(EMPTY_REMINDER_PREFS);
       setFiscalProfile(null);
-      setFiscalProfileLoaded(Boolean(user));
+      setFiscalProfileLoad({ status: user ? "absent" : "loading", userId: user?.id ?? null });
       resetDashboardState();
       resetAssistantSession();
       setAppView("assistant");
@@ -9484,7 +9554,7 @@ useEffect(() => {
     };
     firstRevenueOnboardingSeenRef.current = false;
     setFiscalProfile(null);
-    setFiscalProfileLoaded(true);
+    setFiscalProfileLoad({ status: "absent", userId: user?.id ?? null });
     setSimpleAssistantProfile(null);
     setTvaConfigDraft("unknown");
     setRevenues([]);
@@ -11513,7 +11583,19 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
         </div>
       )}
 
-      {showSimpleOnboarding && !showBetaNotice && (
+      {user && fiscalProfileLoadStatus === "failed" && (
+        <div className="card" role="alert">
+          <p>Impossible de charger ton profil fiscal. Tes données sont conservées. Réessaie avant de configurer ou synchroniser ton profil.</p>
+          <button
+            type="button"
+            className="btn btnPrimary"
+            onClick={() => refreshFiscalProfile({ force: true })}
+          >
+            Réessayer le chargement du profil
+          </button>
+        </div>
+      )}
+      {showSimpleOnboarding && !showBetaNotice && (!user || fiscalProfileLoaded) && (
         <div className="modalOverlay">
           <div className="modalCard simpleOnboardingModal">
             <button
