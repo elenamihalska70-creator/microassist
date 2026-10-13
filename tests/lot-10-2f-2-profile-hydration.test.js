@@ -56,6 +56,8 @@ function harness({ draft = null, guest = false, strategy = null } = {}) {
     sanitizedAnswers: { entry_status: "micro_yes", ...PROFILE },
     hasBlockingFiscalDateError: false,
     fiscalProfileSaveSourceRef: { current: "auto_sync" },
+    profileDraftSessionRef: { current: { userId: guest ? null : "returning-user", revision: 0, dirty: false } },
+    dispatchProfileSave() {},
     setTimeout: (fn) => { timers.push(fn); return timers.length; },
     clearTimeout() {},
     buildFiscalProfilePayload: (userId, answers) => ({ user_id: userId, ...answers }),

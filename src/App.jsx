@@ -12,6 +12,7 @@ import {
   useRef,
   useLayoutEffect,
   useCallback,
+  useReducer,
 } from "react"; // ✅ Добавляем useCallback
 import "./App.css";
 import { FISCAL_STEPS } from "./config/steps.fiscal";
@@ -65,6 +66,12 @@ import { ACCESS_MATRIX, getAccessProfile } from "./config/accessMatrix.js";
 import PricingPage from "./components/PricingPage.jsx";
 import ExpertDashboard from "./components/ExpertDashboard";
 import MainNavigation from "./navigation/MainNavigation.jsx";
+import {
+  INITIAL_PROFILE_SAVE_STATE,
+  profileSaveReducer,
+  canUseRemoteProfileForEntry,
+  profileSaveMessage,
+} from "./application/profile/profileDraftState.js";
 import AppShell from "./shell/AppShell.jsx";
 import PriorityCard from "./components/dashboard/PriorityCard.jsx";
 import { buildPriorityCardViewModel } from "./components/dashboard/buildPriorityCardViewModel.js";
@@ -3480,6 +3487,32 @@ const handleRecoveryComplete = useCallback(() => {
   });
   const previousUserIdRef = useRef(null);
   const fiscalProfileSaveSourceRef = useRef("auto_sync");
+  const [profileSaveState, dispatchProfileSave] = useReducer(profileSaveReducer, INITIAL_PROFILE_SAVE_STATE);
+  const profileDraftSessionRef = useRef({ userId: null, revision: 0, dirty: false });
+  useLayoutEffect(() => {
+    const userId = user?.id ?? null;
+    const savedDraft = readProfileConflictStrategy() === "keep_local" ? readLocalDraftAnswers() : null;
+    const hasSavedDraft = Boolean(savedDraft && Object.values(savedDraft).some(
+      (value) => value !== null && value !== undefined && value !== "",
+    ));
+    profileDraftSessionRef.current = {
+      userId, revision: hasSavedDraft ? 1 : 0, dirty: hasSavedDraft, failed: false,
+      answers: savedDraft,
+    };
+    dispatchProfileSave({ type: "session", userId });
+    if (hasSavedDraft) {
+      dispatchProfileSave({ type: "edited", userId, revision: 1 });
+      dispatchProfileSave({ type: "local_saved", userId, revision: 1 });
+    }
+  }, [user?.id]);
+  const markProfileDraftEdited = useCallback((nextAnswers) => {
+    const session = profileDraftSessionRef.current;
+    session.revision += 1;
+    session.dirty = true;
+    session.failed = false;
+    session.answers = sanitizeFiscalAnswers(nextAnswers);
+    dispatchProfileSave({ type: "edited", userId: session.userId, revision: session.revision });
+  }, []);
   const subscriptionLikeState = useMemo(
     () =>
       buildSubscriptionLikeState({
@@ -4120,67 +4153,77 @@ const refreshSubscriptionRecord = useCallback(async () => {
   );
 
   const saveFiscalProfileToSupabase = useCallback(async (profileAnswers, options = {}) => {
-    const {
-      source = "auto_sync",
-      showSuccessNotice = false,
-    } = options;
+    const { source = "auto_sync", showSuccessNotice = false, draftRevision } = options;
     const normalizedProfileAnswers = sanitizeFiscalAnswers(profileAnswers);
-    if (!user?.id) {
-      return { ok: false, skipped: true, reason: "missing_user" };
-    }
-
+    if (!user?.id) return { ok: false, skipped: true, reason: "missing_user" };
+    const session = profileDraftSessionRef.current;
+    let revision = draftRevision ?? session.revision;
+    if (session.inFlight) await session.inFlight.catch(() => {});
     const loadState = fiscalProfileFetchRef.current;
-    if (
-      !fiscalProfileLoaded || loadState.userId !== user.id ||
-      (loadState.status !== "found" && loadState.status !== "absent")
-    ) {
+    const isCurrent = () => profileDraftSessionRef.current === session &&
+      session.userId === user.id && session.revision === revision &&
+      fiscalProfileFetchRef.current === loadState && loadState.userId === user.id &&
+      (loadState.status === "found" || loadState.status === "absent");
+    if (!fiscalProfileLoaded || !isCurrent()) {
       return { ok: false, skipped: true, reason: "profile_not_loaded" };
     }
-    if (loadState.conflictPending) {
+    const strategy = readProfileConflictStrategy();
+    if (loadState.conflictPending || strategy === "keep_local" || strategy === "detected") {
       return { ok: false, skipped: true, reason: "profile_conflict" };
     }
     const payload = buildFiscalProfilePayload(user.id, normalizedProfileAnswers);
-
     if (isSameFiscalProfilePayload(payload, fiscalProfile)) {
-      debugLog("[fiscal_profiles] save skipped (duplicate payload ignored)", {
-        source,
-        payload,
-      });
+      if (session.dirty) {
+        session.dirty = false;
+        session.failed = false;
+        dispatchProfileSave({ type: "remote_unchanged", userId: user.id, revision });
+      }
       return { ok: true, skipped: true, reason: "duplicate_ignored" };
     }
 
-    debugLog("[fiscal_profiles] sending payload", {
-      source,
-      payload,
-    });
-
-    const { data, error } = await supabase
-      .from("fiscal_profiles")
-      .upsert(payload, { onConflict: "user_id" })
-      .select()
-      .single();
-
-    debugLog("[fiscal_profiles] save result", {
-      source,
-      data,
-      error,
-    });
-
-    if (error) {
-      console.error("Fiscal profile upsert error:", {
-        source,
-        payload,
-        error,
-      });
-      showSaveNotice(
-        "Impossible d’enregistrer ton profil fiscal pour le moment.",
-        4000,
-      );
-      return { ok: false, skipped: false, error };
+    if (!session.dirty) {
+      revision = ++session.revision;
+      session.dirty = true;
+      session.answers = normalizedProfileAnswers;
+      dispatchProfileSave({ type: "edited", userId: user.id, revision });
+      const localDraft = readLocalDraftAnswers();
+      if (localDraft && isSameFiscalProfilePayload(payload, buildFiscalProfilePayload(user.id, localDraft))) {
+        dispatchProfileSave({ type: "local_saved", userId: user.id, revision });
+      }
     }
-
-    if (showSuccessNotice) {
-      showSaveNotice("Profil fiscal enregistré ✅", 3000);
+    dispatchProfileSave({ type: "remote_pending", userId: user.id, revision });
+    let data;
+    let request;
+    try {
+      request = Promise.resolve(supabase.from("fiscal_profiles")
+        .upsert(payload, { onConflict: "user_id" }).select().single());
+      session.inFlight = request;
+      const result = await request;
+      // An old acknowledgement must not replace a newer draft or another account's snapshot.
+      if (!isCurrent() || loadState.conflictPending ||
+        ["keep_local", "detected"].includes(readProfileConflictStrategy())) {
+        return { ok: false, skipped: true, reason: "stale_save" };
+      }
+      if (result.error) throw result.error;
+      if (!result.data) throw new Error("Aucune confirmation d’enregistrement reçue.");
+      data = result.data;
+      loadState.lastData = data;
+      loadState.status = "found";
+      setFiscalProfile(data);
+      setFiscalProfileLoad({ status: "found", userId: user.id });
+      session.dirty = false;
+      session.failed = false;
+      dispatchProfileSave({ type: "remote_saved", userId: user.id, revision });
+      if (showSuccessNotice) showSaveNotice("Profil fiscal enregistré dans ton compte ✅", 3000);
+    } catch (error) {
+      if (!isCurrent()) return { ok: false, skipped: true, reason: "stale_save" };
+      session.failed = true;
+      session.failedPayload = payload;
+      dispatchProfileSave({ type: "remote_failed", userId: user.id, revision });
+      console.error("Fiscal profile upsert error:", { source, error });
+      return { ok: false, skipped: false, error };
+    } finally {
+      if (session.inFlight === request) session.inFlight = null;
     }
 
     const nextRemindAt = calculateNextReminder(
@@ -4206,12 +4249,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
     }
 
     return { ok: true, skipped: false, data };
-  }, [
-    user?.id,
-    fiscalProfile,
-    fiscalProfileLoaded,
-    showSaveNotice,
-  ]);
+  }, [user?.id, fiscalProfile, fiscalProfileLoaded, showSaveNotice]);
 
   async function saveReminderPrefsToSupabase(prefsToSave = reminderPrefs) {
     try {
@@ -5100,12 +5138,20 @@ useEffect(() => {
     if (!user) return;
     if (user && !fiscalProfileLoaded) return;
     if (profileSyncBlocked) return;
+    const session = profileDraftSessionRef.current;
+    if (session.failed && isSameFiscalProfilePayload(
+      buildFiscalProfilePayload(user.id, sanitizedAnswers), session.failedPayload,
+    )) return;
+    const revision = session.revision;
 
     const timeoutId = setTimeout(() => {
+      if (profileDraftSessionRef.current !== session || session.revision !== revision) return;
+      session.answers = sanitizedAnswers;
       const source = fiscalProfileSaveSourceRef.current || "auto_sync";
       fiscalProfileSaveSourceRef.current = "auto_sync";
       saveFiscalProfileToSupabase(sanitizedAnswers, {
         source,
+        draftRevision: revision,
         showSuccessNotice: false,
       });
 
@@ -5175,9 +5221,13 @@ useEffect(() => {
         savedAt: now,
       };
       localStorage.setItem(LS_KEY, JSON.stringify(payload));
+      const session = profileDraftSessionRef.current;
+      if (session.dirty) dispatchProfileSave({ type: "local_saved", userId: session.userId, revision: session.revision });
       setLastSavedAt(now);
     } catch (e) {
       console.warn("Save failed:", e);
+      const session = profileDraftSessionRef.current;
+      if (session.dirty) dispatchProfileSave({ type: "local_failed", userId: session.userId, revision: session.revision });
     }
   }, [hydrated, stepIndex, answers, messages, userName, appView]);
 
@@ -8998,6 +9048,11 @@ useEffect(() => {
     );
 
     setAnswers(remoteAnswers);
+    const session = profileDraftSessionRef.current;
+    session.revision += 1;
+    session.dirty = false;
+    session.failed = false;
+    dispatchProfileSave({ type: "session", userId: session.userId });
     setHasDraft(Boolean(remoteAnswers && Object.keys(remoteAnswers).length > 0));
     setProfileSyncBlocked(false);
     fiscalProfileFetchRef.current.conflictPending = false;
@@ -9012,6 +9067,7 @@ useEffect(() => {
 
   const handleKeepLocalDraft = useCallback(() => {
     if (profileConflictState.localAnswers) {
+      markProfileDraftEdited(profileConflictState.localAnswers);
       setAnswers(profileConflictState.localAnswers);
       setHasDraft(true);
     }
@@ -9027,7 +9083,7 @@ useEffect(() => {
       "Le brouillon local est conservé sans synchronisation automatique.",
       4000,
     );
-  }, [profileConflictState.localAnswers, showSaveNotice]);
+  }, [markProfileDraftEdited, profileConflictState.localAnswers, showSaveNotice]);
 
   const handleResumeDraft = useCallback(() => {
     setAppView("assistant");
@@ -9599,7 +9655,11 @@ useEffect(() => {
 
   // Оставьте только goToView и используйте везде
   const goToAssistant = useCallback(() => {
-    if (user && fiscalProfile) {
+    if (user && fiscalProfile && canUseRemoteProfileForEntry({
+      strategy: readProfileConflictStrategy(),
+      loadStatus: fiscalProfileLoadStatus,
+      hasUnsavedDraft: profileDraftSessionRef.current.dirty,
+    })) {
       setAnswers(getAssistantAnswersFromProfile(fiscalProfile));
       setStepIndex(0);
       setInput("");
@@ -9618,7 +9678,7 @@ useEffect(() => {
         });
       });
     });
-  }, [user, fiscalProfile, goToView]);
+  }, [user, fiscalProfile, fiscalProfileLoadStatus, goToView]);
 
   // А в handleTipAction используйте goToAssistant
   // Вместо текущей неполной функции, вставьте эту:
@@ -10935,7 +10995,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     if (selectedProfileField === "tva") {
       const nextValue = normalizeTvaConfigStatus(profileEditDraft.tva_status);
       setAssistantFieldError("");
-      saveTvaConfigValue(nextValue);
+      if (saveTvaConfigValue(nextValue) === false) return;
       finishSelectiveEdit();
       return;
     }
@@ -11000,9 +11060,10 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
     setAssistantFieldError("");
     fiscalProfileSaveSourceRef.current = "manual_profile_edit";
+    markProfileDraftEdited(nextAnswers);
     setAnswers(nextAnswers);
     showSaveNotice(
-      "Profil mis à jour. Les estimations ont été recalculées.",
+      "Brouillon modifié. Les estimations ont été recalculées.",
       3000,
     );
     finishSelectiveEdit();
@@ -11021,26 +11082,19 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     setInput("");
     setAssistantFieldError("");
 
-    setAnswers(
-      user && fiscalProfile
-        ? getAssistantAnswersFromProfile(fiscalProfile)
-        : sanitizeFiscalAnswers({
-            entry_status: dashboardAnswers.entry_status || "micro_yes",
-            status: dashboardAnswers.status || "auto_entrepreneur",
-            activity_type: dashboardAnswers.activity_type,
-            declaration_frequency: dashboardAnswers.declaration_frequency,
-            acre: dashboardAnswers.acre,
-            acre_start_date: dashboardAnswers.acre_start_date,
-            business_start_date: dashboardAnswers.business_start_date,
-          }),
-    );
+    const useRemoteProfile = user && fiscalProfile && canUseRemoteProfileForEntry({
+      strategy: readProfileConflictStrategy(),
+      loadStatus: fiscalProfileLoadStatus,
+      hasUnsavedDraft: profileDraftSessionRef.current.dirty,
+    });
+    if (useRemoteProfile) setAnswers(getAssistantAnswersFromProfile(fiscalProfile));
 
     setMessages([
       {
         role: "bot",
-        text: user && fiscalProfile
+        text: useRemoteProfile
           ? "Profil chargé ✅ Tu peux mettre à jour un champ ciblé."
-          : "Bonjour 👋 On va mettre à jour ton profil fiscal. Réponds simplement.",
+          : "Ton brouillon est conservé. Tu peux modifier un champ ciblé.",
       },
     ]);
 
@@ -11131,7 +11185,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     setMessages([
       {
         role: "bot",
-        text: "Profil chargé ✅ Le champ a été mis à jour.",
+        text: "Le champ a été appliqué au brouillon. Consulte son état d’enregistrement.",
       },
     ]);
   }
@@ -11142,8 +11196,9 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     }
 
     fiscalProfileSaveSourceRef.current = "manual_profile_edit";
+    markProfileDraftEdited(pendingStructuredProfileEdit.nextAnswers);
     setAnswers(pendingStructuredProfileEdit.nextAnswers);
-    showSaveNotice("Calculs mis à jour selon ton profil actuel", 3000);
+    showSaveNotice("Brouillon modifié. Estimations recalculées.", 3000);
     finishSelectiveEdit();
   }
 
@@ -11376,6 +11431,14 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
   }
 
   function saveTvaConfigValue(value) {
+    const loadState = fiscalProfileFetchRef.current;
+    if (user && (
+      loadState.userId !== user.id ||
+      (loadState.status !== "found" && loadState.status !== "absent")
+    )) {
+      showSaveNotice("Chargement du profil du compte nécessaire avant d’enregistrer ce réglage.", 4000);
+      return false;
+    }
     const normalizedTvaConfigDraft = normalizeTvaConfigStatus(value);
     console.log("TVA CONFIG SAVED", normalizedTvaConfigDraft);
     const nextProfile = {
@@ -11398,6 +11461,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     };
 
     localStorage.setItem(SIMPLE_PROFILE_KEY, JSON.stringify(nextProfile));
+    const session = profileDraftSessionRef.current;
+    dispatchProfileSave({ type: "local_setting_saved", userId: session.userId, revision: session.revision });
     setSimpleAssistantProfile(nextProfile);
     setAnswers((currentAnswers) =>
       sanitizeFiscalAnswers({
@@ -11410,6 +11475,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
       3000,
     );
     setIsEditingTVA(false);
+    return true;
   }
 
   function handleSaveTvaConfig() {
@@ -11593,6 +11659,31 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
           >
             Réessayer le chargement du profil
           </button>
+        </div>
+      )}
+      {profileSaveMessage(profileSaveState, {
+        userId: user?.id ?? null,
+        loadStatus: fiscalProfileLoadStatus,
+        localOnly: readProfileConflictStrategy() === "keep_local",
+      }) && (
+        <div className="card" role="status" aria-live="polite" data-testid="profile-save-state">
+          <p>{profileSaveMessage(profileSaveState, {
+            userId: user?.id ?? null,
+            loadStatus: fiscalProfileLoadStatus,
+            localOnly: readProfileConflictStrategy() === "keep_local",
+          })}</p>
+          {profileSaveState.status === "remote_failed" && user && fiscalProfileLoaded && !profileSyncBlocked && (
+            <button
+              type="button"
+              className="btn btnGhost"
+              onClick={() => saveFiscalProfileToSupabase(sanitizedAnswers, {
+                source: "manual_profile_retry",
+                draftRevision: profileDraftSessionRef.current.revision,
+              })}
+            >
+              Réessayer l’enregistrement du profil
+            </button>
+          )}
         </div>
       )}
       {showSimpleOnboarding && !showBetaNotice && (!user || fiscalProfileLoaded) && (
