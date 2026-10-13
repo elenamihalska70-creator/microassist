@@ -66,6 +66,8 @@ import { ACCESS_MATRIX, getAccessProfile } from "./config/accessMatrix.js";
 import PricingPage from "./components/PricingPage.jsx";
 import ExpertDashboard from "./components/ExpertDashboard";
 import MainNavigation from "./navigation/MainNavigation.jsx";
+import ModalFocusBoundary from "./components/profile/ModalFocusBoundary.jsx";
+import { selectProfileModal, canApplyProfileConflictChoice, authProfileResolutionMessage } from "./application/profile/profileModalState.js";
 import {
   INITIAL_PROFILE_SAVE_STATE,
   profileSaveReducer,
@@ -3489,6 +3491,8 @@ const handleRecoveryComplete = useCallback(() => {
   const fiscalProfileSaveSourceRef = useRef("auto_sync");
   const [profileSaveState, dispatchProfileSave] = useReducer(profileSaveReducer, INITIAL_PROFILE_SAVE_STATE);
   const profileDraftSessionRef = useRef({ userId: null, revision: 0, dirty: false });
+  const profileConflictOwnerRef = useRef(null);
+  const profileCompletionOwnerRef = useRef(null);
   useLayoutEffect(() => {
     const userId = user?.id ?? null;
     const savedDraft = readProfileConflictStrategy() === "keep_local" ? readLocalDraftAnswers() : null;
@@ -3499,6 +3503,12 @@ const handleRecoveryComplete = useCallback(() => {
       userId, revision: hasSavedDraft ? 1 : 0, dirty: hasSavedDraft, failed: false,
       answers: savedDraft,
     };
+    profileConflictOwnerRef.current = null;
+    profileCompletionOwnerRef.current = null;
+    setProfileConflictState({ open: false, localAnswers: null, remoteProfile: null });
+    setPendingStructuredProfileEdit(null);
+    setShowOnboardingConfirmation(false);
+    setShowSimpleOnboarding(false);
     dispatchProfileSave({ type: "session", userId });
     if (hasSavedDraft) {
       dispatchProfileSave({ type: "edited", userId, revision: 1 });
@@ -3513,6 +3523,8 @@ const handleRecoveryComplete = useCallback(() => {
     session.answers = sanitizeFiscalAnswers(nextAnswers);
     dispatchProfileSave({ type: "edited", userId: session.userId, revision: session.revision });
   }, []);
+  const profileModalSession = profileDraftSessionRef.current;
+  const profileConflictOwner = profileConflictOwnerRef.current;
   const subscriptionLikeState = useMemo(
     () =>
       buildSubscriptionLikeState({
@@ -4029,6 +4041,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
         ) {
           fetchState.conflictPending = true;
           setProfileSyncBlocked(true);
+          profileConflictOwnerRef.current = profileDraftSessionRef.current;
           setProfileConflictState({
             open: true,
             localAnswers: localDraftAnswers,
@@ -4369,6 +4382,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
         hasRemoteStructuredProfile &&
         hasFiscalProfileConflict(localDraftAnswers, remoteProfile)
       ) {
+        profileConflictOwnerRef.current = profileDraftSessionRef.current;
         setProfileConflictState({
           open: true,
           localAnswers: localDraftAnswers,
@@ -8967,7 +8981,7 @@ useEffect(() => {
   let cancelled = false;
 
   async function finalizeAuthSuccess() {
-    const migrated = await migrateLocalDataToSupabase({ silent: true });
+    await migrateLocalDataToSupabase({ silent: true });
 
     await Promise.all([
       refreshRevenues(),
@@ -9013,12 +9027,16 @@ useEffect(() => {
 
     showSaveNotice(
       pendingAuthSuccess === "email_confirmed"
-        ? "Ton compte est confirmé"
-        : profileConflictState.open
-          ? "Connexion réussie ✅ Un choix de profil est nécessaire avant toute synchronisation."
-        : migrated
-          ? "Connexion réussie ✅ Tes données ont été importées et ton espace fiscal est prêt."
-          : "Connexion réussie ✅ Ton espace fiscal est prêt.",
+        ? "Ton compte est confirmé. " + authProfileResolutionMessage({
+            loadStatus: fiscalProfileFetchRef.current.status,
+            conflictPending: fiscalProfileFetchRef.current.conflictPending,
+            strategy: readProfileConflictStrategy(),
+          })
+        : authProfileResolutionMessage({
+            loadStatus: fiscalProfileFetchRef.current.status,
+            conflictPending: fiscalProfileFetchRef.current.conflictPending,
+            strategy: readProfileConflictStrategy(),
+          }),
       5000,
     );
   }
@@ -9043,6 +9061,11 @@ useEffect(() => {
 ]);
 
   const handleUseRemoteProfile = useCallback(() => {
+    if (!canApplyProfileConflictChoice({
+      owner: profileConflictOwner, currentSession: profileDraftSessionRef.current,
+      userId: user?.id, remoteUserId: profileConflictState.remoteProfile?.user_id,
+      loadUserId: fiscalProfileFetchRef.current.userId, loadStatus: fiscalProfileFetchRef.current.status,
+    })) return;
     const remoteAnswers = getAssistantAnswersFromProfile(
       profileConflictState.remoteProfile,
     );
@@ -9063,9 +9086,14 @@ useEffect(() => {
       remoteProfile: null,
     });
     showSaveNotice("Le profil du compte a été appliqué sur cet appareil.", 4000);
-  }, [profileConflictState.remoteProfile, showSaveNotice]);
+  }, [profileConflictOwner, profileConflictState.remoteProfile, showSaveNotice, user?.id]);
 
   const handleKeepLocalDraft = useCallback(() => {
+    if (!canApplyProfileConflictChoice({
+      owner: profileConflictOwner, currentSession: profileDraftSessionRef.current,
+      userId: user?.id, remoteUserId: profileConflictState.remoteProfile?.user_id,
+      loadUserId: fiscalProfileFetchRef.current.userId, loadStatus: fiscalProfileFetchRef.current.status,
+    })) return;
     if (profileConflictState.localAnswers) {
       markProfileDraftEdited(profileConflictState.localAnswers);
       setAnswers(profileConflictState.localAnswers);
@@ -9083,7 +9111,7 @@ useEffect(() => {
       "Le brouillon local est conservé sans synchronisation automatique.",
       4000,
     );
-  }, [markProfileDraftEdited, profileConflictState.localAnswers, showSaveNotice]);
+  }, [markProfileDraftEdited, profileConflictOwner, profileConflictState.localAnswers, profileConflictState.remoteProfile, showSaveNotice, user?.id]);
 
   const handleResumeDraft = useCallback(() => {
     setAppView("assistant");
@@ -11191,6 +11219,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
   }
 
   function handleConfirmStructuredProfileEdit() {
+    if (profileModalSession !== profileDraftSessionRef.current || authLoading ||
+      (user && !fiscalProfileLoaded)) return;
     if (!pendingStructuredProfileEdit?.nextAnswers) {
       return;
     }
@@ -11264,7 +11294,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
   }
 
   useEffect(() => {
-    if (!showSimpleOnboarding) return undefined;
+    if (!showSimpleOnboarding || authOpen || isRecoveryFlow || profileConflictState.open ||
+      authLoading || (user && !fiscalProfileLoaded)) return undefined;
 
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
@@ -11274,9 +11305,13 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showSimpleOnboarding]);
+  }, [showSimpleOnboarding, authOpen, isRecoveryFlow, profileConflictState.open, authLoading, user, fiscalProfileLoaded]);
 
   function handleSimpleOnboardingSave() {
+    const loadState = fiscalProfileFetchRef.current;
+    if (profileModalSession !== profileDraftSessionRef.current || authLoading ||
+      (user && (loadState.userId !== user.id || !["found", "absent"].includes(loadState.status))) ||
+      profileConflictState.open || (user && readProfileConflictStrategy() === "detected")) return;
     const finalActivity = normalizeActivityType(
       simpleOnboardingDraft.activity_type,
     );
@@ -11339,9 +11374,13 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
     localStorage.setItem(SIMPLE_PROFILE_KEY, JSON.stringify(nextProfile));
     fiscalProfileSaveSourceRef.current = "starter_onboarding";
+    markProfileDraftEdited(nextAnswers);
+    const session = profileDraftSessionRef.current;
+    dispatchProfileSave({ type: "local_setting_saved", userId: session.userId, revision: session.revision });
     setAnswers(nextAnswers);
     setSimpleAssistantProfile(nextProfile);
     setShowSimpleOnboarding(false);
+    profileCompletionOwnerRef.current = profileDraftSessionRef.current;
     setShowOnboardingConfirmation(true);
     setSimpleOnboardingStep(0);
     if (simpleOnboardingAdvanceTimeoutRef.current) {
@@ -11550,14 +11589,25 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     }
   }
 
+  const activeProfileModal = selectProfileModal({
+    authOpen, recovery: isRecoveryFlow, authLoading, hydrated, userId: user?.id,
+    loadStatus: fiscalProfileLoadStatus,
+    conflictOpen: profileConflictState.open,
+    conflictCurrent: canApplyProfileConflictChoice({
+      owner: profileConflictOwner, currentSession: profileDraftSessionRef.current,
+      userId: user?.id, remoteUserId: profileConflictState.remoteProfile?.user_id,
+      loadUserId: fiscalProfileFetchRef.current.userId, loadStatus: fiscalProfileFetchRef.current.status,
+    }),
+    conflictPending: fiscalProfileFetchRef.current.conflictPending && readProfileConflictStrategy() !== "keep_local",
+    strategy: readProfileConflictStrategy(), beta: showBetaNotice,
+    structured: Boolean(pendingStructuredProfileEdit), onboarding: showSimpleOnboarding,
+    completion: showOnboardingConfirmation,
+    completionCurrent: profileCompletionOwnerRef.current === profileDraftSessionRef.current,
+  });
+
   useEffect(() => {
     const isAnyModalOpen = Boolean(
-        showBetaNotice ||
-        showSimpleOnboarding ||
-        showOnboardingConfirmation ||
-        authOpen ||
-        profileConflictState.open ||
-        pendingStructuredProfileEdit ||
+        activeProfileModal ||
         showCGU ||
         showPrivacy ||
         showPricingModal ||
@@ -11579,22 +11629,17 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
       document.documentElement.style.overflow = "";
     };
   }, [
-    authOpen,
+    activeProfileModal,
     explanationModalType,
-    pendingStructuredProfileEdit,
-    profileConflictState.open,
     showAddRevenue,
-    showBetaNotice,
     showCGU,
     showCashImpactModal,
     showFutureAdvancedModal,
     showInvoiceGenerator,
-    showOnboardingConfirmation,
     showPricingModal,
     showPrivacy,
     showReminderModal,
     showResetModal,
-    showSimpleOnboarding,
     showTVADiagnosticModal,
   ]);
 
@@ -11610,10 +11655,11 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
   return (
     <>
-      {showBetaNotice && (
+      {activeProfileModal === "beta" && (
+        <ModalFocusBoundary>
         <div className="modalOverlay">
-          <div className="modalCard">
-            <h3>🚧 Version bêta</h3>
+          <div className="modalCard" role="dialog" aria-modal="true" aria-labelledby="beta-notice-title">
+            <h3 id="beta-notice-title">🚧 Version bêta</h3>
             <p style={{ marginBottom: "12px" }}>
               Cet outil est actuellement en phase de test.
             </p>
@@ -11647,6 +11693,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
             </button>
           </div>
         </div>
+        </ModalFocusBoundary>
       )}
 
       {user && fiscalProfileLoadStatus === "failed" && (
@@ -11686,9 +11733,10 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
           )}
         </div>
       )}
-      {showSimpleOnboarding && !showBetaNotice && (!user || fiscalProfileLoaded) && (
+      {activeProfileModal === "onboarding" && (
+        <ModalFocusBoundary onEscape={handleCloseSimpleOnboarding}>
         <div className="modalOverlay">
-          <div className="modalCard simpleOnboardingModal">
+          <div className="modalCard simpleOnboardingModal" role="dialog" aria-modal="true" aria-labelledby="profile-onboarding-title">
             <button
               className="simpleOnboardingClose"
               type="button"
@@ -11699,7 +11747,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
             </button>
             <div className="sectionHead">
               <div>
-                <h3>Configurer ton profil fiscal</h3>
+                <h3 id="profile-onboarding-title">Configurer ton profil fiscal</h3>
                 <p className="muted" style={{ margin: "6px 0 0" }}>
                   Cinq questions rapides pour préparer ton espace.
                 </p>
@@ -11900,16 +11948,22 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
             )}
           </div>
         </div>
+        </ModalFocusBoundary>
       )}
 
-      {showOnboardingConfirmation && !showBetaNotice && (
+      {activeProfileModal === "completion" && (
+        <ModalFocusBoundary onEscape={() => setShowOnboardingConfirmation(false)}>
         <div className="modalOverlay">
-          <div className="modalCard simpleOnboardingModal">
+          <div className="modalCard simpleOnboardingModal" role="dialog" aria-modal="true" aria-labelledby="profile-completion-title">
             <div className="sectionHead">
               <div>
-                <h3>Ton espace fiscal est prêt</h3>
-                <p className="muted" style={{ margin: "6px 0 0" }}>
-                  Tu peux maintenant sauvegarder ton suivi et retrouver ton espace plus tard.
+                <h3 id="profile-completion-title">{user ? "Ton profil a été appliqué au brouillon" : "Ton espace fiscal est prêt"}</h3>
+                <p className="muted" role="status" aria-live="polite" style={{ margin: "6px 0 0" }}>
+                  {user ? profileSaveMessage(profileSaveState, {
+                    userId: user.id, loadStatus: fiscalProfileLoadStatus,
+                    localOnly: readProfileConflictStrategy() === "keep_local",
+                  }) || "Brouillon modifié. L’enregistrement dans le compte n’est pas encore confirmé."
+                    : "Tu peux maintenant sauvegarder ton suivi et retrouver ton espace plus tard."}
                 </p>
               </div>
             </div>
@@ -11940,6 +11994,12 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               </div>
             </div>
             <div className="miniActions" style={{ marginTop: 18 }}>
+              {user ? (
+                <button className="btn btnPrimary" type="button" onClick={() => {
+                  setShowOnboardingConfirmation(false);
+                  goToDashboard({ scroll: false });
+                }}>Retour à mon espace fiscal</button>
+              ) : (<>
               <button
                 className="btn btnPrimary"
                 type="button"
@@ -11960,12 +12020,16 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               >
                 Continuer sans compte
               </button>
+              </>)}
             </div>
+            {!user && (
             <p className="muted" style={{ margin: "10px 0 0", fontSize: 13 }}>
               Tes données restent temporaires tant que ton compte n’est pas créé.
             </p>
+            )}
           </div>
         </div>
+        </ModalFocusBoundary>
       )}
 
       <AppShell
@@ -16047,7 +16111,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
 
         {/* Modal d'authentification */}
-        {authOpen && (
+        {activeProfileModal === "auth" && (
+          <ModalFocusBoundary onEscape={isRecoveryFlow ? undefined : () => closeAuthModal("escape")}>
           <AuthGate
             initialMode={authInitialMode}
             isRecoveryFlow={isRecoveryFlow}
@@ -16079,9 +16144,11 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               closeAuthModal("auth user change effect");
             }}
           />
+          </ModalFocusBoundary>
         )}
 
-        {profileConflictState.open && (
+        {activeProfileModal === "conflict" && (
+          <ModalFocusBoundary>
           <div className="modalOverlay" onClick={(e) => e.stopPropagation()}>
             <div
               className="modalCard"
@@ -16122,9 +16189,11 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               </div>
             </div>
           </div>
+          </ModalFocusBoundary>
         )}
 
-        {pendingStructuredProfileEdit && (
+        {activeProfileModal === "structured" && (
+          <ModalFocusBoundary onEscape={handleCancelStructuredProfileEdit}>
           <div className="modalOverlay" onClick={(e) => e.stopPropagation()}>
             <div
               className="modalCard"
@@ -16169,6 +16238,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               </div>
             </div>
           </div>
+          </ModalFocusBoundary>
         )}
 
         {showResetModal && (

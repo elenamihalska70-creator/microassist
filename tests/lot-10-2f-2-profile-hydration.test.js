@@ -57,6 +57,7 @@ function harness({ draft = null, guest = false, strategy = null } = {}) {
     hasBlockingFiscalDateError: false,
     fiscalProfileSaveSourceRef: { current: "auto_sync" },
     profileDraftSessionRef: { current: { userId: guest ? null : "returning-user", revision: 0, dirty: false } },
+    profileConflictOwnerRef: { current: null },
     dispatchProfileSave() {},
     setTimeout: (fn) => { timers.push(fn); return timers.length; },
     clearTimeout() {},
