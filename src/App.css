@@ -4161,6 +4161,13 @@ section[id] {
   text-decoration: underline;
 }
 
+.nav .navLink.isCurrent {
+  background: var(--accent-soft);
+  color: var(--accent);
+  opacity: 1;
+  box-shadow: inset 0 -2px 0 currentColor;
+}
+
 .btn:focus-visible,
 .btnGhost:focus-visible,
 .btnPrimary:focus-visible,

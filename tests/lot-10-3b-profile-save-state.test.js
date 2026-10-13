@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import test from "node:test";
+import { resolveNavigationLocation } from "../src/navigation/navigationLocation.js";
 import {
   INITIAL_PROFILE_SAVE_STATE,
   canUseRemoteProfileForEntry,
@@ -53,7 +54,8 @@ function harness({ strategy = null, guest = false, loadStatus = "found" } = {}) 
     calculateNextReminder: () => "2026-12-31",
     console: { error() {} },
     trackBetaEvent() {},
-    setAppView() {},
+    setNavigationLocation() {},
+    resolveNavigationLocation,
     setAssistantEditMode() {},
     setAssistantCollapsed() {},
     setProfileEditMode() {},

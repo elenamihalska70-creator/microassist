@@ -66,6 +66,7 @@ import { ACCESS_MATRIX, getAccessProfile } from "./config/accessMatrix.js";
 import PricingPage from "./components/PricingPage.jsx";
 import ExpertDashboard from "./components/ExpertDashboard";
 import MainNavigation from "./navigation/MainNavigation.jsx";
+import { resolveNavigationLocation } from "./navigation/navigationLocation.js";
 import ModalFocusBoundary from "./components/profile/ModalFocusBoundary.jsx";
 import { selectProfileModal, canApplyProfileConflictChoice, authProfileResolutionMessage } from "./application/profile/profileModalState.js";
 import {
@@ -3019,7 +3020,8 @@ useEffect(() => {
   
   const [focusMode, setFocusMode] = useState(false); // ✅ ДОБАВИТЬ
   const { user, loading: authLoading } = useAuth();
-  const [appView, setAppView] = useState("landing");
+  const [navigationLocation, setNavigationLocation] = useState(() => resolveNavigationLocation("landing"));
+  const appView = navigationLocation.view;
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   const [userName, setUserName] = useState("");
   const [hydrated, setHydrated] = useState(false);
@@ -3043,7 +3045,9 @@ useEffect(() => {
       ? "Assistant fiscal"
       : appView === "assistant"
         ? "Profil fiscal"
-        : "Espace fiscal";
+        : appView === "pricing"
+          ? "Tarifs"
+          : "Espace fiscal";
 
   const trackBetaEvent = useCallback(
     (eventName, payload = {}) => {
@@ -3057,7 +3061,7 @@ useEffect(() => {
   );
 
   const goToView = useCallback((nextView, options = {}) => {
-    const { push = true, focus = false } = options;
+    const { push = true, focus = false, section } = options;
     if (push) {
       const nextUrl = window.location.pathname.startsWith("/legal")
         ? "/"
@@ -3065,7 +3069,7 @@ useEffect(() => {
       window.history.pushState({ appView: nextView }, "", nextUrl);
       setCurrentPath(window.location.pathname);
     }
-    setAppView(nextView);
+    setNavigationLocation(resolveNavigationLocation(nextView, section));
     setFocusMode(focus);
     if (nextView === "assistant") setAssistantCollapsed(false);
   }, []);
@@ -3354,7 +3358,7 @@ const handleRecoveryComplete = useCallback(() => {
       closeAuthModal("auth user change effect");
       setAuthInitialMode("signup");
       setIsRecoveryFlow(false);
-      setAppView("landing");
+      setNavigationLocation(resolveNavigationLocation("landing"));
       setFocusMode(false);
       setUserProfile(null);
       setSubscriptionRecord(null);
@@ -5036,7 +5040,7 @@ useEffect(() => {
       const raw = localStorage.getItem(LS_KEY);
 
       // всегда стартуем с Accueil
-      setAppView("landing");
+      setNavigationLocation(resolveNavigationLocation("landing"));
       setFocusMode(false);
 
       if (!raw) {
@@ -5257,7 +5261,7 @@ useEffect(() => {
       setCurrentPath(window.location.pathname);
 
       if (state?.appView) {
-        setAppView(state.appView);
+        setNavigationLocation(resolveNavigationLocation(state.appView));
 
         if (state.appView === "landing") {
           setFocusMode(false);
@@ -9114,7 +9118,7 @@ useEffect(() => {
   }, [markProfileDraftEdited, profileConflictOwner, profileConflictState.localAnswers, profileConflictState.remoteProfile, showSaveNotice, user?.id]);
 
   const handleResumeDraft = useCallback(() => {
-    setAppView("assistant");
+    setNavigationLocation(resolveNavigationLocation("assistant"));
     setFocusMode(true);
     setTimeout(() => {
       assistantRef.current?.scrollIntoView({
@@ -9532,7 +9536,7 @@ useEffect(() => {
 
       localStorage.removeItem(LS_KEY);
       resetAssistantSession();
-      setAppView("assistant");
+      setNavigationLocation(resolveNavigationLocation("assistant"));
       await refreshFiscalProfile();
 
       showSaveNotice(
@@ -9581,7 +9585,7 @@ useEffect(() => {
       setFiscalProfileLoad({ status: user ? "absent" : "loading", userId: user?.id ?? null });
       resetDashboardState();
       resetAssistantSession();
-      setAppView("assistant");
+      setNavigationLocation(resolveNavigationLocation("assistant"));
 
       if (!user) {
         setHydrated(true);
@@ -9653,7 +9657,7 @@ useEffect(() => {
     setShowFirstRevenueOnboarding(false);
     resetDashboardState();
     resetAssistantSession();
-    setAppView("assistant");
+    setNavigationLocation(resolveNavigationLocation("assistant"));
     trackBetaEvent("onboarding_started", { source: "reset" });
     setShowSimpleOnboarding(true);
     setSimpleOnboardingStep(0);
@@ -10523,7 +10527,7 @@ async function handleExportPDFWithLimit() {
       return;
     }
 
-    setAppView("landing");
+    setNavigationLocation(resolveNavigationLocation("landing", section === "services" ? "services" : "home"));
     setFocusMode(false);
 
     setTimeout(() => {
@@ -11099,7 +11103,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
   function handleEditProfile() {
     trackBetaEvent("profile_view", { source: "edit_profile" });
-    setAppView("assistant");
+    setNavigationLocation(resolveNavigationLocation("assistant"));
     setAssistantEditMode(true);
     setAssistantCollapsed(false);
     setProfileEditMode("pick_field");
@@ -11135,7 +11139,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
   }
 
   function handleOpenTvaConfiguration() {
-    setAppView("assistant");
+    setNavigationLocation(resolveNavigationLocation("assistant"));
     setAssistantEditMode(false);
     setAssistantCollapsed(false);
     setProfileEditMode("idle");
@@ -12035,7 +12039,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
       <AppShell
         header={
           <MainNavigation
-            appView={appView}
+            activeSection={navigationLocation.section}
             connectedAccountLabel={connectedAccountLabel}
             feedbackFormUrl={FEEDBACK_FORM_URL}
             isLocalhostQa={isLocalhostQa}
@@ -12044,7 +12048,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
             onGoToAssistant={goToAssistant}
             onGoToDashboard={goToDashboard}
             onGoToInvoices={() => {
-              setAppView("dashboard");
+              setNavigationLocation(resolveNavigationLocation("dashboard", "invoices"));
               setTimeout(() => {
                 document
                   .getElementById("invoices-section")
@@ -12371,7 +12375,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   className="btn btnGhost btnSmall"
                   onClick={() => {
                     setFocusMode(false);
-                    setAppView("landing");
+                    setNavigationLocation(resolveNavigationLocation("landing"));
                   }}
                 >
                   Page complète
@@ -16079,7 +16083,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
           onGoToAssistant={goToAssistant}
           onGoToDashboard={() => goToDashboard({ scroll: false })}
           onGoToInvoices={() => {
-            goToView("dashboard", { push: true, focus: true });
+            goToView("dashboard", { push: true, focus: true, section: "invoices" });
             setTimeout(() => {
               document
                 .getElementById("invoices-section")

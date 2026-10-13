@@ -1,5 +1,5 @@
 export default function MainNavigation({
-  appView,
+  activeSection,
   connectedAccountLabel,
   feedbackFormUrl,
   isLocalhostQa,
@@ -18,6 +18,10 @@ export default function MainNavigation({
   user,
   viewLabel,
 }) {
+  const itemProps = (section) => ({
+    className: activeSection === section ? "navLink isCurrent" : "navLink",
+    "aria-current": activeSection === section ? "location" : undefined,
+  });
   return (
     <header className="topbar">
       <div className="appStatusBar">
@@ -35,30 +39,30 @@ export default function MainNavigation({
       </div>
 
       <div className="topbarRight">
-        <nav className="nav">
-          <button type="button" className="navLink" onClick={onGoToLandingHome}>
+        <nav className="nav" aria-label="Navigation principale">
+          <button type="button" {...itemProps("home")} onClick={onGoToLandingHome}>
             Accueil
           </button>
           <button
             type="button"
-            className="navLink"
+            {...itemProps("services")}
             onClick={onGoToLandingServices}
           >
             Services
           </button>
-          <button type="button" className="navLink" onClick={onGoToAssistant}>
+          <button type="button" {...itemProps("assistant")} onClick={onGoToAssistant}>
             Assistant
           </button>
-          <button type="button" className="navLink" onClick={onGoToDashboard}>
+          <button type="button" {...itemProps("fiscal")} onClick={onGoToDashboard}>
             Mon espace fiscal
           </button>
-          <button type="button" className="navLink" onClick={onGoToInvoices}>
+          <button type="button" {...itemProps("invoices")} onClick={onGoToInvoices}>
             Factures
           </button>
 
           <button
             type="button"
-            className={`navButton ${appView === "pricing" ? "isActive" : ""}`}
+            {...itemProps("pricing")}
             onClick={onGoToPricing}
           >
             Tarifs
