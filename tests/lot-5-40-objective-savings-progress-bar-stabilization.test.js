@@ -142,7 +142,7 @@ function feedbackBlock() {
 }
 
 function assistantDraftBlock() {
-  return appBlock("function readLocalDraftPayload", "function pickProfileField");
+  return appBlock("function readLocalDraftPayload", "function buildProfileConflictSnapshot");
 }
 
 function appOutsideVisibleSlice() {

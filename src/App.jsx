@@ -75,6 +75,7 @@ import {
   canUseRemoteProfileForEntry,
   profileSaveMessage,
 } from "./application/profile/profileDraftState.js";
+import { normalizeDateValue, pickProfileField, normalizeProfileConflictValue } from "./application/profile/profileNormalization.js";
 import AppShell from "./shell/AppShell.jsx";
 import PriorityCard from "./components/dashboard/PriorityCard.jsx";
 import { buildPriorityCardViewModel } from "./components/dashboard/buildPriorityCardViewModel.js";
@@ -1816,23 +1817,6 @@ function trackEvent(eventName, payload = {}) {
   });
 }
 
-function normalizeDateValue(value) {
-  const raw = String(value || "").trim();
-
-  if (!raw) return "";
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    return raw;
-  }
-
-  const match = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-
-  if (!match) return raw;
-
-  const [, day, month, year] = match;
-  return `${year}-${month}-${day}`;
-}
-
 function parseIsoDate(value) {
   const normalized = normalizeDateValue(value);
 
@@ -2311,36 +2295,6 @@ function readLocalDraftAnswers() {
   return payload?.answers && typeof payload.answers === "object"
     ? sanitizeFiscalAnswers(payload.answers)
     : null;
-}
-
-function pickProfileField(source, aliases) {
-  if (!source || typeof source !== "object") return null;
-
-  for (const key of aliases) {
-    const value = source[key];
-    if (value !== undefined && value !== null && value !== "") {
-      return value;
-    }
-  }
-
-  return null;
-}
-
-function normalizeProfileConflictValue(value, type = "string") {
-  if (value === undefined || value === null || value === "") {
-    return null;
-  }
-
-  if (type === "date") {
-    return normalizeDateValue(value) || null;
-  }
-
-  if (type === "booleanish") {
-    if (value === true || value === "true" || value === "yes") return "yes";
-    if (value === false || value === "false" || value === "no") return "no";
-  }
-
-  return String(value).trim().toLowerCase();
 }
 
 function buildProfileConflictSnapshot(source) {

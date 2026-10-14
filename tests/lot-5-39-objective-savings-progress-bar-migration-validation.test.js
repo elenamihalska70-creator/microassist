@@ -98,7 +98,7 @@ function feedbackBlock() {
 }
 
 function assistantDraftBlock() {
-  return extractBlock("function readLocalDraftPayload", "function pickProfileField");
+  return extractBlock("function readLocalDraftPayload", "function buildProfileConflictSnapshot");
 }
 
 function shadowResultExecutionBlock() {

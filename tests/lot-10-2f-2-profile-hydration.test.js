@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import test from "node:test";
+import { normalizeDateValue, pickProfileField, normalizeProfileConflictValue } from "../src/application/profile/profileNormalization.js";
 
 const SOURCE = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8").replace(/\r\n/g, "\n");
 const PROFILE = { activity_type: "services", declaration_frequency: "mensuel", acre: "no", business_start_date: "2026-01-01" };
@@ -35,6 +36,9 @@ function harness({ draft = null, guest = false, strategy = null } = {}) {
     console: { error() {} },
     Date,
     normalizeActivityType: (value) => value,
+    normalizeDateValue,
+    pickProfileField,
+    normalizeProfileConflictValue,
     sanitizeFiscalAnswers: (value) => value,
     readLocalDraftAnswers: () => draft,
     readProfileConflictStrategy: () => savedStrategy,
@@ -83,10 +87,7 @@ function harness({ draft = null, guest = false, strategy = null } = {}) {
       },
     },
   });
-  const helpers = SOURCE.slice(SOURCE.indexOf("function pickProfileField("), SOURCE.indexOf("function haveStructuredFiscalFieldsChanged("));
-  const dateHelperStart = SOURCE.indexOf("function normalizeDateValue(");
-  const dateHelperEnd = SOURCE.indexOf("\n}\n", dateHelperStart) + 2;
-  vm.runInContext(SOURCE.slice(dateHelperStart, dateHelperEnd), context);
+  const helpers = SOURCE.slice(SOURCE.indexOf("function buildProfileConflictSnapshot("), SOURCE.indexOf("function haveStructuredFiscalFieldsChanged("));
   vm.runInContext(helpers, context);
   vm.runInContext(`globalThis.refresh = ${callback("refreshFiscalProfile")}; globalThis.saveFiscalProfileToSupabase = ${callback("saveFiscalProfileToSupabase")};`, context);
   vm.runInContext(`globalThis.onboard = ${effect('if (appView === "dashboard") {\n      setShowSimpleOnboarding(false);')}; globalThis.autosync = ${effect("const canSaveFiscalProfile =")};`, context);
