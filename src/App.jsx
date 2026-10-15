@@ -4510,32 +4510,13 @@ const refreshSubscriptionRecord = useCallback(async () => {
       }
 
       if (migrated) {
-        const preservedFacturxInvoices = (() => {
-          try {
-            const parsed = JSON.parse(
-              localStorage.getItem(GUEST_INVOICES_KEY) || "[]",
-            );
-            return Array.isArray(parsed)
-              ? parsed.filter((invoice) => isFacturXDraftInvoice(invoice))
-              : [];
-          } catch {
-            return [];
-          }
-        })();
+        // Invoice inserts do not provide a durable per-row acknowledgement.
+        // Retain the exact local source, including Factur-X and unknown entries,
+        // until acknowledged residual removal can be established safely.
         clearLocalStorageKeys([
           GUEST_REVENUES_KEY,
-          GUEST_INVOICES_KEY,
           REMINDER_PREFS_KEY,
         ]);
-        if (preservedFacturxInvoices.length > 0) {
-          localStorage.setItem(
-            GUEST_INVOICES_KEY,
-            JSON.stringify(preservedFacturxInvoices),
-          );
-          setGuestInvoices(preservedFacturxInvoices);
-        } else {
-          setGuestInvoices([]);
-        }
 
         await Promise.all([
           refreshRevenues(),
