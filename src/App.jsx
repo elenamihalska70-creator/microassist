@@ -76,6 +76,7 @@ import {
   profileSaveMessage,
 } from "./application/profile/profileDraftState.js";
 import { normalizeDateValue, pickProfileField, normalizeProfileConflictValue } from "./application/profile/profileNormalization.js";
+import { readLocalDraftPayload as readStoredLocalDraftPayload, readProfileConflictStrategy as readStoredProfileConflictStrategy } from "./application/profile/profileStorage.js";
 import AppShell from "./shell/AppShell.jsx";
 import PriorityCard from "./components/dashboard/PriorityCard.jsx";
 import { buildPriorityCardViewModel } from "./components/dashboard/buildPriorityCardViewModel.js";
@@ -2279,15 +2280,7 @@ function getActivityRole(activityType) {
 }
 
 function readLocalDraftPayload() {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : null;
-  } catch {
-    return null;
-  }
+  return readStoredLocalDraftPayload();
 }
 
 function readLocalDraftAnswers() {
@@ -2358,11 +2351,7 @@ function haveStructuredFiscalFieldsChanged(previousAnswers = {}, nextAnswers = {
 }
 
 function readProfileConflictStrategy() {
-  try {
-    return localStorage.getItem(PROFILE_CONFLICT_STRATEGY_KEY) || null;
-  } catch {
-    return null;
-  }
+  return readStoredProfileConflictStrategy();
 }
 
 function writeProfileConflictStrategy(strategy) {

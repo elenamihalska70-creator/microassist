@@ -212,7 +212,7 @@ test("LOT 5.39 persistence, payloads and assistant remain unchanged by the migra
   assert.doesNotMatch(progress, /localStorage|sessionStorage|supabase|fetch|payload|assistant/i);
   assert.doesNotMatch(visibleSliceBlock(), /localStorage|sessionStorage|supabase|fetch|payload/i);
   assert.match(feedbackBlock(), /totalRevenues: currentMonthTotal \|\| 0/);
-  assert.match(assistantDraftBlock(), /localStorage\.getItem\(LS_KEY\)/);
+  assert.match(assistantDraftBlock(), /return readStoredLocalDraftPayload\(\)/);
 });
 
 test("LOT 5.39 introduces no direct Shadow Result consumer outside the selector", () => {

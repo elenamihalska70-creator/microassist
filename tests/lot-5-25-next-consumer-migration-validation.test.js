@@ -451,7 +451,7 @@ test("LOT 5.25 validates persistence, payload, export and assistant boundaries",
   assert.match(exportBlock(), /getDisplayValue\(currentMonthTotal, "money"\)/);
   assert.match(exportBlock(), /dashboardChargesDisplay/);
   assert.match(exportBlock(), /dashboardAvailableDisplay/);
-  assert.match(assistantDraftBlock(), /localStorage\.getItem\(LS_KEY\)/);
+  assert.match(assistantDraftBlock(), /return readStoredLocalDraftPayload\(\)/);
 });
 
 test("LOT 5.25 validates parity, runtime evidence and intentional MISMATCH stay intact", () => {

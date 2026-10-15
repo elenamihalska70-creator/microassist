@@ -362,7 +362,7 @@ test("LOT 5.20 keeps parity validation and runtime evidence intact", () => {
 test("LOT 5.20 keeps persistence, payloads, exports and assistant boundaries unchanged", () => {
   assert.match(feedbackBlock(), /totalRevenues: currentMonthTotal \|\| 0/);
   assert.match(exportBlock(), /getDisplayValue\(currentMonthTotal, "money"\)/);
-  assert.match(assistantDraftBlock(), /localStorage\.getItem\(LS_KEY\)/);
+  assert.match(assistantDraftBlock(), /return readStoredLocalDraftPayload\(\)/);
   if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
     assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
     return;

@@ -285,7 +285,7 @@ test("LOT 5.37 payloads remain unchanged", () => {
 
 test("LOT 5.37 assistant remains unchanged", () => {
   assert.doesNotMatch(progressFillBlock(), /assistant/i);
-  assert.match(assistantDraftBlock(), /localStorage\.getItem\(LS_KEY\)/);
+  assert.match(assistantDraftBlock(), /return readStoredLocalDraftPayload\(\)/);
 });
 
 test("LOT 5.37 exports remain unchanged", () => {

@@ -222,7 +222,7 @@ test("LOT 5.91A assistant-context code has no savingsGoal reference", () => {
   const draft = sourceWithoutComments(assistantDraftBlock());
   const guidance = sourceWithoutComments(assistantGuidanceBlock());
 
-  assert.match(draft, /localStorage\.getItem\(LS_KEY\)/);
+  assert.match(draft, /return readStoredLocalDraftPayload\(\)/);
   assert.match(guidance, /realMonthlyRevenue: currentMonthTotal/);
   assert.doesNotMatch(draft, /\bsavingsGoal\b/);
   assert.doesNotMatch(guidance, /\bsavingsGoal\b/);

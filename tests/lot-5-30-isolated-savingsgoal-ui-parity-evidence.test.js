@@ -495,7 +495,7 @@ test("LOT 5.30 keeps assistant unchanged", () => {
   assert.doesNotMatch(coachingSavingsGoalBranch(), /assistant/i);
   assert.doesNotMatch(pdfSavingsGoalBranch(), /assistant/i);
   assert.doesNotMatch(progressIndicatorsBlock(), /assistant/i);
-  assert.match(assistantDraftBlock(), /localStorage\.getItem\(LS_KEY\)/);
+  assert.match(assistantDraftBlock(), /return readStoredLocalDraftPayload\(\)/);
 });
 
 test("LOT 5.30 keeps Legacy Retention intact", () => {

@@ -446,7 +446,7 @@ test("LOT 5.21 validates payload, export and assistant boundaries stay Legacy-co
   assert.match(exportBlock(), /getDisplayValue\(currentMonthTotal, "money"\)/);
   assert.match(exportBlock(), /dashboardChargesDisplay/);
   assert.match(exportBlock(), /dashboardAvailableDisplay/);
-  assert.match(assistantDraftBlock(), /localStorage\.getItem\(LS_KEY\)/);
+  assert.match(assistantDraftBlock(), /return readStoredLocalDraftPayload\(\)/);
   if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
     assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
     return;

@@ -411,7 +411,7 @@ test("LOT 5.40 keeps persistence, payloads, assistant, analytics and feedback is
   assert.doesNotMatch(progress, /trackEvent|dashboardMonthlyReflection|\bsummary:/i);
   assert.doesNotMatch(visibleSliceBlock(), /localStorage|sessionStorage|supabase|fetch|payload|assistant|trackEvent/i);
   assert.match(feedbackBlock(), /totalRevenues: currentMonthTotal \|\| 0/);
-  assert.match(assistantDraftBlock(), /localStorage\.getItem\(LS_KEY\)/);
+  assert.match(assistantDraftBlock(), /return readStoredLocalDraftPayload\(\)/);
 });
 
 test("LOT 5.40 keeps React hook counts and avoids new state/effect/memo churn", () => {

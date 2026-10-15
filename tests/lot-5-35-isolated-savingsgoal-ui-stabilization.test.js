@@ -375,7 +375,7 @@ test("LOT 5.35 payloads and exports remain unchanged", () => {
 
 test("LOT 5.35 assistant remains unchanged", () => {
   assert.doesNotMatch(objectiveSavingsTextBlock(), /assistant/i);
-  assert.match(assistantDraftBlock(), /localStorage\.getItem\(LS_KEY\)/);
+  assert.match(assistantDraftBlock(), /return readStoredLocalDraftPayload\(\)/);
 });
 
 test("LOT 5.35 React hook counts remain unchanged", () => {

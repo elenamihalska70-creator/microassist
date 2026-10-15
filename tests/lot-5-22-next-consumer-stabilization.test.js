@@ -554,7 +554,7 @@ test("LOT 5.22 keeps payloads, exports and assistant boundaries unchanged", () =
   assert.match(exportBlock(), /getDisplayValue\(currentMonthTotal, "money"\)/);
   assert.match(exportBlock(), /dashboardChargesDisplay/);
   assert.match(exportBlock(), /dashboardAvailableDisplay/);
-  assert.match(assistantDraftBlock(), /localStorage\.getItem\(LS_KEY\)/);
+  assert.match(assistantDraftBlock(), /return readStoredLocalDraftPayload\(\)/);
   if (LEGACY_DASHBOARD_DECLARE_HELPER_REMOVED) {
     assert.doesNotMatch(APP_SOURCE, /dashboardDeclareHelper/);
     return;

@@ -283,7 +283,7 @@ test("LOT 5.32 keeps payloads unchanged", () => {
 
 test("LOT 5.32 keeps assistant unchanged", () => {
   assert.doesNotMatch(objectiveSavingsTextBlock(), /assistant/i);
-  assert.match(assistantDraftBlock(), /localStorage\.getItem\(LS_KEY\)/);
+  assert.match(assistantDraftBlock(), /return readStoredLocalDraftPayload\(\)/);
 });
 
 test("LOT 5.32 keeps export unchanged", () => {

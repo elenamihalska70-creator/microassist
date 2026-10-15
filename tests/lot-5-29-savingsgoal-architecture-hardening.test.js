@@ -217,7 +217,7 @@ test("LOT 5.29 keeps persistence, assistant and payload boundaries unchanged", (
   assert.match(APP_SOURCE, /localStorage\.getItem\(LS_KEY\)/);
   assert.match(APP_SOURCE, /supabase\.from\("revenues"\)/);
   assert.match(feedbackBlock(), /totalRevenues: currentMonthTotal \|\| 0/);
-  assert.match(assistantDraftBlock(), /localStorage\.getItem\(LS_KEY\)/);
+  assert.match(assistantDraftBlock(), /return readStoredLocalDraftPayload\(\)/);
   assert.doesNotMatch(sourceWithoutComments(APP_SOURCE), /\bsavingsGoal\b/);
 });
 

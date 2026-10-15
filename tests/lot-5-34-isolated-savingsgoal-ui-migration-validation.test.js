@@ -390,7 +390,7 @@ test("LOT 5.34 validates no propagation to persistence, payload, assistant or ex
   assert.doesNotMatch(objectiveSavingsTextBlock(), /localStorage|sessionStorage|supabase|fetch|payload|assistant|trackEvent/i);
   assert.doesNotMatch(visibleSliceBlock(), /localStorage|sessionStorage|supabase|fetch|trackEvent|payload/i);
   assert.match(feedbackBlock(), /totalRevenues: currentMonthTotal \|\| 0/);
-  assert.match(assistantDraftBlock(), /localStorage\.getItem\(LS_KEY\)/);
+  assert.match(assistantDraftBlock(), /return readStoredLocalDraftPayload\(\)/);
   assert.match(exportBlock(), /dashboardChargesDisplay/);
 });
 
