@@ -3438,6 +3438,7 @@ const handleRecoveryComplete = useCallback(() => {
   const fiscalProfileSaveSourceRef = useRef("auto_sync");
   const [profileSaveState, dispatchProfileSave] = useReducer(profileSaveReducer, INITIAL_PROFILE_SAVE_STATE);
   const profileDraftSessionRef = useRef({ userId: null, revision: 0, dirty: false });
+  const authFinalizationRef = useRef(null);
   const profileDraftAnswersRef = useRef(answers);
   useLayoutEffect(() => {
     profileDraftAnswersRef.current = answers;
@@ -3466,6 +3467,13 @@ const handleRecoveryComplete = useCallback(() => {
       dispatchProfileSave({ type: "local_saved", userId, revision: 1 });
     }
   }, [user?.id]);
+  useLayoutEffect(() => {
+    const session = profileDraftSessionRef.current;
+    return () => {
+      if (authFinalizationRef.current?.session === session) authFinalizationRef.current = null;
+    };
+  }, [user?.id]);
+
   const markProfileDraftEdited = useCallback((nextAnswers) => {
     const session = profileDraftSessionRef.current;
     session.revision += 1;
@@ -4303,6 +4311,8 @@ const refreshSubscriptionRecord = useCallback(async () => {
 
     const migrationState = guestMigrationRef.current;
     const migrationSession = profileDraftSessionRef.current;
+    const isMigrationCurrent = () => guestMigrationRef.current === migrationState &&
+      profileDraftSessionRef.current === migrationSession && migrationSession.userId === user.id;
 
     if (migrationState.inFlight && migrationState.userId === user.id) {
       return migrationState.inFlight;
@@ -4328,6 +4338,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
         localDraftAnswers?.business_start_date,
       );
       const remoteProfile = await refreshFiscalProfile({ force: true });
+      if (!isMigrationCurrent()) return false;
       const loadState = fiscalProfileFetchRef.current;
       if (
         loadState.userId !== user.id ||
@@ -4373,6 +4384,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
             }));
 
             const { error } = await supabase.from("revenues").insert(payload);
+            if (!isMigrationCurrent()) return false;
 
             if (error) {
               throw error;
@@ -4387,6 +4399,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
       }
 
       // 2. Migrer les factures invité
+      if (!isMigrationCurrent()) return false;
       const localGuestInvoices = localStorage.getItem(GUEST_INVOICES_KEY);
       if (localGuestInvoices) {
         try {
@@ -4414,6 +4427,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
               console.log("Factures Factur-X locales conservées sans migration.");
             } else {
               const { error } = await supabase.from("invoices").insert(payload);
+              if (!isMigrationCurrent()) return false;
 
               if (error) {
                 throw error;
@@ -4429,6 +4443,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
       }
 
       // 3. Migrer le profil fiscal
+      if (!isMigrationCurrent()) return false;
       const localAnswers = localStorage.getItem(LS_KEY);
       if (localAnswers) {
         try {
@@ -4462,11 +4477,13 @@ const refreshSubscriptionRecord = useCallback(async () => {
       }
 
       // 4. Migrer les préférences de rappels invité
+      if (!isMigrationCurrent()) return false;
       const localReminderPrefs = localStorage.getItem(REMINDER_PREFS_KEY);
       if (localReminderPrefs) {
         try {
           const parsedPrefs = JSON.parse(localReminderPrefs);
           const didSavePrefs = await saveReminderPrefsToSupabase(parsedPrefs);
+          if (!isMigrationCurrent()) return false;
 
           if (didSavePrefs) {
             migrated = true;
@@ -4477,6 +4494,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
         }
       }
 
+      if (!isMigrationCurrent()) return false;
       if (fiscalWriteConfirmed) {
         try {
           const session = profileDraftSessionRef.current;
@@ -4523,6 +4541,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
           refreshFiscalProfile({ force: true }),
           refreshInvoices(),
         ]);
+        if (!isMigrationCurrent()) return false;
 
         migrationState.completedForUserId = user.id;
 
@@ -4543,7 +4562,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
     try {
       return await migrationRequest;
     } finally {
-      if (guestMigrationRef.current.userId === user.id) {
+      if (guestMigrationRef.current === migrationState) {
         guestMigrationRef.current.inFlight = null;
       }
     }
@@ -8960,10 +8979,24 @@ useEffect(() => {
 
   if (authLoading || !pendingAuthSuccess || !user || isRecoveryFlow) return;
 
-  let cancelled = false;
+  const session = profileDraftSessionRef.current;
+  if (session.userId !== user.id) return;
+  // Dependency changes observe the whole operation, including its refreshes.
+  // Keep failed operations observed too: rerendering is not a retry policy.
+  if (authFinalizationRef.current?.session === session &&
+      authFinalizationRef.current.marker === pendingAuthSuccess) return;
+  const operation = { session, marker: pendingAuthSuccess, status: "pending" };
+  authFinalizationRef.current = operation;
+  const isCurrent = () => authFinalizationRef.current === operation &&
+    profileDraftSessionRef.current === session && session.userId === user.id &&
+    localStorage.getItem(PENDING_AUTH_SUCCESS_KEY) === operation.marker;
 
   async function finalizeAuthSuccess() {
+    // Let the account-transition effects finish resetting their generations.
+    await Promise.resolve();
+    if (!isCurrent()) return;
     await migrateLocalDataToSupabase({ silent: true });
+    if (!isCurrent()) return;
 
     await Promise.all([
       refreshRevenues(),
@@ -8971,9 +9004,11 @@ useEffect(() => {
       refreshInvoices(),
     ]);
 
-    if (cancelled) return;
+    if (!isCurrent() || localStorage.getItem(PENDING_AUTH_SUCCESS_KEY) !== operation.marker) return;
 
     localStorage.removeItem(PENDING_AUTH_SUCCESS_KEY);
+    operation.status = "complete";
+    authFinalizationRef.current = null;
     localStorage.setItem(BETA_SEEN_KEY, "1");
     setShowBetaNotice(false);
 
@@ -9023,11 +9058,10 @@ useEffect(() => {
     );
   }
 
-  finalizeAuthSuccess();
-
-  return () => {
-    cancelled = true;
-  };
+  operation.promise = finalizeAuthSuccess().catch((error) => {
+    operation.status = "failed";
+    console.error("Auth finalization failed:", error);
+  });
 }, [
   user,
   authLoading,
