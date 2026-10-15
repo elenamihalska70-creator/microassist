@@ -4125,14 +4125,15 @@ const refreshSubscriptionRecord = useCallback(async () => {
   );
 
   const saveFiscalProfileToSupabase = useCallback(async (profileAnswers, options = {}) => {
-    const { source = "auto_sync", showSuccessNotice = false, draftRevision, onFiscalConfirmed } = options;
+    const { source = "auto_sync", showSuccessNotice = false, draftRevision, onFiscalConfirmed, isFinalizationCurrent } = options;
     const normalizedProfileAnswers = sanitizeFiscalAnswers(profileAnswers);
     if (!user?.id) return { ok: false, skipped: true, reason: "missing_user" };
     const session = profileDraftSessionRef.current;
     let revision = draftRevision ?? session.revision;
     if (session.inFlight) await session.inFlight.catch(() => {});
     const loadState = fiscalProfileFetchRef.current;
-    const isCurrent = () => profileDraftSessionRef.current === session &&
+    const isCurrent = () => (!isFinalizationCurrent || isFinalizationCurrent()) &&
+      profileDraftSessionRef.current === session &&
       session.userId === user.id && session.revision === revision &&
       fiscalProfileFetchRef.current === loadState && loadState.userId === user.id &&
       (loadState.status === "found" || loadState.status === "absent");
@@ -4223,6 +4224,9 @@ const refreshSubscriptionRecord = useCallback(async () => {
       },
       { onConflict: "user_id,reminder_type" },
     );
+    if (isFinalizationCurrent && !isFinalizationCurrent()) {
+      return { ok: false, skipped: true, reason: "stale_save" };
+    }
 
     if (reminderError) {
       console.error("Reminder upsert error:", reminderError.message);
@@ -4231,8 +4235,9 @@ const refreshSubscriptionRecord = useCallback(async () => {
     return { ok: true, skipped: false, data };
   }, [user?.id, fiscalProfile, fiscalProfileLoaded, showSaveNotice]);
 
-  async function saveReminderPrefsToSupabase(prefsToSave = reminderPrefs) {
+  async function saveReminderPrefsToSupabase(prefsToSave = reminderPrefs, isFinalizationCurrent) {
     try {
+      if (isFinalizationCurrent && !isFinalizationCurrent()) return false;
       if (!user) return false;
       if (!isFiscalProfileComplete) return false;
       if (!fiscalProfile?.user_id) return false;
@@ -4255,6 +4260,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
         .from("fiscal_profiles")
         .update(payload)
         .eq("user_id", user.id);
+      if (isFinalizationCurrent && !isFinalizationCurrent()) return false;
 
       if (error) {
         console.error("saveReminderPrefsToSupabase error:", error);
@@ -4262,7 +4268,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
       }
 
       await refreshFiscalProfile();
-      return true;
+      return !isFinalizationCurrent || isFinalizationCurrent();
     } catch (error) {
       console.error("Unexpected reminder prefs error:", error);
       return false;
@@ -4306,16 +4312,19 @@ const refreshSubscriptionRecord = useCallback(async () => {
   }
 
   const migrateLocalDataToSupabase = useCallback(async (options = {}) => {
-    const { silent = false } = options;
+    const { silent = false, isFinalizationCurrent } = options;
     if (!user) return false;
 
     const migrationState = guestMigrationRef.current;
     const migrationSession = profileDraftSessionRef.current;
-    const isMigrationCurrent = () => guestMigrationRef.current === migrationState &&
+    const isMigrationCurrent = () => (!isFinalizationCurrent || isFinalizationCurrent()) &&
+      guestMigrationRef.current === migrationState &&
       profileDraftSessionRef.current === migrationSession && migrationSession.userId === user.id;
+    if (!isMigrationCurrent()) return false;
 
     if (migrationState.inFlight && migrationState.userId === user.id) {
-      return migrationState.inFlight;
+      const result = await migrationState.inFlight;
+      return isMigrationCurrent() ? result : false;
     }
 
     const migrationRequest = (async () => {
@@ -4383,6 +4392,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
               note: rev.note || null,
             }));
 
+            if (!isMigrationCurrent()) return false;
             const { error } = await supabase.from("revenues").insert(payload);
             if (!isMigrationCurrent()) return false;
 
@@ -4426,6 +4436,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
             if (payload.length === 0) {
               console.log("Factures Factur-X locales conservées sans migration.");
             } else {
+              if (!isMigrationCurrent()) return false;
               const { error } = await supabase.from("invoices").insert(payload);
               if (!isMigrationCurrent()) return false;
 
@@ -4462,9 +4473,11 @@ const refreshSubscriptionRecord = useCallback(async () => {
                 source: "migration_local_profile",
                 showSuccessNotice: false,
                 onFiscalConfirmed: (receipt) => { fiscalReceipt = receipt; },
+                isFinalizationCurrent,
               },
             );
 
+            if (!isMigrationCurrent()) return false;
             fiscalWriteConfirmed = Boolean(fiscalProfileSave?.ok && !fiscalProfileSave.skipped && fiscalReceipt);
             if (fiscalWriteConfirmed) {
               migrated = true;
@@ -4482,7 +4495,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
       if (localReminderPrefs) {
         try {
           const parsedPrefs = JSON.parse(localReminderPrefs);
-          const didSavePrefs = await saveReminderPrefsToSupabase(parsedPrefs);
+          const didSavePrefs = await saveReminderPrefsToSupabase(parsedPrefs, isFinalizationCurrent);
           if (!isMigrationCurrent()) return false;
 
           if (didSavePrefs) {
@@ -4528,6 +4541,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
       }
 
       if (migrated) {
+        if (!isMigrationCurrent()) return false;
         // Invoice inserts do not provide a durable per-row acknowledgement.
         // Retain the exact local source, including Factur-X and unknown entries,
         // until acknowledged residual removal can be established safely.
@@ -4553,14 +4567,15 @@ const refreshSubscriptionRecord = useCallback(async () => {
         }
       }
 
-      return migrated;
+      return isMigrationCurrent() ? migrated : false;
     })();
 
     migrationState.userId = user.id;
     migrationState.inFlight = migrationRequest;
 
     try {
-      return await migrationRequest;
+      const result = await migrationRequest;
+      return isMigrationCurrent() ? result : false;
     } finally {
       if (guestMigrationRef.current === migrationState) {
         guestMigrationRef.current.inFlight = null;
@@ -8995,7 +9010,7 @@ useEffect(() => {
     // Let the account-transition effects finish resetting their generations.
     await Promise.resolve();
     if (!isCurrent()) return;
-    await migrateLocalDataToSupabase({ silent: true });
+    await migrateLocalDataToSupabase({ silent: true, isFinalizationCurrent: isCurrent });
     if (!isCurrent()) return;
 
     await Promise.all([
