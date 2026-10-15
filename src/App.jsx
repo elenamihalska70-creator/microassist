@@ -76,7 +76,7 @@ import {
   profileSaveMessage,
 } from "./application/profile/profileDraftState.js";
 import { normalizeDateValue, pickProfileField, normalizeProfileConflictValue } from "./application/profile/profileNormalization.js";
-import { readLocalDraftPayload as readStoredLocalDraftPayload, readProfileConflictStrategy as readStoredProfileConflictStrategy } from "./application/profile/profileStorage.js";
+import { readLocalDraftPayload as readStoredLocalDraftPayload, readProfileConflictStrategy as readStoredProfileConflictStrategy, writeLocalDraftPayload } from "./application/profile/profileStorage.js";
 import AppShell from "./shell/AppShell.jsx";
 import PriorityCard from "./components/dashboard/PriorityCard.jsx";
 import { buildPriorityCardViewModel } from "./components/dashboard/buildPriorityCardViewModel.js";
@@ -5181,7 +5181,7 @@ useEffect(() => {
         appView,
         savedAt: now,
       };
-      localStorage.setItem(LS_KEY, JSON.stringify(payload));
+      writeLocalDraftPayload(payload);
       const session = profileDraftSessionRef.current;
       if (session.dirty) dispatchProfileSave({ type: "local_saved", userId: session.userId, revision: session.revision });
       setLastSavedAt(now);

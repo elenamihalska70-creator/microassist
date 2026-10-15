@@ -326,7 +326,7 @@ test("LOT 5.72 validates no propagation to sensitive adjacent boundaries", () =>
   assert.match(feedback, /totalRevenues: currentMonthTotal \|\| 0/);
   assert.match(assistant, /realMonthlyRevenue: currentMonthTotal/);
   assert.match(pdfExport, /handleExportPDF/);
-  assert.match(persistence, /localStorage\.setItem/);
+  assert.match(persistence, /writeLocalDraftPayload\(payload\)/);
   assert.doesNotMatch(
     smartCall,
     /supabase|localStorage|sessionStorage|payload|feedback|analytics|trackEvent|export|PDF|assistant|coaching|savingsGoal|invoices\.map|saveReminder|weekly/i,

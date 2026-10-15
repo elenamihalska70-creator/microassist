@@ -293,7 +293,7 @@ test("LOT 5.53 validates feedback, exports, assistant and persistence boundaries
   assert.doesNotMatch(exportSource, /monthlyReflectionRevenueTotal|fiscalSummaryVisibleSlice/);
   assert.match(assistant, /realMonthlyRevenue: currentMonthTotal/);
   assert.doesNotMatch(assistant, /monthlyReflectionRevenueTotal|fiscalSummaryVisibleSlice/);
-  assert.match(persistence, /localStorage\.setItem\(LS_KEY, JSON\.stringify\(payload\)\)/);
+  assert.match(persistence, /writeLocalDraftPayload\(payload\)/);
   assert.doesNotMatch(persistence, /monthlyReflectionRevenueTotal|fiscalSummaryVisibleSlice/);
 });
 

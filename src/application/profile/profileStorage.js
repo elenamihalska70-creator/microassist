@@ -19,3 +19,7 @@ export function readProfileConflictStrategy() {
     return null;
   }
 }
+
+export function writeLocalDraftPayload(payload) {
+  localStorage.setItem(LS_KEY, JSON.stringify(payload));
+}

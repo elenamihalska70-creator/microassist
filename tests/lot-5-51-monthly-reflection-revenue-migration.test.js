@@ -145,7 +145,7 @@ test("LOT 5.51A keeps feedback, exports, assistant-adjacent and persistence boun
   assert.match(app, /const handleExportPDF = useCallback\(async \(\) => \{/);
   assert.match(app, /Revenus cumulés : \$\{getDisplayValue\(currentMonthTotal, "money"\)\}/);
   assert.match(app, /buildSimpleAssistantGuidance\(\{[\s\S]*realMonthlyRevenue: currentMonthTotal/);
-  assert.match(app, /localStorage\.setItem\(LS_KEY, JSON\.stringify\(payload\)\)/);
+  assert.match(app, /writeLocalDraftPayload\(payload\)/);
 });
 
 test("LOT 5.51A reuses the existing feature flag through the visible slice", () => {

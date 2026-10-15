@@ -480,7 +480,7 @@ test("LOT 5.30 keeps persistence unchanged", () => {
   assert.doesNotMatch(pdfSavingsGoalBranch(), /localStorage|sessionStorage|supabase|fetch/i);
   assert.doesNotMatch(progressIndicatorsBlock(), /localStorage|sessionStorage|supabase|fetch/i);
   assert.match(APP_SOURCE, /localStorage\.getItem\(LS_KEY\)/);
-  assert.match(APP_SOURCE, /localStorage\.setItem\(LS_KEY, JSON\.stringify\(payload\)\)/);
+  assert.match(APP_SOURCE, /writeLocalDraftPayload\(payload\)/);
 });
 
 test("LOT 5.30 keeps payloads unchanged", () => {

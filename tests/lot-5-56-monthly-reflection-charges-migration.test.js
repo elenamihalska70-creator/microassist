@@ -176,7 +176,7 @@ test("LOT 5.56A keeps coaching, PDF, assistant and persistence isolated", () => 
   assert.doesNotMatch(exportSource, /monthlyReflectionChargesAmount|fiscalSummaryVisibleSlice/);
   assert.match(assistant, /realMonthlyRevenue: currentMonthTotal/);
   assert.doesNotMatch(assistant, /monthlyReflectionChargesAmount|fiscalSummaryVisibleSlice/);
-  assert.match(persistence, /localStorage\.setItem\(LS_KEY, JSON\.stringify\(payload\)\)/);
+  assert.match(persistence, /writeLocalDraftPayload\(payload\)/);
   assert.doesNotMatch(persistence, /monthlyReflectionChargesAmount|fiscalSummaryVisibleSlice/);
 });
 

@@ -200,7 +200,7 @@ test("LOT 5.70 keeps feedback, persistence, payloads, assistant and exports isol
   const persistence = sourceWithoutComments(persistenceBlock());
   const feedback = sourceWithoutComments(feedbackBlock());
 
-  assert.match(persistence, /localStorage\.setItem/);
+  assert.match(persistence, /writeLocalDraftPayload\(payload\)/);
   assert.match(feedback, /totalRevenues: currentMonthTotal \|\| 0/);
   assert.doesNotMatch(
     smartCall,

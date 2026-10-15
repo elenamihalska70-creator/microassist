@@ -203,7 +203,7 @@ test("LOT 5.91A persistence code is unchanged and has no savingsGoal reference",
   const persistence = sourceWithoutComments(persistenceBlock());
 
   assert.match(APP_SOURCE, /localStorage\.getItem\(LS_KEY\)/);
-  assert.match(persistence, /localStorage\.setItem\(LS_KEY, JSON\.stringify\(payload\)\)/);
+  assert.match(persistence, /writeLocalDraftPayload\(payload\)/);
   assert.doesNotMatch(persistence, /\bsavingsGoal\b/);
 });
 

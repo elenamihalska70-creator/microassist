@@ -136,7 +136,7 @@ test("LOT 5.57 keeps estimatedCharges Legacy outside the migrated monthly reflec
   assert.doesNotMatch(exportSource, /monthlyReflectionChargesAmount|fiscalSummaryVisibleSlice/);
   assert.match(assistant, /realMonthlyRevenue: currentMonthTotal/);
   assert.doesNotMatch(assistant, /monthlyReflectionChargesAmount|fiscalSummaryVisibleSlice/);
-  assert.match(persistence, /localStorage\.setItem\(LS_KEY, JSON\.stringify\(payload\)\)/);
+  assert.match(persistence, /writeLocalDraftPayload\(payload\)/);
   assert.doesNotMatch(persistence, /monthlyReflectionChargesAmount|fiscalSummaryVisibleSlice/);
 });
 

@@ -174,7 +174,7 @@ test("LOT 5.63A keeps other sensitive boundaries Legacy or unchanged", () => {
   assert.doesNotMatch(exportSource, /fiscalSummaryVisibleSlice/);
   assert.match(assistant, /realMonthlyRevenue: currentMonthTotal/);
   assert.doesNotMatch(assistant, /fiscalSummaryVisibleSlice\.finalContributionAmount/);
-  assert.match(persistence, /localStorage\.setItem\(LS_KEY, JSON\.stringify\(payload\)\)/);
+  assert.match(persistence, /writeLocalDraftPayload\(payload\)/);
   assert.doesNotMatch(persistence, /fiscalSummaryVisibleSlice/);
   assert.match(feedback, /totalRevenues: currentMonthTotal \|\| 0/);
   assert.doesNotMatch(feedback, /fiscalSummaryVisibleSlice\.finalContributionAmount/);

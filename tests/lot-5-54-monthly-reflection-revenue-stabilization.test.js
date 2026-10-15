@@ -287,7 +287,7 @@ test("LOT 5.54 keeps feedback, exports, assistant, persistence and payloads unch
   assert.doesNotMatch(exportSource, /monthlyReflectionRevenueTotal|fiscalSummaryVisibleSlice/);
   assert.match(assistant, /realMonthlyRevenue: currentMonthTotal/);
   assert.doesNotMatch(assistant, /monthlyReflectionRevenueTotal|fiscalSummaryVisibleSlice/);
-  assert.match(persistence, /localStorage\.setItem\(LS_KEY, JSON\.stringify\(payload\)\)/);
+  assert.match(persistence, /writeLocalDraftPayload\(payload\)/);
   assert.doesNotMatch(persistence, /monthlyReflectionRevenueTotal|fiscalSummaryVisibleSlice/);
 });
 

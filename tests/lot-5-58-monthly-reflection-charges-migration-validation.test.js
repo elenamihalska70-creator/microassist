@@ -296,7 +296,7 @@ test("LOT 5.58 keeps revenue consumer, assistant, persistence and payload bounda
   assert.match(region, /monthlyReflectionRevenueTotal\.toLocaleString\("fr-FR"\)/);
   assert.match(assistant, /realMonthlyRevenue: currentMonthTotal/);
   assert.doesNotMatch(assistant, /monthlyReflectionChargesAmount|fiscalSummaryVisibleSlice/);
-  assert.match(persistence, /localStorage\.setItem\(LS_KEY, JSON\.stringify\(payload\)\)/);
+  assert.match(persistence, /writeLocalDraftPayload\(payload\)/);
   assert.doesNotMatch(persistence, /monthlyReflectionChargesAmount|fiscalSummaryVisibleSlice/);
   assert.match(feedback, /totalRevenues: currentMonthTotal \|\| 0/);
   assert.doesNotMatch(feedback, /monthlyReflectionChargesAmount|fiscalSummaryVisibleSlice/);

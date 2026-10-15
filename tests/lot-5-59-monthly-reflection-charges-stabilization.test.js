@@ -295,7 +295,7 @@ test("LOT 5.59 keeps estimatedCharges Legacy and sensitive boundaries isolated; 
   assert.doesNotMatch(exportSource, /monthlyReflectionChargesAmount|fiscalSummaryVisibleSlice/);
   assert.match(assistant, /realMonthlyRevenue: currentMonthTotal/);
   assert.doesNotMatch(assistant, /monthlyReflectionChargesAmount|fiscalSummaryVisibleSlice/);
-  assert.match(persistence, /localStorage\.setItem\(LS_KEY, JSON\.stringify\(payload\)\)/);
+  assert.match(persistence, /writeLocalDraftPayload\(payload\)/);
   assert.doesNotMatch(persistence, /monthlyReflectionChargesAmount|fiscalSummaryVisibleSlice/);
   assert.match(feedback, /totalRevenues: currentMonthTotal \|\| 0/);
   assert.doesNotMatch(feedback, /monthlyReflectionChargesAmount|fiscalSummaryVisibleSlice/);
