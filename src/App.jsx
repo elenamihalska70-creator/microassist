@@ -3438,6 +3438,10 @@ const handleRecoveryComplete = useCallback(() => {
   const fiscalProfileSaveSourceRef = useRef("auto_sync");
   const [profileSaveState, dispatchProfileSave] = useReducer(profileSaveReducer, INITIAL_PROFILE_SAVE_STATE);
   const profileDraftSessionRef = useRef({ userId: null, revision: 0, dirty: false });
+  const profileDraftAnswersRef = useRef(answers);
+  useLayoutEffect(() => {
+    profileDraftAnswersRef.current = answers;
+  }, [answers]);
   const profileConflictOwnerRef = useRef(null);
   const profileCompletionOwnerRef = useRef(null);
   useLayoutEffect(() => {
@@ -4113,7 +4117,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
   );
 
   const saveFiscalProfileToSupabase = useCallback(async (profileAnswers, options = {}) => {
-    const { source = "auto_sync", showSuccessNotice = false, draftRevision } = options;
+    const { source = "auto_sync", showSuccessNotice = false, draftRevision, onFiscalConfirmed } = options;
     const normalizedProfileAnswers = sanitizeFiscalAnswers(profileAnswers);
     if (!user?.id) return { ok: false, skipped: true, reason: "missing_user" };
     const session = profileDraftSessionRef.current;
@@ -4174,6 +4178,14 @@ const refreshSubscriptionRecord = useCallback(async () => {
       session.dirty = false;
       session.failed = false;
       dispatchProfileSave({ type: "remote_saved", userId: user.id, revision });
+      if (typeof onFiscalConfirmed === "function" && isSameFiscalProfilePayload(payload, data)) {
+        onFiscalConfirmed({
+          userId: user.id, session, loadState, revision,
+          payload: Object.freeze({ ...payload }),
+          response: Object.freeze({ ...data }),
+          answersSignature: JSON.stringify(normalizedProfileAnswers),
+        });
+      }
       if (showSuccessNotice) showSaveNotice("Profil fiscal enregistré dans ton compte ✅", 3000);
     } catch (error) {
       if (!isCurrent()) return { ok: false, skipped: true, reason: "stale_save" };
@@ -4290,6 +4302,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
     if (!user) return false;
 
     const migrationState = guestMigrationRef.current;
+    const migrationSession = profileDraftSessionRef.current;
 
     if (migrationState.inFlight && migrationState.userId === user.id) {
       return migrationState.inFlight;
@@ -4297,6 +4310,9 @@ const refreshSubscriptionRecord = useCallback(async () => {
 
     const migrationRequest = (async () => {
       let migrated = false;
+      let fiscalSnapshot = null;
+      let fiscalReceipt = null;
+      let fiscalWriteConfirmed = false;
       const conflictStrategy = readProfileConflictStrategy();
 
       // Un conflit déjà détecté bloque toute fusion automatique ultérieure.
@@ -4421,15 +4437,21 @@ const refreshSubscriptionRecord = useCallback(async () => {
             data.answers &&
             (data.answers.activity_type || data.answers.declaration_frequency)
           ) {
+            fiscalSnapshot = {
+              raw: localAnswers,
+              answersSignature: JSON.stringify(profileDraftAnswersRef.current),
+            };
             const fiscalProfileSave = await saveFiscalProfileToSupabase(
               data.answers,
               {
                 source: "migration_local_profile",
                 showSuccessNotice: false,
+                onFiscalConfirmed: (receipt) => { fiscalReceipt = receipt; },
               },
             );
 
-            if (fiscalProfileSave?.ok) {
+            fiscalWriteConfirmed = Boolean(fiscalProfileSave?.ok && !fiscalProfileSave.skipped && fiscalReceipt);
+            if (fiscalWriteConfirmed) {
               migrated = true;
               console.log("✅ Profil fiscal local migré");
             }
@@ -4455,6 +4477,38 @@ const refreshSubscriptionRecord = useCallback(async () => {
         }
       }
 
+      if (fiscalWriteConfirmed) {
+        try {
+          const session = profileDraftSessionRef.current;
+          const loadState = fiscalProfileFetchRef.current;
+          const currentAnswers = profileDraftAnswersRef.current;
+          if (
+            guestMigrationRef.current === migrationState &&
+            session === migrationSession && session === fiscalReceipt.session &&
+            session.userId === user.id && fiscalReceipt.userId === user.id &&
+            session.revision === fiscalReceipt.revision && !session.dirty &&
+            loadState === fiscalReceipt.loadState && loadState.userId === user.id &&
+            loadState.status === "found" && !loadState.conflictPending &&
+            !readProfileConflictStrategy() &&
+            JSON.stringify(currentAnswers) === fiscalSnapshot.answersSignature &&
+            JSON.stringify(sanitizeFiscalAnswers(currentAnswers)) === fiscalReceipt.answersSignature &&
+            isSameFiscalProfilePayload(fiscalReceipt.payload, fiscalReceipt.response) &&
+            localStorage.getItem(LS_KEY) === fiscalSnapshot.raw
+          ) {
+            localStorage.removeItem(LS_KEY);
+            session.cleanedFiscalDraft = {
+              revision: fiscalReceipt.revision,
+              answersSignature: fiscalSnapshot.answersSignature,
+            };
+            setHasDraft(false);
+            setLastSavedAt(null);
+            setRestoredAt(null);
+          }
+        } catch (error) {
+          console.warn("Fiscal draft cleanup skipped:", error);
+        }
+      }
+
       if (migrated) {
         const preservedFacturxInvoices = (() => {
           try {
@@ -4469,7 +4523,6 @@ const refreshSubscriptionRecord = useCallback(async () => {
           }
         })();
         clearLocalStorageKeys([
-          LS_KEY,
           GUEST_REVENUES_KEY,
           GUEST_INVOICES_KEY,
           REMINDER_PREFS_KEY,
@@ -4483,9 +4536,6 @@ const refreshSubscriptionRecord = useCallback(async () => {
         } else {
           setGuestInvoices([]);
         }
-        setHasDraft(false);
-        setLastSavedAt(null);
-        setRestoredAt(null);
 
         await Promise.all([
           refreshRevenues(),
@@ -5171,6 +5221,10 @@ useEffect(() => {
     if (messages.length === 0) return;
 
     try {
+      const draftSession = profileDraftSessionRef.current;
+      const cleaned = draftSession.cleanedFiscalDraft;
+      if (cleaned && !draftSession.dirty && draftSession.revision === cleaned.revision &&
+        JSON.stringify(answers) === cleaned.answersSignature) return;
       const now = new Date().toISOString();
       const payload = {
         version: LS_VERSION,
