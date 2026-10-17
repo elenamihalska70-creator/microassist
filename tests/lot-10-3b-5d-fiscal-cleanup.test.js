@@ -156,12 +156,13 @@ test("actual failed fiscal callback retains exact draft when revenues succeed", 
 
 test("confirmed fiscal save removes its exact snapshot and records the actual revision", async () => {
   const h = actualHarness({ fiscalResult: "ok" });
+  const localRevenues = h.memory.get("revenues_guest");
   assert.equal(await h.context.migrate({ silent: true }), true);
   assert.equal(h.memory.has(KEY), false);
   assert.equal(h.requests.length, 1);
   assert.equal(h.context.profileDraftSessionRef.current.cleanedFiscalDraft.revision, 2);
   assert.deepEqual(h.indicators, [["hasDraft", false], ["savedAt", null], ["restoredAt", null]]);
-  assert.equal(h.memory.has("revenues_guest"), false, "remaining legacy non-fiscal cleanup risk is unchanged");
+  assert.equal(h.memory.get("revenues_guest"), localRevenues, "fiscal success cannot remove the local revenue source");
 });
 
 for (const category of ["revenues", "invoices", "reminders"]) {

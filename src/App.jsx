@@ -4542,13 +4542,8 @@ const refreshSubscriptionRecord = useCallback(async () => {
 
       if (migrated) {
         if (!isMigrationCurrent()) return false;
-        // Invoice inserts do not provide a durable per-row acknowledgement.
-        // Retain the exact local source, including Factur-X and unknown entries,
-        // until acknowledged residual removal can be established safely.
-        clearLocalStorageKeys([
-          GUEST_REVENUES_KEY,
-          REMINDER_PREFS_KEY,
-        ]);
+        // Non-fiscal responses do not establish per-item acknowledgement.
+        // Retain the exact revenue, invoice and reminder sources for recovery.
 
         await Promise.all([
           refreshRevenues(),
