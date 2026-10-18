@@ -15,7 +15,7 @@ const PENDING = "microassist_pending_auth_success";
 const tick = () => new Promise(resolve => setImmediate(resolve));
 function deferred() { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; }
 function create(options = {}) {
-  const h = scope.create({ fiscalResult: "fail", invoices: "ok", ...options });
+  const h = scope.create({ fiscalResult: "fail", revenues: "ok", invoices: "ok", ...options });
   const c = h.context;
   c.migrateLocalDataToSupabase = c.migrate;
   h.memory.set(PENDING, "manual_auth");
@@ -29,10 +29,11 @@ function create(options = {}) {
   vm.runInContext(`globalThis.effect=()=>{${SOURCE.slice(start, end)}\n};`, c);
   const from = c.supabase.from;
   h.invoiceAttempts = 0;
+  h.revenueAttempts = 0;
   c.supabase.from = table => {
     const service = from(table);
     const insert = service.insert;
-    service.insert = async payload => { if (table === "invoices") h.invoiceAttempts++; return insert(payload); };
+    service.insert = async payload => { if (table === "invoices") h.invoiceAttempts++; if (table === "revenues") h.revenueAttempts++; return insert(payload); };
     return service;
   };
   return h;
@@ -44,12 +45,14 @@ test("effect rerun during post-migration refresh does not start another invoice 
   h.context.refreshRevenues = async () => { if (++reads > 1) await refreshGate.promise; };
   const cleanup = h.context.effect();
   for (let i = 0; i < 8; i++) await tick();
-  assert.equal(h.invoiceAttempts, 1);
+  assert.equal(h.invoiceAttempts, 0);
+  assert.equal(h.revenueAttempts, 1);
   assert.ok(h.memory.has(PENDING));
   cleanup?.();
   h.context.effect();
   for (let i = 0; i < 8; i++) await tick();
-  assert.equal(h.invoiceAttempts, before ? 2 : 1);
+  assert.equal(h.invoiceAttempts, 0);
+  assert.equal(h.revenueAttempts, 1);
   refreshGate.resolve();
   for (let i = 0; i < 8; i++) await tick();
   assert.equal(h.memory.has(PENDING), false);
@@ -82,7 +85,7 @@ test("concurrent migration callers share the active insert; sequential direct ca
   h.context.supabase.from = table => {
     const service = from(table);
     const insert = service.insert;
-    if (table === "invoices") service.insert = async payload => { entered.resolve(); await gate.promise; return insert(payload); };
+    if (table === "revenues") service.insert = async payload => { entered.resolve(); await gate.promise; return insert(payload); };
     return service;
   };
   const first = h.context.migrate();
@@ -90,29 +93,32 @@ test("concurrent migration callers share the active insert; sequential direct ca
   const joined = h.context.migrate();
   gate.resolve();
   await Promise.all([first, joined]);
-  assert.equal(h.invoiceAttempts, 1);
+  assert.equal(h.invoiceAttempts, 0);
+  assert.equal(h.revenueAttempts, 1);
   await h.context.migrate();
-  assert.equal(h.invoiceAttempts, 2);
+  assert.equal(h.revenueAttempts, 2);
+  assert.equal(h.invoiceAttempts, 0);
 });
 
-test("ambiguous insert is attempted only once through repeated finalization effects", async () => {
-  const h = create({ invoices: "fail" });
+test("failed revenue insert is attempted only once through repeated finalization effects, with zero invoice inserts", async () => {
+  const h = create({ revenues: "fail" });
   const original = h.memory.get("guest_invoices");
   for (let i = 0; i < 5; i++) { h.context.effect(); await tick(); }
   for (let i = 0; i < 8; i++) await tick();
-  assert.equal(h.invoiceAttempts, 1);
+  assert.equal(h.invoiceAttempts, 0);
+  assert.equal(h.revenueAttempts, 1);
   assert.equal(h.memory.get("guest_invoices"), original);
   assert.equal(h.memory.has(PENDING), false);
 });
 
 for (const response of ["lost", "empty"]) {
-  test(`${response} invoice acknowledgement is not automatically retried`, async () => {
+  test(`${response} revenue acknowledgement is not automatically retried`, async () => {
     const h = create();
     const from = h.context.supabase.from;
     h.context.supabase.from = table => {
       const service = from(table);
-      if (table === "invoices") service.insert = async () => {
-        h.invoiceAttempts++;
+      if (table === "revenues") service.insert = async () => {
+        h.revenueAttempts++;
         if (response === "lost") throw new Error("synthetic response lost after write");
         return { error: null };
       };
@@ -121,7 +127,8 @@ for (const response of ["lost", "empty"]) {
     const raw = h.memory.get("guest_invoices");
     for (let i = 0; i < 6; i++) { h.context.effect(); await tick(); }
     for (let i = 0; i < 8; i++) await tick();
-    assert.equal(h.invoiceAttempts, 1);
+    assert.equal(h.invoiceAttempts, 0);
+    assert.equal(h.revenueAttempts, 1);
     assert.equal(h.memory.get("guest_invoices"), raw);
   });
 }
@@ -135,7 +142,8 @@ test("failed refresh retains marker but effect reruns are not automatic retries"
   assert.equal(h.memory.has(PENDING), true);
   h.context.effect();
   for (let i = 0; i < 8; i++) await tick();
-  assert.equal(h.invoiceAttempts, 1);
+  assert.equal(h.invoiceAttempts, 0);
+  assert.equal(h.revenueAttempts, 1);
 });
 
 test("post-migration session invalidation preserves the next account marker", async () => {
@@ -150,7 +158,8 @@ test("post-migration session invalidation preserves the next account marker", as
   gate.resolve();
   for (let i = 0; i < 8; i++) await tick();
   assert.equal(h.memory.get(PENDING), "next-account");
-  assert.equal(h.invoiceAttempts, 1);
+  assert.equal(h.invoiceAttempts, 0);
+  assert.equal(h.revenueAttempts, 1);
 });
 
 test("completed finalization does not restart on rerender; a new session may legitimately finalize", async () => {
@@ -159,11 +168,13 @@ test("completed finalization does not restart on rerender; a new session may leg
   for (let i = 0; i < 8; i++) await tick();
   h.context.effect();
   await tick();
-  assert.equal(h.invoiceAttempts, 1);
+  assert.equal(h.invoiceAttempts, 0);
+  assert.equal(h.revenueAttempts, 1);
   h.context.profileDraftSessionRef.current = { userId: "synthetic-user", revision: 0 };
   h.memory.set(PENDING, "manual_auth");
   h.context.effect();
   for (let i = 0; i < 8; i++) await tick();
-  assert.equal(h.invoiceAttempts, 2);
+  assert.equal(h.invoiceAttempts, 0);
+  assert.equal(h.revenueAttempts, 2);
   assert.equal(h.memory.has(PENDING), false);
 });

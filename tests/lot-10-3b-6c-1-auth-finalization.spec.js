@@ -4,9 +4,11 @@ import process from "node:process";
 test("mounted auth finalization does not repeat invoice inserts during slow refreshes", async ({ page }) => {
   let inserts = 0;
   const userId = "11111111-1111-4111-8111-111111111111";
-  await page.route("**://*.supabase.co/**", async route => {
+  await page.route("**/*", async route => {
     const request = route.request();
-    const path = new URL(request.url()).pathname;
+    const url = new URL(request.url());
+    if (["127.0.0.1", "localhost"].includes(url.hostname)) return route.fallback();
+    const path = url.pathname;
     if (path === "/rest/v1/invoices" && request.method() === "POST") inserts++;
     if (path === "/rest/v1/revenues" && request.method() === "GET") await new Promise(resolve => setTimeout(resolve, 900));
     const body = path === "/rest/v1/profiles" ? { id: userId, onboarding_completed: true, email: "synthetic@example.com" } : path.includes("/rest/v1/") ? [] : {};
@@ -27,7 +29,7 @@ test("mounted auth finalization does not repeat invoice inserts during slow refr
   } else {
     await expect.poll(() => page.evaluate(() => localStorage.getItem("microassist_pending_auth_success")), { timeout: 20000 }).toBeNull();
     await page.waitForTimeout(2000);
-    expect(inserts).toBe(1);
+    expect(inserts).toBe(0);
     expect(await page.evaluate(() => localStorage.getItem("guest_invoices"))).toContain("SYNTHETIC-ONLY");
   }
 });

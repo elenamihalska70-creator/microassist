@@ -59,7 +59,6 @@ import {
   generateFacturXXml,
   getInvoiceComplianceScore,
   getInvoiceTotals,
-  isInvoiceCompliant,
 } from "./utils/facturx.js";
 import { PRICING_LIMITS } from "./config/pricing.js";
 import { ACCESS_MATRIX, getAccessProfile } from "./config/accessMatrix.js";
@@ -68,6 +67,8 @@ import ExpertDashboard from "./components/ExpertDashboard";
 import MainNavigation from "./navigation/MainNavigation.jsx";
 import { resolveNavigationLocation } from "./navigation/navigationLocation.js";
 import ModalFocusBoundary from "./components/profile/ModalFocusBoundary.jsx";
+import LocalInvoiceStatus from "./components/LocalInvoiceStatus.jsx";
+import { readLocalInvoices } from "./application/invoices/localInvoiceStatus.js";
 import { selectProfileModal, canApplyProfileConflictChoice, authProfileResolutionMessage } from "./application/profile/profileModalState.js";
 import {
   INITIAL_PROFILE_SAVE_STATE,
@@ -3136,13 +3137,7 @@ useEffect(() => {
   const [mode] = useState("user");
   
   const [invoices, setInvoices] = useState([]);
-  const [guestInvoices, setGuestInvoices] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(GUEST_INVOICES_KEY) || "[]");
-    } catch {
-      return [];
-    }
-  });
+  const [guestInvoices, setGuestInvoices] = useState(() => readLocalInvoices(() => localStorage.getItem(GUEST_INVOICES_KEY)).items);
   const [showPricingModal, setShowPricingModal] = useState(false);
   const [showFutureAdvancedModal, setShowFutureAdvancedModal] = useState(false);
   const [monthlyExportUsage, setMonthlyExportUsage] = useState(EMPTY_EXPORT_USAGE);
@@ -4408,50 +4403,7 @@ const refreshSubscriptionRecord = useCallback(async () => {
         }
       }
 
-      // 2. Migrer les factures invité
-      if (!isMigrationCurrent()) return false;
-      const localGuestInvoices = localStorage.getItem(GUEST_INVOICES_KEY);
-      if (localGuestInvoices) {
-        try {
-          const invoicesToMigrate = JSON.parse(localGuestInvoices);
-          if (Array.isArray(invoicesToMigrate) && invoicesToMigrate.length > 0) {
-            const legacyInvoicesToMigrate = invoicesToMigrate.filter(
-              (invoice) => !isFacturXDraftInvoice(invoice),
-            );
-            const payload = legacyInvoicesToMigrate.map((invoice) => ({
-              user_id: user.id,
-              invoice_number: invoice.invoice_number,
-              client_name: invoice.client_name || "",
-              client_address: invoice.client_address || "",
-              client_email: invoice.client_email || "",
-              description: invoice.description || "",
-              amount: invoice.amount || 0,
-              invoice_date: invoice.invoice_date,
-              due_date: invoice.due_date,
-              status: invoice.status === "paid" ? "paid" : "unpaid",
-              is_compliant: isInvoiceCompliant(invoice, userProfile),
-              paid_at: invoice.paid_at || null,
-            }));
-
-            if (payload.length === 0) {
-              console.log("Factures Factur-X locales conservées sans migration.");
-            } else {
-              if (!isMigrationCurrent()) return false;
-              const { error } = await supabase.from("invoices").insert(payload);
-              if (!isMigrationCurrent()) return false;
-
-              if (error) {
-                throw error;
-              }
-
-              migrated = true;
-              console.log("✅ Factures invité migrées:", payload.length);
-            }
-          }
-        } catch (e) {
-          console.error("Erreur migration factures:", e);
-        }
-      }
+      // Guest invoices remain local. Automatic import is permanently disabled.
 
       // 3. Migrer le profil fiscal
       if (!isMigrationCurrent()) return false;
@@ -9241,6 +9193,10 @@ function handleOpenRevenuePopup() {
   }
 
 function handleOpenInvoiceGenerator() {
+  if (authLoading) {
+    showSaveNotice("La connexion est en cours. Réessaie dans un instant.", 3000);
+    return;
+  }
   if (!guardPremiumAccess("invoice_limit", "invoice_limit")) {
     return;
   }
@@ -9252,6 +9208,10 @@ function handleOpenInvoiceGenerator() {
 }
 
 function handleOpenInvoiceFromLatestRevenue() {
+  if (authLoading) {
+    showSaveNotice("La connexion est en cours. Réessaie dans un instant.", 3000);
+    return;
+  }
   if (!guardPremiumAccess("invoice_limit", "invoice_limit")) {
     return;
   }
@@ -9476,17 +9436,8 @@ useEffect(() => {
   setRevenues([]);
   setInvoices([]);
 
-  if (currentUserId) {
-    setGuestInvoices([]);
-  } else {
-    try {
-      setGuestInvoices(
-        JSON.parse(localStorage.getItem(GUEST_INVOICES_KEY) || "[]"),
-      );
-    } catch {
-      setGuestInvoices([]);
-    }
-  }
+  // Device-local invoices have no account ownership and stay visible on transitions.
+  setGuestInvoices(readLocalInvoices(() => localStorage.getItem(GUEST_INVOICES_KEY)).items);
 
   setReminderPrefs(DEFAULT_REMINDER_PREFS);
   setSelectedMonth("all");
@@ -15650,6 +15601,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                     </button>
                   </div>
                 )}
+
+                <LocalInvoiceStatus userId={user?.id ?? null} invoices={guestInvoices} onStorageChange={setGuestInvoices} />
 
                 {invoiceNotice && (
                   <div className="saveNotice" style={{ marginTop: 16, width: "100%" }}>

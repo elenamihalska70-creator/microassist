@@ -64,15 +64,16 @@ test("residual read failure must not become an empty residual", async () => {
   if (before) assert.equal(h.memory.has(I), false);
   else assertUntouched(h, mixed);
 });
-test("initial invoice read exception retains source and propagates existing migration rejection", async () => {
+test("invoice storage read failure is unreachable in migration and retains source", async () => {
   const h = create();
   const get = h.context.localStorage.getItem;
   h.context.localStorage.getItem = key => { if (key === I) throw new Error("synthetic read denied"); return get(key); };
-  await assert.rejects(h.context.migrate(), /synthetic read denied/);
+  await h.context.migrate();
+  assert.equal(h.writes.includes("invoices"), false);
   assertUntouched(h, mixed);
 });
 for (const transition of ["source", "account", "logout", "session", "migration"]) {
-  test(`${transition} change during insert cannot delete the current invoice source`, async () => {
+  test(`${transition} change during revenue insert cannot delete the current invoice source`, async () => {
     const h = create();
     let release, entered;
     const ready = new Promise(resolve => { entered = resolve; });
@@ -80,7 +81,7 @@ for (const transition of ["source", "account", "logout", "session", "migration"]
     const from = h.context.supabase.from;
     h.context.supabase.from = table => {
       const service = from(table);
-      if (table === "invoices") service.insert = async () => { entered(); await wait; return { error: null }; };
+      if (table === "revenues") service.insert = async () => { entered(); await wait; return { error: null }; };
       return service;
     };
     const migration = h.context.migrate();
@@ -95,6 +96,7 @@ for (const transition of ["source", "account", "logout", "session", "migration"]
     if (transition === "migration") h.context.guestMigrationRef.current = { userId: "synthetic-user" };
     release();
     await migration;
+    assert.equal(h.writes.includes("invoices"), false);
     if (before) assert.notEqual(h.memory.get(I), raw);
     else assertUntouched(h, raw);
   });

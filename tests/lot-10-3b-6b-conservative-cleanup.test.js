@@ -29,7 +29,7 @@ for (let mask = 0; mask < 16; mask++) {
   test(`category outcome matrix ${mask}: local sources survive regardless of reported success`, async () => {
     const h = create({ revenues: mask & 1 ? "ok" : "fail", invoices: mask & 2 ? "ok" : "fail", fiscalResult: mask & 4 ? "ok" : "fail", reminders: mask & 8 ? "ok" : "fail" });
     const original = [R, P, I].map(key => [key, h.memory.get(key)]);
-    assert.equal(await h.context.migrate({ silent: true }), mask !== 0);
+    assert.equal(await h.context.migrate({ silent: true }), (mask & ~2) !== 0);
     if (before && mask) {
       assert.equal(h.memory.has(R), false);
       assert.equal(h.memory.has(P), false);
@@ -70,7 +70,7 @@ for (const response of ["lost", "empty"]) {
     assert.equal(h.memory.get(R), before ? undefined : raw);
   });
 }
-test("new revenue and preference snapshots during invoice await remain exact", async () => {
+test("new revenue and preference snapshots during revenue await remain exact", async () => {
   const h = create({ revenues: "ok", reminders: "ok" });
   let release, entered;
   const gate = new Promise(resolve => { release = resolve; });
@@ -78,7 +78,7 @@ test("new revenue and preference snapshots during invoice await remain exact", a
   const from = h.context.supabase.from;
   h.context.supabase.from = name => {
     const service = from(name);
-    if (name === "invoices") service.insert = async () => { entered(); await gate; return { error: null }; };
+    if (name === "revenues") service.insert = async () => { entered(); await gate; return { error: null }; };
     return service;
   };
   const migration = h.context.migrate();
@@ -126,6 +126,6 @@ test("sequential migration calls can repeat inserts and still retain local sourc
   await h.context.migrate();
   await h.context.migrate();
   assert.equal(h.writes.filter(name => name === "revenues").length, 2);
-  assert.equal(h.writes.filter(name => name === "invoices").length, 2);
+  assert.equal(h.writes.filter(name => name === "invoices").length, 0);
   preserved(h, original);
 });

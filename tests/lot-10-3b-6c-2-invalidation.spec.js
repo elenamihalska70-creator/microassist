@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-for (const suspended of ["revenues", "invoices"]) {
+for (const suspended of ["revenues", "fiscal_profiles"]) {
   test(`actual React root unmount during ${suspended} prevents subsequent writes and cleanup`, async ({ page }) => {
     let release;
     const gate = new Promise(resolve => { release = resolve; });
@@ -15,11 +15,13 @@ for (const suspended of ["revenues", "invoices"]) {
       expect(source).toContain(root);
       await route.fulfill({ response, body: source.replace(root, `(window.__lotRoot = ${root})`) });
     });
-    await page.route("**://*.supabase.co/**", async route => {
+    await page.route("**/*", async route => {
       const request = route.request();
-      const path = new URL(request.url()).pathname;
+      const url = new URL(request.url());
+      if (["127.0.0.1", "localhost"].includes(url.hostname)) return route.fallback();
+      const path = url.pathname;
       if (!["GET", "OPTIONS"].includes(request.method())) writes.push(`${request.method()} ${path}`);
-      const pending = path === `/rest/v1/${suspended}` && request.method() === "POST";
+      const pending = path === `/rest/v1/${suspended}` && request.method() === (suspended === "revenues" ? "POST" : "GET");
       if (pending) { waiting = true; await gate; }
       const body = path === "/rest/v1/profiles" ? { id: "11111111-1111-4111-8111-111111111111", onboarding_completed: true } : path.includes("/rest/v1/") ? [] : {};
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
@@ -47,6 +49,7 @@ for (const suspended of ["revenues", "invoices"]) {
       await expect.poll(() => completed).toBe(true);
       await page.waitForTimeout(1500);
       expect(writes).toEqual(issued);
+      expect(writes.filter(write => write === "POST /rest/v1/invoices")).toEqual([]);
       expect(await page.evaluate(() => ["revenues_guest", "guest_invoices", "microassist_reminder_prefs", "microassist_pending_auth_success"].map(key => localStorage.getItem(key)))).toEqual(snapshot);
     } finally {
       release();

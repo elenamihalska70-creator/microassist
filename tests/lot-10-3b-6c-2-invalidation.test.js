@@ -30,7 +30,7 @@ function create(options = {}) {
   h.unmount = c.layout();
   return h;
 }
-for (const table of ["revenues", "invoices"]) {
+for (const table of ["revenues", "preferences"]) {
   for (const outcome of ["ok", "error", "throw"]) {
     test(`actual layout cleanup during ${table} ${outcome} stops later writes and cleanup`, async () => {
       const h = create();
@@ -50,6 +50,11 @@ for (const table of ["revenues", "invoices"]) {
         };
         return service;
       };
+      if (table === "preferences") h.context.saveReminderPrefsToSupabase = async () => {
+        calls.push("preferences"); entered.resolve(); await gate.promise;
+        if (outcome === "throw") throw new Error("synthetic lost preference response");
+        return outcome === "ok";
+      };
       const original = [...h.memory];
       h.context.effect();
       await entered.promise;
@@ -66,8 +71,9 @@ for (const table of ["revenues", "invoices"]) {
         if (table === "revenues") assert.ok(calls.includes("invoices"));
         assert.equal(h.memory.has("revenues_guest"), false);
       } else {
-        assert.deepEqual(calls, table === "revenues" ? ["revenues"] : ["revenues", "invoices"]);
-        assert.equal(h.requests.length, 0, "no subsequent fiscal upsert");
+        assert.deepEqual(calls, table === "revenues" ? ["revenues"] : ["revenues", "preferences"]);
+        assert.equal(calls.includes("invoices"), false);
+        assert.equal(h.requests.length, table === "preferences" ? 1 : 0, "no subsequent fiscal upsert");
         assert.deepEqual([...h.memory], original);
         assert.equal(h.operations.some(op => ["remove", "set"].includes(op[0])), false);
       }
@@ -78,10 +84,10 @@ test("dependency rerun keeps operation valid without invoking layout cleanup", a
   const h = create();
   const gate = deferred(), entered = deferred();
   const from = h.context.supabase.from;
-  let invoices = 0;
+  let revenues = 0;
   h.context.supabase.from = name => {
     const service = from(name);
-    if (name === "invoices") service.insert = async () => { invoices++; entered.resolve(); await gate.promise; return { error: null }; };
+    if (name === "revenues") service.insert = async () => { revenues++; entered.resolve(); await gate.promise; return { error: null }; };
     return service;
   };
   h.context.effect();
@@ -91,7 +97,8 @@ test("dependency rerun keeps operation valid without invoking layout cleanup", a
   assert.equal(h.context.authFinalizationRef.current, operation);
   gate.resolve();
   await operation.promise;
-  assert.equal(invoices, 1);
+  assert.equal(revenues, 1);
+  assert.equal(h.writes.includes("invoices"), false);
   assert.equal(h.memory.has("pending"), false);
 });
 test("invalid finalization guard denies migration before the initial remote read", async () => {
