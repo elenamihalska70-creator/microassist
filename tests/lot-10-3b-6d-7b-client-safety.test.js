@@ -19,7 +19,7 @@ test("unavailable storage does not claim preservation", () => {
   assert.equal(readLocalInvoices(() => { throw Error("synthetic"); }).status, "unavailable");
   assert.equal(LOCAL_INVOICE_MESSAGES.unavailable, "L’accès aux factures de cet appareil est indisponible. Aucun import automatique n’est effectué.");
 });
-for (const scenario of ["login", "repeat login", "reload", "rerender", "two independent tabs", "account switch", "mixed", "invalid", "storage failure", "partial success"]) {
+for (const scenario of ["single migration callback", "two sequential migration calls", "new harness with the same fixture", "repeat callback in the same harness", "second independent harness", "synthetic account B session", "mixed", "invalid", "storage failure", "partial success"]) {
   test(`zero invoice attempts and raw preservation: ${scenario}`, async () => {
     let attempts = 0;
     const create = () => {
@@ -35,7 +35,7 @@ for (const scenario of ["login", "repeat login", "reload", "rerender", "two inde
     const h = create();
     if (scenario === "mixed") h.memory.set(I, '[ {"invoice_number":"CLASSIC"}, {"formatStatus":"facturx_ready_draft","id":"FX"} ]');
     if (scenario === "invalid") h.memory.set(I, "{invalid");
-    if (scenario === "account switch") {
+    if (scenario === "synthetic account B session") {
       h.context.user = { id: "synthetic-b" };
       h.context.profileDraftSessionRef.current = { userId: "synthetic-b", revision: 1 };
     }
@@ -45,8 +45,8 @@ for (const scenario of ["login", "repeat login", "reload", "rerender", "two inde
     }
     const raw = h.memory.get(I);
     await h.context.migrate({ silent: true });
-    if (["repeat login", "rerender"].includes(scenario)) await h.context.migrate({ silent: true });
-    if (["reload", "two independent tabs"].includes(scenario)) await create().context.migrate({ silent: true });
+    if (["two sequential migration calls", "repeat callback in the same harness"].includes(scenario)) await h.context.migrate({ silent: true });
+    if (["new harness with the same fixture", "second independent harness"].includes(scenario)) await create().context.migrate({ silent: true });
     assert.equal(attempts, 0);
     assert.equal(h.memory.get(I), raw);
     assert.equal(h.operations.some(([op, key]) => key === I && ["set", "remove"].includes(op)), false);
