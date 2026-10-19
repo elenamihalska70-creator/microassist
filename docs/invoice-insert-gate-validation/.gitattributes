@@ -1,1 +1,2 @@
 inputs/*.sql -text
+supplemental-validation.sql text eol=lf
