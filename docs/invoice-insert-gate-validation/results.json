@@ -1,0 +1,44 @@
+﻿{
+    "startedUtc":  "2026-10-19T20:13:16.2220860Z",
+    "image":  "postgres@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3",
+    "container":  "microassist-gate-validation-c28c3d9d1932",
+    "productionAccess":  false,
+    "clientSuitesRun":  false,
+    "copies":  [
+                   {
+                       "containerSha256":  "4CF51AA8D0E484863637EB3CD09721C49B9A9D834D56DDC1F07F9027DFAA5187",
+                       "file":  "gate-proposal.sql",
+                       "sourceSha256":  "4CF51AA8D0E484863637EB3CD09721C49B9A9D834D56DDC1F07F9027DFAA5187"
+                   },
+                   {
+                       "containerSha256":  "AAD26A3CB419E54A46C5D6207E889C41E1E278B2B5C59574BE3998C2EDC50B2F",
+                       "file":  "isolated-validation.sql",
+                       "sourceSha256":  "AAD26A3CB419E54A46C5D6207E889C41E1E278B2B5C59574BE3998C2EDC50B2F"
+                   },
+                   {
+                       "containerSha256":  "28B48707D751BEF86744E6CF53758F90D26CE478F0220F9BDC526E937975A5EF",
+                       "file":  "invoices-schema-compatibility.sql",
+                       "sourceSha256":  "28B48707D751BEF86744E6CF53758F90D26CE478F0220F9BDC526E937975A5EF"
+                   },
+                   {
+                       "containerSha256":  "F46C19D14292B4F840C14C4D9A7F822F8E9A5EAA819199728AC3863A457BB98F",
+                       "file":  "supplemental-validation.sql",
+                       "sourceSha256":  "F46C19D14292B4F840C14C4D9A7F822F8E9A5EAA819199728AC3863A457BB98F"
+                   }
+               ],
+    "success":  true,
+    "cleanupVerified":  true,
+    "isolation":  {
+                      "mounts":  [
+
+                                 ],
+                      "label":  "invoice-insert-gate",
+                      "portBindings":  {
+
+                                       },
+                      "imageId":  "sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3",
+                      "network":  "none"
+                  },
+    "version":  "postgres (PostgreSQL) 17.11 (Debian 17.11-1.pgdg13+2)",
+    "finishedUtc":  "2026-10-19T20:13:37.4011724Z"
+}

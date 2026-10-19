@@ -1,0 +1,849 @@
+﻿Disposable PostgreSQL-only validation; synthetic data only.
+docker run -d --pull=never --name microassist-gate-validation-c28c3d9d1932 --label microassist.validation=invoice-insert-gate --network none --tmpfs /var/lib/postgresql/data:rw,size=268435456 --memory 384m --cpus 1 -e POSTGRES_HOST_AUTH_METHOD=trust postgres@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+2173c54959c84bbb1843fe73455fb2dacd904c1bce685bc398c3d2de82918ae7
+docker inspect microassist-gate-validation-c28c3d9d1932
+[
+    {
+        "Id": "2173c54959c84bbb1843fe73455fb2dacd904c1bce685bc398c3d2de82918ae7",
+        "Created": "2026-10-19T20:13:16.59031733Z",
+        "Path": "docker-entrypoint.sh",
+        "Args": [
+            "postgres"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 8414,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-10-19T20:13:17.610038188Z",
+            "FinishedAt": "0001-01-01T00:00:00Z"
+        },
+        "Image": "sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3",
+        "ResolvConfPath": "/var/lib/docker/containers/2173c54959c84bbb1843fe73455fb2dacd904c1bce685bc398c3d2de82918ae7/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/2173c54959c84bbb1843fe73455fb2dacd904c1bce685bc398c3d2de82918ae7/hostname",
+        "HostsPath": "/var/lib/docker/containers/2173c54959c84bbb1843fe73455fb2dacd904c1bce685bc398c3d2de82918ae7/hosts",
+        "LogPath": "/var/lib/docker/containers/2173c54959c84bbb1843fe73455fb2dacd904c1bce685bc398c3d2de82918ae7/2173c54959c84bbb1843fe73455fb2dacd904c1bce685bc398c3d2de82918ae7-json.log",
+        "Name": "/microassist-gate-validation-c28c3d9d1932",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": null,
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "none",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "Tmpfs": {
+                "/var/lib/postgresql/data": "rw,size=268435456"
+            },
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 402653184,
+            "NanoCpus": 1000000000,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 805306368,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": [],
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [],
+        "Config": {
+            "Hostname": "2173c54959c8",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "ExposedPorts": {
+                "5432/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "POSTGRES_HOST_AUTH_METHOD=trust",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/lib/postgresql/17/bin",
+                "GOSU_VERSION=1.19",
+                "LANG=en_US.utf8",
+                "PG_MAJOR=17",
+                "PG_VERSION=17.11-1.pgdg13+2",
+                "PGDATA=/var/lib/postgresql/data"
+            ],
+            "Cmd": [
+                "postgres"
+            ],
+            "Image": "postgres@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3",
+            "Volumes": {
+                "/var/lib/postgresql/data": {}
+            },
+            "WorkingDir": "",
+            "Entrypoint": [
+                "docker-entrypoint.sh"
+            ],
+            "Labels": {
+                "microassist.validation": "invoice-insert-gate"
+            },
+            "StopSignal": "SIGINT"
+        },
+        "NetworkSettings": {
+            "SandboxID": "2e13dc6c02b92b3f28ec6703b7b3977a2343c5cdfc3082206c40ffc20a8cc827",
+            "SandboxKey": "/var/run/docker/netns/2e13dc6c02b9",
+            "Ports": {},
+            "Networks": {
+                "none": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "c178b6a9e7bf865a0217f60cd61a32fce7b25efd270b69e0c3cd65d2a993ca5d",
+                    "EndpointID": "91d16a723341efcc261bbc42e66ddd2b824eaeaedb8ff5edf904f0d95ecb8451",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": null
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:3cec7eb015ba8adb28139fa5c83b8489cdf0e666e53dfdf20f598ae0cc8739e3",
+            "size": 3628,
+            "annotations": {
+                "com.docker.official-images.bashbrew.arch": "amd64",
+                "org.opencontainers.image.base.digest": "sha256:918311b7b6c4c6f68b232ba516584925f6c78ad82b6fd534b98979df6438e483",
+                "org.opencontainers.image.base.name": "debian:trixie-slim",
+                "org.opencontainers.image.created": "2026-10-06T01:32:29Z",
+                "org.opencontainers.image.revision": "2603e26e245e558218728ee14e0a42dcb020dc7f",
+                "org.opencontainers.image.source": "https://github.com/docker-library/postgres.git#2603e26e245e558218728ee14e0a42dcb020dc7f:17/trixie",
+                "org.opencontainers.image.url": "https://hub.docker.com/_/postgres",
+                "org.opencontainers.image.version": "17.11"
+            },
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    }
+]
+docker exec microassist-gate-validation-c28c3d9d1932 postgres --version
+postgres (PostgreSQL) 17.11 (Debian 17.11-1.pgdg13+2)
+docker cp C:\Users\Lenovo\microassist\docs\invoice-insert-gate-validation\inputs\gate-proposal.sql microassist-gate-validation-c28c3d9d1932:/tmp/gate-proposal.sql
+docker exec microassist-gate-validation-c28c3d9d1932 sha256sum /tmp/gate-proposal.sql
+4cf51aa8d0e484863637eb3cd09721c49b9a9d834d56ddc1f07f9027dfaa5187  /tmp/gate-proposal.sql
+docker cp C:\Users\Lenovo\microassist\docs\invoice-insert-gate-validation\inputs\isolated-validation.sql microassist-gate-validation-c28c3d9d1932:/tmp/isolated-validation.sql
+docker exec microassist-gate-validation-c28c3d9d1932 sha256sum /tmp/isolated-validation.sql
+aad26a3cb419e54a46c5d6207e889c41e1e278b2b5c59574be3998c2edc50b2f  /tmp/isolated-validation.sql
+docker cp C:\Users\Lenovo\microassist\docs\invoice-insert-gate-validation\inputs\invoices-schema-compatibility.sql microassist-gate-validation-c28c3d9d1932:/tmp/invoices-schema-compatibility.sql
+docker exec microassist-gate-validation-c28c3d9d1932 sha256sum /tmp/invoices-schema-compatibility.sql
+28b48707d751bef86744e6cf53758f90d26ce478f0220f9bdc526e937975a5ef  /tmp/invoices-schema-compatibility.sql
+docker cp C:\Users\Lenovo\microassist\docs\invoice-insert-gate-validation\supplemental-validation.sql microassist-gate-validation-c28c3d9d1932:/tmp/supplemental-validation.sql
+docker exec microassist-gate-validation-c28c3d9d1932 sha256sum /tmp/supplemental-validation.sql
+f46c19d14292b4f840c14c4d9a7f822f8e9a5eaa819199728ac3863a457bb98f  /tmp/supplemental-validation.sql
+docker exec microassist-gate-validation-c28c3d9d1932 timeout 60s psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -v VERBOSITY=verbose -f /tmp/isolated-validation.sql
+SET
+CREATE ROLE
+CREATE ROLE
+CREATE ROLE
+CREATE ROLE
+CREATE ROLE
+GRANT ROLE
+CREATE ROLE
+GRANT ROLE
+CREATE SCHEMA
+CREATE TABLE
+INSERT 0 2
+CREATE FUNCTION
+GRANT
+CREATE TABLE
+ALTER TABLE
+GRANT
+ALTER TABLE
+CREATE POLICY
+CREATE TABLE
+INSERT 0 1
+INSERT 0 2
+CREATE SCHEMA
+GRANT
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+SELECT 1
+ ok
+----
+
+(1 row)
+
+SET
+psql:/tmp/isolated-validation.sql:99: NOTICE:  00000: PASS: baseline table INSERT grant
+SET
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+BEGIN
+INSERT 0 1
+ROLLBACK
+RESET
+SET
+SET
+psql:/tmp/isolated-validation.sql:112: NOTICE:  00000: PASS: anon positive fixture identity/grant
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+BEGIN
+INSERT 0 1
+ROLLBACK
+RESET
+ALTER TABLE
+ ok
+----
+
+(1 row)
+
+psql:/tmp/isolated-validation.sql:126: NOTICE:  00000: PASS: RLS-disabled proposal rejected with P0001
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+ALTER TABLE
+psql:/tmp/isolated-validation.sql:127: NOTICE:  00000: PASS: RLS-disabled failure leaves no partial policy
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ALTER ROLE
+psql:/tmp/isolated-validation.sql:133: NOTICE:  00000: PASS: missing browser role rejected with P0001
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+psql:/tmp/isolated-validation.sql:134: NOTICE:  00000: PASS: missing-role failure leaves no partial policy
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+ALTER ROLE
+ALTER ROLE
+ ok
+----
+
+(1 row)
+
+psql:/tmp/isolated-validation.sql:140: NOTICE:  00000: PASS: BYPASSRLS browser role rejected with P0001
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+ALTER ROLE
+GRANT ROLE
+psql:/tmp/isolated-validation.sql:141: NOTICE:  00000: PASS: privileged-role failure leaves no partial policy
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+psql:/tmp/isolated-validation.sql:147: NOTICE:  00000: PASS: browser owner membership rejected with P0001
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+psql:/tmp/isolated-validation.sql:148: NOTICE:  00000: PASS: owner-membership failure leaves no partial policy
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+REVOKE ROLE
+CREATE POLICY
+psql:/tmp/isolated-validation.sql:155: NOTICE:  00000: PASS: conflicting policy name rejected with 42710
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+ ok
+----
+
+(1 row)
+
+psql:/tmp/isolated-validation.sql:156: NOTICE:  00000: PASS: conflict failure preserves exact prior policy
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+DROP POLICY
+psql:/tmp/isolated-validation.sql:158: NOTICE:  00000: PASS: all preflight mutations restored
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+DO
+ ok
+----
+
+(1 row)
+
+psql:/tmp/isolated-validation.sql:177: NOTICE:  00000: PASS: actual proposal lock timeout is 55P03 near 5s, not outer timeout
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+psql:/tmp/isolated-validation.sql:178: NOTICE:  00000: PASS: lock timeout rolls back with no partial committed gate
+ ok
+----
+
+(1 row)
+
+BEGIN
+CREATE POLICY
+ROLLBACK
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+psql:/tmp/isolated-validation.sql:186: NOTICE:  00000: PASS: gate transaction rollback
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+BEGIN
+SET
+DO
+CREATE POLICY
+COMMIT
+psql:/tmp/isolated-validation.sql:190: NOTICE:  00000: PASS: installed policy has exact name, restrictive INSERT, roles and false check
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+psql:/tmp/isolated-validation.sql:191: NOTICE:  00000: PASS: gate leaves table grants intact
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ assert_gate
+-------------
+
+(1 row)
+
+ ok
+----
+
+(1 row)
+
+psql:/tmp/isolated-validation.sql:193: NOTICE:  00000: PASS: no ACL modification
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+ ok
+----
+
+(1 row)
+
+SET
+psql:/tmp/isolated-validation.sql:196: NOTICE:  00000: PASS: no column modification by gate
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+psql:/tmp/isolated-validation.sql:198: NOTICE:  00000: PASS: old-schema authenticated INSERT denied [42501 RLS]
+ denied
+--------
+
+(1 row)
+
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+psql:/tmp/isolated-validation.sql:199: NOTICE:  00000: PASS: authorized SELECT preserved; other owner hidden
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+BEGIN
+psql:/tmp/isolated-validation.sql:204: NOTICE:  00000: PASS: existing-schema status UPDATE preserved
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+UPDATE 1
+ ok
+----
+
+(1 row)
+
+psql:/tmp/isolated-validation.sql:206: NOTICE:  00000: PASS: bulk INSERT denied [42501 RLS]
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ROLLBACK
+ denied
+--------
+
+(1 row)
+
+psql:/tmp/isolated-validation.sql:207: NOTICE:  00000: PASS: conflicting upsert denied before UPDATE [42501 RLS]
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+psql:/tmp/isolated-validation.sql:208: NOTICE:  00000: PASS: conflicting ignore-duplicate INSERT denied [42501 RLS]
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+psql:/tmp/isolated-validation.sql:209: NOTICE:  00000: PASS: new-row upsert denied [42501 RLS]
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ denied
+--------
+
+(1 row)
+
+ denied
+--------
+
+(1 row)
+
+ denied
+--------
+
+(1 row)
+
+RESET
+SET
+RESET
+ denied
+--------
+
+(1 row)
+
+psql:/tmp/isolated-validation.sql:213: NOTICE:  00000: PASS: anon INSERT denied [42501 RLS]
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+psql:/tmp/isolated-validation.sql:214: NOTICE:  00000: PASS: anon SELECT remains owner-filtered
+ ok
+----
+
+(1 row)
+
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+SET
+ ok
+----
+
+(1 row)
+
+ denied
+--------
+
+(1 row)
+
+RESET
+SET
+psql:/tmp/isolated-validation.sql:217: NOTICE:  00000: PASS: anon gate test uses the same positive-baseline owner
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+SET
+psql:/tmp/isolated-validation.sql:219: NOTICE:  00000: PASS: anon matching-owner INSERT now denied by restrictive gate [42501 RLS]
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+psql:/tmp/isolated-validation.sql:223: NOTICE:  00000: PASS: inherited authenticated role denied [42501 RLS]
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ denied
+--------
+
+(1 row)
+
+RESET
+ALTER TABLE
+psql:/tmp/isolated-validation.sql:232: NOTICE:  00000: PASS: synthetic compatibility columns
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+psql:/tmp/isolated-validation.sql:234: NOTICE:  00000: PASS: existing rows unchanged after gate and columns
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+SET
+ denied
+--------
+
+(1 row)
+
+psql:/tmp/isolated-validation.sql:236: NOTICE:  00000: PASS: exact legacy payload denied after compatibility columns [42501 RLS]
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ denied
+--------
+
+(1 row)
+
+ denied
+--------
+
+(1 row)
+
+ denied
+--------
+
+(1 row)
+
+BEGIN
+psql:/tmp/isolated-validation.sql:237: NOTICE:  00000: PASS: omitting new columns cannot bypass [42501 RLS]
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+psql:/tmp/isolated-validation.sql:238: NOTICE:  00000: PASS: bulk denied after columns [42501 RLS]
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+psql:/tmp/isolated-validation.sql:239: NOTICE:  00000: PASS: upsert denied after columns [42501 RLS]
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+UPDATE 1
+ ok
+----
+
+(1 row)
+
+psql:/tmp/isolated-validation.sql:243: NOTICE:  00000: PASS: authorized payment UPDATE preserved
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+psql:/tmp/isolated-validation.sql:246: NOTICE:  00000: PASS: other-owner UPDATE denied
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+----
+
+(1 row)
+
+psql:/tmp/isolated-validation.sql:248: NOTICE:  00000: PASS: authorized DELETE preserved
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+ROLLBACK
+RESET
+SET
+psql:/tmp/isolated-validation.sql:253: NOTICE:  00000: PASS: anon denied after columns [42501 RLS]
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+RESET
+ denied
+--------
+
+(1 row)
+
+RESET
+SET
+BEGIN
+INSERT 0 1
+ROLLBACK
+RESET
+ ok
+----
+
+(1 row)
+
+psql:/tmp/isolated-validation.sql:263: NOTICE:  00000: PASS: all denied attempts and rolled-back edits preserve rows
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+psql:/tmp/isolated-validation.sql:265: NOTICE:  00000: PASS: other table unchanged
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+BEGIN
+DROP POLICY
+SET
+SET
+INSERT 0 1
+ROLLBACK
+psql:/tmp/isolated-validation.sql:277: NOTICE:  00000: PASS: rollback restores denial after columns [42501 RLS]
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+SET
+SET
+ denied
+--------
+
+(1 row)
+
+RESET
+psql:/tmp/isolated-validation.sql:279: NOTICE:  00000: PASS: rollback restores exact policy definition and exact anon/authenticated role list
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ assert_gate
+-------------
+
+(1 row)
+
+psql:/tmp/isolated-validation.sql:281: NOTICE:  00000: PASS: only original policy plus restrictive gate
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+                                                       version
+----------------------------------------------------------------------------------------------------------------------
+ PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+(1 row)
+
+ISOLATED_VALIDATION_COMPLETE
+docker exec microassist-gate-validation-c28c3d9d1932 timeout 30s psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -v VERBOSITY=verbose -f /tmp/supplemental-validation.sql
+SET
+ assert_gate
+-------------
+
+(1 row)
+
+psql:/tmp/supplemental-validation.sql:4: NOTICE:  00000: PASS: supplement starts with exact gate
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+SELECT 1
+CREATE FUNCTION
+DROP POLICY
+SET
+SET
+BEGIN
+psql:/tmp/supplemental-validation.sql:28: NOTICE:  00000: PASS: full legacy-shaped positive control affects exactly one row before gate
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+ROLLBACK
+RESET
+CREATE FUNCTION
+CREATE EVENT TRIGGER
+ ok
+----
+
+(1 row)
+
+DROP EVENT TRIGGER
+psql:/tmp/supplemental-validation.sql:38: NOTICE:  00000: PASS: exact gate proposal aborts after DDL before commit with ZX001
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+DROP FUNCTION
+ ok
+----
+
+(1 row)
+
+psql:/tmp/supplemental-validation.sql:41: NOTICE:  00000: PASS: precommit abort restores exact relevant initial catalogs/roles
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+psql:/tmp/supplemental-validation.sql:42: NOTICE:  00000: PASS: precommit rollback preserves all rows
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+BEGIN
+SET
+DO
+CREATE POLICY
+COMMIT
+psql:/tmp/supplemental-validation.sql:44: NOTICE:  00000: PASS: exact proposal reinstalled after precommit rollback test
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ assert_gate
+-------------
+
+(1 row)
+
+SET
+BEGIN
+ denied
+--------
+
+(1 row)
+
+psql:/tmp/supplemental-validation.sql:49: NOTICE:  00000: PASS: full legacy simple INSERT denied [42501 RLS]
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+psql:/tmp/supplemental-validation.sql:52: NOTICE:  00000: PASS: full legacy bulk INSERT denied [42501 RLS]
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ denied
+--------
+
+(1 row)
+
+psql:/tmp/supplemental-validation.sql:55: NOTICE:  00000: PASS: full legacy conflicting upsert denied [42501 RLS]
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ denied
+--------
+
+(1 row)
+
+psql:/tmp/supplemental-validation.sql:57: NOTICE:  00000: PASS: payment UPDATE affects exactly one authorized row
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+ ok
+----
+
+(1 row)
+
+psql:/tmp/supplemental-validation.sql:58: NOTICE:  00000: PASS: payment fields really updated
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+psql:/tmp/supplemental-validation.sql:60: NOTICE:  00000: PASS: DELETE affects exactly one authorized row
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+psql:/tmp/supplemental-validation.sql:61: NOTICE:  00000: PASS: authorized row really deleted inside test transaction
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+psql:/tmp/supplemental-validation.sql:64: NOTICE:  00000: PASS: user B cannot read user A
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ROLLBACK
+SET
+ ok
+----
+
+(1 row)
+
+psql:/tmp/supplemental-validation.sql:66: NOTICE:  00000: PASS: user B cannot update user A: zero affected rows
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+psql:/tmp/supplemental-validation.sql:68: NOTICE:  00000: PASS: user B cannot delete user A: zero affected rows
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+RESET
+psql:/tmp/supplemental-validation.sql:70: NOTICE:  00000: PASS: all full-payload denials and rolled-back CRUD leave exact rows intact
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ ok
+----
+
+(1 row)
+
+BEGIN
+ALTER TABLE
+SET
+SET
+psql:/tmp/supplemental-validation.sql:78: NOTICE:  00000: PASS: payload naming absent compatibility columns fails parsing, not RLS [42703]
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ expected_code
+---------------
+
+(1 row)
+
+ denied
+--------
+
+(1 row)
+
+psql:/tmp/supplemental-validation.sql:79: NOTICE:  00000: PASS: valid old-schema payload still denied by RLS [42501 RLS]
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ROLLBACK
+psql:/tmp/supplemental-validation.sql:81: NOTICE:  00000: PASS: gate unchanged after temporary absent-column case rollback
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ assert_gate
+-------------
+
+(1 row)
+
+ ok
+----
+
+(1 row)
+
+SUPPLEMENTAL_VALIDATION_COMPLETE
+psql:/tmp/supplemental-validation.sql:82: NOTICE:  00000: PASS: final row state is exactly initial state
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+docker rm -f microassist-gate-validation-c28c3d9d1932
+microassist-gate-validation-c28c3d9d1932
