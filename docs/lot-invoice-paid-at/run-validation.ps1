@@ -36,7 +36,6 @@ try {
   $copies = @{
     'setup.sql'=(Join-Path $root 'setup.sql')
     'verify.sql'=(Join-Path $root 'verify.sql')
-    'gate.sql'=(Join-Path $repo 'supabase/migrations/20261022174057_deny_browser_invoice_insert.sql')
     'migration.sql'=(Join-Path $repo 'supabase/migrations/20261022194733_add_invoice_paid_at_guarded.sql')
   }
   $records.hashes=@{}
@@ -47,7 +46,7 @@ try {
     if ($hash -ne $copyHash) {throw 'SQL copy hash mismatch'}
     $records.hashes[$name]=$hash
   }
-  foreach($file in @('setup.sql','gate.sql')) {
+  foreach($file in @('setup.sql')) {
     Invoke-LocalDocker -Arguments @('exec',$container,'psql','-X','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-f',('/tmp/'+$file)) | Out-Null
   }
   # Clone a synthetic baseline; never replay the gate against the linked project.
@@ -61,6 +60,8 @@ try {
     disabled_rls='ALTER TABLE invoices DISABLE ROW LEVEL SECURITY'
     existing_paid_at='ALTER TABLE invoices ADD COLUMN paid_at text'
     schema_drift='ALTER TABLE invoices ALTER COLUMN status TYPE varchar(30)'
+    user_id_not_null='ALTER TABLE invoices ALTER COLUMN user_id SET NOT NULL'
+    user_id_wrong_type='DO $$ BEGIN EXECUTE format(''DROP POLICY %I ON invoices'', (SELECT polname FROM pg_policy WHERE polrelid=''invoices''::regclass AND polpermissive)); END $$; ALTER TABLE invoices ALTER COLUMN user_id TYPE text USING user_id::text'
   }
   foreach ($case in $cases.Keys) {
     Sql 'template1' ('CREATE DATABASE '+$case+' TEMPLATE postgres')

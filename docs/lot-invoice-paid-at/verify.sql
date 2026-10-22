@@ -1,5 +1,8 @@
 \set ON_ERROR_STOP on
 SET statement_timeout = '15s';
+SELECT assert_true((SELECT atttypid = 'uuid'::regtype AND NOT attnotnull
+ FROM pg_attribute WHERE attrelid='invoices'::regclass AND attname='user_id'
+ AND NOT attisdropped), 'user_id remains nullable uuid after migration');
 SELECT assert_true(NOT EXISTS (
  (SELECT to_jsonb(i) - 'paid_at' FROM invoices i EXCEPT SELECT row FROM before_invoices)
  UNION ALL

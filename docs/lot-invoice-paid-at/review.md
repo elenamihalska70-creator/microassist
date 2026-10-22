@@ -1,18 +1,41 @@
 # Invoice payment compatibility — local review, 2026-10-22
 
+## Independent review correction
+
+Correction baseline: main, `1d0ce7ecbc94aad65323fe5056a282ff282a9faf`.
+The owner supplied a fresh Production catalog finding: invoices.user_id is uuid
+NULL. The previous preflight and fixture incorrectly required NOT NULL and would
+have blocked application. This correction explicitly expects NOT attnotnull for
+user_id, keeps id NOT NULL, and never alters user_id or existing data. setup.sql
+now reproduces the pertinent nullable contract and asserts it before migration;
+verify.sql asserts it again after migration. Added rejection cases cover a
+NOT NULL user_id and a non-UUID user_id. This run uses no remote connection and
+does not claim independent live catalog verification.
+
+Only this SQL/fixture contract and its evidence change; src/App.jsx and client
+tests remain byte-for-byte unchanged. Previous client results below are historical
+and are not rerun. is_compliant remains excluded. No additional runtime fix.
+
+`supabase/migrations/.gitattributes` pins only this paid_at migration to text eol=lf.
+`verify-artifacts.mjs` verifies identical SHA-256/bytes for worktree, Git blob,
+SQL extracted from git archive, and the hash-verified SQL executed in PostgreSQL;
+see `artifact-integrity.json`. It can be rerun against HEAD after the commit.
+`review.patch` is the incremental correction diff from the correction baseline
+(implementation and fixture changes, excluding generated results and this patch).
+
 ## Scope and decision
 
 Baseline verified: main, `1eb21ecb7ab9e3f23d8f21ba79c56a03de8c00aa`.
 First commit `26b944d` contains only the exact already-applied INSERT gate migration.
 Gate SHA-256: `4CF51AA8D0E484863637EB3CD09721C49B9A9D834D56DDC1F07F9027DFAA5187`.
-No remote commands, migration replay, push or deployment in this LOT. Running
-the gate SQL in this LOT is restricted to a new synthetic disposable database.
+No remote commands, push or deployment. The correction run does not execute the
+gate migration: setup.sql directly models its policy in a disposable database.
 Historical migrations/proposals and pre-existing untracked files are preserved.
 
 Add only nullable `public.invoices.paid_at timestamptz`, without a default,
 backfill, data UPDATE, ownership change, new policy, or change to existing rows.
 Exact SQL: `../../supabase/migrations/20261022194733_add_invoice_paid_at_guarded.sql`.
-SQL SHA-256: `E367133F35FF5EE0BABFD37A35506C83DF93E45CF4AF25391F2A3EDE5875F375`.
+SQL SHA-256: `94835E8C4254CD706C7D7EE05F54BA762C5121CE2CC2EC977B76499BB32FF59F`.
 No `IF NOT EXISTS`: even an existing correctly typed paid_at causes an explicit
 stop for history/schema review. No automatic migration of historical versions.
 
@@ -69,7 +92,8 @@ and column addition from concurrent schema/policy changes; it can briefly block
 other access, and lock contention causes a bounded failure. The preflight checks
 an ordinary RLS-enabled table; nonprivileged browser roles unable to inherit the
 owner; exact gate name, INSERT command, restrictive mode, exact two roles,
-no USING expression, and WITH CHECK false; UUID identities, text status, and no
+no USING expression, and WITH CHECK false; UUID id NOT NULL and user_id NULL,
+text status, and no
 existing paid_at. This is a targeted contract check, not a full schema fingerprint.
 
 `run-validation.ps1` uses cached PostgreSQL 17 by digest, no network, no host
@@ -82,16 +106,18 @@ Verified: unchanged existing row values; all historical paid_at NULL (including
 paid status); exact nullable timestamptz with no default; is_compliant absent;
 owner payment timestamp roundtrip; cross-account SELECT hidden and UPDATE zero
 rows; authenticated and anon INSERT rejected with 42501; other account unchanged.
-Nine rejected drift cases: gate absent/permissive/wrong roles/extra role/wrong
-check/wrong command, disabled RLS, existing column, changed status type.
+Eleven rejected drift cases: gate absent/permissive/wrong roles/extra role/wrong
+check/wrong command, disabled RLS, existing column, changed status type,
+user_id NOT NULL and user_id of the wrong type.
 Each failure preserves rows and its pre-existing column state. Reapplication
 also fails explicitly. Timeouts are configured; lock-contention timing was not
 separately exercised.
 
-Client validation: 37/37 Node tests pass (new extracted actual payment-handler
+Prior LOT client validation (not rerun for this SQL/fixture-only correction):
+37/37 Node tests passed (new extracted actual payment-handler
 tests with simulated service/storage, existing local invoice safety and domain
 normalization). Vite production build passes after sandbox spawn EPERM retry;
-existing bundle-size warning remains. Only the relevant browser suite is run,
+existing bundle-size warning remains. The relevant browser suite passed 9/9,
 with all external services intercepted; its final result is recorded in
 `client-results.txt`. No full unchanged client test run.
 

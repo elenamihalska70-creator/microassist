@@ -1,5 +1,5 @@
 Synthetic PostgreSQL only; no linked configuration or credentials.
-ed73701adee5577a2cf6aba634d2424aff1999460143fa3b2c87eb6a7c77a75e
+83a0c4d4d1cf7d2f39a8d779499db53113ec43412cb16bb714b3528a33fa2559
 CREATE ROLE
 CREATE ROLE
 CREATE SCHEMA
@@ -9,14 +9,16 @@ CREATE TABLE
 ALTER TABLE
 GRANT
 CREATE POLICY
+CREATE POLICY
 INSERT 0 2
 SELECT 2
 CREATE FUNCTION
-BEGIN
-SET
-DO
-CREATE POLICY
-COMMIT
+ assert_true
+-------------
+
+(1 row)
+
+psql:/tmp/setup.sql:31: NOTICE:  PASS: user_id is nullable uuid before migration
 CREATE DATABASE
 DROP POLICY
 BEGIN
@@ -111,18 +113,18 @@ SET
 LOCK TABLE
 psql:/tmp/migration.sql:62: ERROR:  Missing or drifted invoice INSERT gate
 CONTEXT:  PL/pgSQL function inline_code_block line 35 at RAISE
- assert_true
--------------
-
-(1 row)
-
- assert_true
--------------
-
-(1 row)
-
 NOTICE:  PASS: failed migration preserves rows
 NOTICE:  PASS: failed migration rolls back schema
+ assert_true
+-------------
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
 CREATE DATABASE
 DROP POLICY
 CREATE POLICY
@@ -196,6 +198,7 @@ SET
 LOCK TABLE
 psql:/tmp/migration.sql:62: ERROR:  Unexpected invoice identity/payment schema
 CONTEXT:  PL/pgSQL function inline_code_block line 46 at RAISE
+NOTICE:  PASS: failed migration preserves rows
  assert_true
 -------------
 
@@ -206,8 +209,50 @@ CONTEXT:  PL/pgSQL function inline_code_block line 46 at RAISE
 
 (1 row)
 
+NOTICE:  PASS: failed migration rolls back schema
+CREATE DATABASE
+ALTER TABLE
+BEGIN
+SET
+SET
+SET
+LOCK TABLE
+psql:/tmp/migration.sql:62: ERROR:  Unexpected invoice identity/payment schema
+CONTEXT:  PL/pgSQL function inline_code_block line 46 at RAISE
 NOTICE:  PASS: failed migration preserves rows
 NOTICE:  PASS: failed migration rolls back schema
+ assert_true
+-------------
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
+CREATE DATABASE
+DO
+ALTER TABLE
+BEGIN
+SET
+SET
+SET
+LOCK TABLE
+psql:/tmp/migration.sql:62: ERROR:  Unexpected invoice identity/payment schema
+CONTEXT:  PL/pgSQL function inline_code_block line 46 at RAISE
+NOTICE:  PASS: failed migration preserves rows
+NOTICE:  PASS: failed migration rolls back schema
+ assert_true
+-------------
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
 BEGIN
 SET
 SET
@@ -217,18 +262,13 @@ DO
 ALTER TABLE
 COMMIT
 SET
+psql:/tmp/verify.sql:5: NOTICE:  PASS: user_id remains nullable uuid after migration
  assert_true
 -------------
 
 (1 row)
 
-psql:/tmp/verify.sql:7: NOTICE:  PASS: all existing row values preserved
- assert_true
--------------
-psql:/tmp/verify.sql:8: NOTICE:  PASS: no backfill, including existing paid status
-
-(1 row)
-
+psql:/tmp/verify.sql:10: NOTICE:  PASS: all existing row values preserved
  assert_true
 -------------
 
@@ -239,41 +279,52 @@ psql:/tmp/verify.sql:8: NOTICE:  PASS: no backfill, including existing paid stat
 
 (1 row)
 
-psql:/tmp/verify.sql:11: NOTICE:  PASS: nullable timestamptz without default
-psql:/tmp/verify.sql:12: NOTICE:  PASS: is_compliant not added
+psql:/tmp/verify.sql:11: NOTICE:  PASS: no backfill, including existing paid status
+psql:/tmp/verify.sql:14: NOTICE:  PASS: nullable timestamptz without default
+ assert_true
+-------------
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
 SET
+psql:/tmp/verify.sql:15: NOTICE:  PASS: is_compliant not added
 SET
-psql:/tmp/verify.sql:17: NOTICE:  PASS: owner payment allowed
+psql:/tmp/verify.sql:20: NOTICE:  PASS: owner payment allowed
  assert_true
 -------------
 
 (1 row)
 
-psql:/tmp/verify.sql:18: NOTICE:  PASS: cross account SELECT hidden
+psql:/tmp/verify.sql:21: NOTICE:  PASS: cross account SELECT hidden
  assert_true
 -------------
 
 (1 row)
 
-psql:/tmp/verify.sql:21: NOTICE:  PASS: cross account UPDATE affects zero rows
  assert_true
 -------------
 
 (1 row)
 
+psql:/tmp/verify.sql:24: NOTICE:  PASS: cross account UPDATE affects zero rows
+psql:/tmp/verify.sql:30: NOTICE:  PASS: authenticated INSERT denied [42501]
 DO
 RESET
-psql:/tmp/verify.sql:27: NOTICE:  PASS: authenticated INSERT denied [42501]
 SET
-psql:/tmp/verify.sql:36: NOTICE:  PASS: anon INSERT denied [42501]
+psql:/tmp/verify.sql:39: NOTICE:  PASS: anon INSERT denied [42501]
 DO
 RESET
+psql:/tmp/verify.sql:41: NOTICE:  PASS: other account unchanged
  assert_true
 -------------
 
 (1 row)
 
-psql:/tmp/verify.sql:38: NOTICE:  PASS: other account unchanged
 BEGIN
 SET
 SET
@@ -281,4 +332,4 @@ SET
 LOCK TABLE
 psql:/tmp/migration.sql:62: ERROR:  paid_at already exists; review schema/history before proceeding
 CONTEXT:  PL/pgSQL function inline_code_block line 51 at RAISE
-microassist-paid-at-dffb2f1b1a6c
+microassist-paid-at-3b157de43fcd

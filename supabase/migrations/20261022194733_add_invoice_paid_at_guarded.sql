@@ -47,7 +47,7 @@ BEGIN
         AND atttypid = 'uuid'::regtype AND attnotnull AND NOT attisdropped)
     OR NOT EXISTS (SELECT 1 FROM pg_attribute
       WHERE attrelid = 'public.invoices'::regclass AND attname = 'user_id'
-        AND atttypid = 'uuid'::regtype AND attnotnull AND NOT attisdropped)
+        AND atttypid = 'uuid'::regtype AND NOT attnotnull AND NOT attisdropped)
     OR NOT EXISTS (SELECT 1 FROM pg_attribute
       WHERE attrelid = 'public.invoices'::regclass AND attname = 'status'
         AND atttypid = 'text'::regtype AND NOT attisdropped) THEN

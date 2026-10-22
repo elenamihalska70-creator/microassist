@@ -13,14 +13,15 @@
                   "disabled_rls",
                   "existing_paid_at",
                   "schema_drift",
+                  "user_id_not_null",
+                  "user_id_wrong_type",
                   "valid_application_and_owner_isolation",
                   "reapplication_rejected"
               ],
     "isolation":  "network=none; no published ports; tmpfs only; no host mounts",
     "hashes":  {
-                   "setup.sql":  "F6B6814AA163AF8C24F5AC13F76874559A326438BEFE7B2999EADF2AB186FD2F",
-                   "migration.sql":  "E367133F35FF5EE0BABFD37A35506C83DF93E45CF4AF25391F2A3EDE5875F375",
-                   "gate.sql":  "4CF51AA8D0E484863637EB3CD09721C49B9A9D834D56DDC1F07F9027DFAA5187",
-                   "verify.sql":  "3DC54C851699F725F1DD503FB1BB19BBB0C9E290ECF159DA8C14A6704FCAFB39"
+                   "setup.sql":  "9C59C73FF903612CDC1E84677BA102C366FE89B700EA91760FE20255267F93AA",
+                   "migration.sql":  "94835E8C4254CD706C7D7EE05F54BA762C5121CE2CC2EC977B76499BB32FF59F",
+                   "verify.sql":  "1F06691C9E4CA85C0DD914D4C686A3152B0F2EB84EC5D2123D2005A71957EAAC"
                }
 }
