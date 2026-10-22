@@ -1,0 +1,284 @@
+Synthetic PostgreSQL only; no linked configuration or credentials.
+ed73701adee5577a2cf6aba634d2424aff1999460143fa3b2c87eb6a7c77a75e
+CREATE ROLE
+CREATE ROLE
+CREATE SCHEMA
+CREATE FUNCTION
+GRANT
+CREATE TABLE
+ALTER TABLE
+GRANT
+CREATE POLICY
+INSERT 0 2
+SELECT 2
+CREATE FUNCTION
+BEGIN
+SET
+DO
+CREATE POLICY
+COMMIT
+CREATE DATABASE
+DROP POLICY
+BEGIN
+SET
+SET
+SET
+LOCK TABLE
+psql:/tmp/migration.sql:62: ERROR:  Missing or drifted invoice INSERT gate
+CONTEXT:  PL/pgSQL function inline_code_block line 35 at RAISE
+NOTICE:  PASS: failed migration preserves rows
+NOTICE:  PASS: failed migration rolls back schema
+ assert_true
+-------------
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
+CREATE DATABASE
+DROP POLICY
+CREATE POLICY
+BEGIN
+SET
+SET
+SET
+LOCK TABLE
+psql:/tmp/migration.sql:62: ERROR:  Missing or drifted invoice INSERT gate
+CONTEXT:  PL/pgSQL function inline_code_block line 35 at RAISE
+NOTICE:  PASS: failed migration preserves rows
+NOTICE:  PASS: failed migration rolls back schema
+ assert_true
+-------------
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
+CREATE DATABASE
+ALTER POLICY
+BEGIN
+SET
+SET
+SET
+LOCK TABLE
+psql:/tmp/migration.sql:62: ERROR:  Missing or drifted invoice INSERT gate
+CONTEXT:  PL/pgSQL function inline_code_block line 35 at RAISE
+NOTICE:  PASS: failed migration preserves rows
+ assert_true
+-------------
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
+NOTICE:  PASS: failed migration rolls back schema
+CREATE DATABASE
+ALTER POLICY
+BEGIN
+SET
+SET
+SET
+LOCK TABLE
+psql:/tmp/migration.sql:62: ERROR:  Missing or drifted invoice INSERT gate
+CONTEXT:  PL/pgSQL function inline_code_block line 35 at RAISE
+NOTICE:  PASS: failed migration preserves rows
+NOTICE:  PASS: failed migration rolls back schema
+ assert_true
+-------------
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
+CREATE DATABASE
+ALTER POLICY
+BEGIN
+SET
+SET
+SET
+LOCK TABLE
+psql:/tmp/migration.sql:62: ERROR:  Missing or drifted invoice INSERT gate
+CONTEXT:  PL/pgSQL function inline_code_block line 35 at RAISE
+ assert_true
+-------------
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
+NOTICE:  PASS: failed migration preserves rows
+NOTICE:  PASS: failed migration rolls back schema
+CREATE DATABASE
+DROP POLICY
+CREATE POLICY
+BEGIN
+SET
+SET
+SET
+LOCK TABLE
+psql:/tmp/migration.sql:62: ERROR:  Missing or drifted invoice INSERT gate
+CONTEXT:  PL/pgSQL function inline_code_block line 35 at RAISE
+NOTICE:  PASS: failed migration preserves rows
+NOTICE:  PASS: failed migration rolls back schema
+ assert_true
+-------------
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
+CREATE DATABASE
+ALTER TABLE
+BEGIN
+SET
+SET
+SET
+LOCK TABLE
+psql:/tmp/migration.sql:62: ERROR:  Expected ordinary invoices table with RLS enabled
+CONTEXT:  PL/pgSQL function inline_code_block line 8 at RAISE
+NOTICE:  PASS: failed migration preserves rows
+NOTICE:  PASS: failed migration rolls back schema
+ assert_true
+-------------
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
+CREATE DATABASE
+ALTER TABLE
+BEGIN
+SET
+SET
+SET
+LOCK TABLE
+psql:/tmp/migration.sql:62: ERROR:  paid_at already exists; review schema/history before proceeding
+CONTEXT:  PL/pgSQL function inline_code_block line 51 at RAISE
+NOTICE:  PASS: failed migration preserves rows
+NOTICE:  PASS: failed migration rolls back schema
+ assert_true
+-------------
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
+CREATE DATABASE
+ALTER TABLE
+BEGIN
+SET
+SET
+SET
+LOCK TABLE
+psql:/tmp/migration.sql:62: ERROR:  Unexpected invoice identity/payment schema
+CONTEXT:  PL/pgSQL function inline_code_block line 46 at RAISE
+ assert_true
+-------------
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
+NOTICE:  PASS: failed migration preserves rows
+NOTICE:  PASS: failed migration rolls back schema
+BEGIN
+SET
+SET
+SET
+LOCK TABLE
+DO
+ALTER TABLE
+COMMIT
+SET
+ assert_true
+-------------
+
+(1 row)
+
+psql:/tmp/verify.sql:7: NOTICE:  PASS: all existing row values preserved
+ assert_true
+-------------
+psql:/tmp/verify.sql:8: NOTICE:  PASS: no backfill, including existing paid status
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
+psql:/tmp/verify.sql:11: NOTICE:  PASS: nullable timestamptz without default
+psql:/tmp/verify.sql:12: NOTICE:  PASS: is_compliant not added
+SET
+SET
+psql:/tmp/verify.sql:17: NOTICE:  PASS: owner payment allowed
+ assert_true
+-------------
+
+(1 row)
+
+psql:/tmp/verify.sql:18: NOTICE:  PASS: cross account SELECT hidden
+ assert_true
+-------------
+
+(1 row)
+
+psql:/tmp/verify.sql:21: NOTICE:  PASS: cross account UPDATE affects zero rows
+ assert_true
+-------------
+
+(1 row)
+
+DO
+RESET
+psql:/tmp/verify.sql:27: NOTICE:  PASS: authenticated INSERT denied [42501]
+SET
+psql:/tmp/verify.sql:36: NOTICE:  PASS: anon INSERT denied [42501]
+DO
+RESET
+ assert_true
+-------------
+
+(1 row)
+
+psql:/tmp/verify.sql:38: NOTICE:  PASS: other account unchanged
+BEGIN
+SET
+SET
+SET
+LOCK TABLE
+psql:/tmp/migration.sql:62: ERROR:  paid_at already exists; review schema/history before proceeding
+CONTEXT:  PL/pgSQL function inline_code_block line 51 at RAISE
+microassist-paid-at-dffb2f1b1a6c

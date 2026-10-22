@@ -1,0 +1,10 @@
+Client validation — 2026-10-22
+Before fix: new payment handler tests 2 passed / 3 failed (unrelated invoice became paid).
+After fix: node --test --test-isolation=none tests/invoice-payment-compatibility.test.js tests/lot-10-3b-6d-7b-client-safety.test.js tests/domain-models.test.js
+37 tests passed, 0 failed.
+Services and localStorage simulated; actual handleMarkInvoicePaid extracted from App.jsx.
+Browser: npx playwright test tests/lot-10-3b-6d-7b-client-safety.spec.js
+9 tests passed (55.2s). External services intercepted by existing suite.
+Build: npm run build passed (392 modules, Vite 7.2.6); existing chunk size warning.
+Initial restricted build failed spawn EPERM; authorized local retry passed.
+No remote commands, push, deployment, db push, or full client suite run.

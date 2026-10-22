@@ -1,0 +1,26 @@
+{
+    "success":  true,
+    "cleanupVerified":  true,
+    "image":  "postgres@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3",
+    "remoteAccess":  false,
+    "cases":  [
+                  "missing_gate",
+                  "permissive_gate",
+                  "wrong_roles",
+                  "extra_role",
+                  "wrong_check",
+                  "wrong_command",
+                  "disabled_rls",
+                  "existing_paid_at",
+                  "schema_drift",
+                  "valid_application_and_owner_isolation",
+                  "reapplication_rejected"
+              ],
+    "isolation":  "network=none; no published ports; tmpfs only; no host mounts",
+    "hashes":  {
+                   "setup.sql":  "F6B6814AA163AF8C24F5AC13F76874559A326438BEFE7B2999EADF2AB186FD2F",
+                   "migration.sql":  "E367133F35FF5EE0BABFD37A35506C83DF93E45CF4AF25391F2A3EDE5875F375",
+                   "gate.sql":  "4CF51AA8D0E484863637EB3CD09721C49B9A9D834D56DDC1F07F9027DFAA5187",
+                   "verify.sql":  "3DC54C851699F725F1DD503FB1BB19BBB0C9E290ECF159DA8C14A6704FCAFB39"
+               }
+}

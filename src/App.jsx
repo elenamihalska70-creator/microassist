@@ -9241,9 +9241,7 @@ async function handleMarkInvoicePaid(invoice) {
   const paidAt = new Date().toISOString();
   const markPaid = (items) =>
     items.map((item) =>
-      item.id === invoice.id ||
-      item.invoice_number === invoice.invoice_number ||
-      item.invoiceNumber === invoice.invoiceNumber
+      item.id === invoice.id
         ? { ...item, status: "paid", paid_at: item.paid_at || paidAt }
         : item,
     );
