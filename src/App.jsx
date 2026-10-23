@@ -6028,6 +6028,10 @@ useEffect(() => {
     return hasPersistedLocalPrefs || hasPersistedProfilePrefs;
   }, [fiscalProfile]);
   const visibleInvoices = user ? [...guestInvoices, ...invoices] : guestInvoices;
+  const invoiceDisplayItems = [
+    ...guestInvoices.map((invoice) => ({ invoice, origin: "local" })),
+    ...(user ? invoices.map((invoice) => ({ invoice, origin: "remote" })) : []),
+  ];
   const unifiedStarterProfile = useMemo(
     () => ({
       activity_type:
@@ -9235,8 +9239,9 @@ function handleOpenInvoiceFromLatestRevenue() {
   setShowInvoiceGenerator(true);
 }
 
-async function handleMarkInvoicePaid(invoice) {
-  if (!invoice?.id) return;
+async function handleMarkInvoicePaid(invoice, origin) {
+  if (!invoice?.id || !["local", "remote"].includes(origin)) return;
+  if (origin === "remote" && !user?.id) return;
 
   const paidAt = new Date().toISOString();
   const markPaid = (items) =>
@@ -9246,7 +9251,7 @@ async function handleMarkInvoicePaid(invoice) {
         : item,
     );
 
-  if (invoice.localOnly || !user) {
+  if (origin === "local") {
     setGuestInvoices((prev) => {
       const next = markPaid(prev);
       localStorage.setItem(GUEST_INVOICES_KEY, JSON.stringify(next));
@@ -15677,7 +15682,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   </div>
                 ) : (
                   <div className="revenuesList">
-                    {visibleInvoices.map((invoice) => {
+                    {invoiceDisplayItems.map(({ invoice, origin }) => {
                       const complianceScore = getInvoiceComplianceScore(
                         invoice,
                         userProfile,
@@ -15699,7 +15704,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                               };
 
                       return (
-                      <div key={invoice.id} className="revenueItem">
+                      <div key={`${origin}:${invoice.id}`} className="revenueItem">
                         <div className="revenueMain">
                           <div className="revenueAmount">
                             {getInvoiceDisplayAmountLabel(invoice)}
@@ -15798,7 +15803,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                             <button
                               className="btn btnActionSecondary btnSmall"
                               type="button"
-                              onClick={() => handleMarkInvoicePaid(invoice)}
+                              onClick={() => handleMarkInvoicePaid(invoice, origin)}
                             >
                               Marquer comme payée
                             </button>

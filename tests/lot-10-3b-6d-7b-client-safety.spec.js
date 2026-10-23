@@ -292,3 +292,101 @@ test("inaccessible invoice storage has an honest status", async ({ context, page
   await expect(page.getByTestId("local-invoice-status")).toHaveText("L’accès aux factures de cet appareil est indisponible. Aucun import automatique n’est effectué.");
   expect(attempts).toEqual([]);
 });
+
+// Retains the mounted-browser reproducer: signed-in legacy local invoice with no localOnly.
+for (const selected of ['local', 'remote', 'remote-error']) {
+  test(`payment provenance isolates collections with the same id: ${selected}`, async ({ context, page }) => {
+    const id = '33333333-3333-4333-8333-333333333333';
+    const raw = JSON.stringify([{ id, invoice_number: 'LEGACY', amount: 10 },
+      { id: 'fx-payment', invoice_number: 'FX-PAYMENT', amount: 20, localOnly: true, formatStatus: 'facturx_ready_draft' },
+      { id: 'other-local', invoice_number: 'OTHER-LOCAL', amount: 30 }]);
+    const attempts = await setup(context, raw);
+    const rows = [{ id, invoice_number: 'REMOTE', amount: 10, status: 'unpaid', user_id: '11111111-1111-4111-8111-111111111111' },
+      { id: '44444444-4444-4444-8444-444444444444', invoice_number: 'OTHER-REMOTE', amount: 30, status: 'unpaid' }];
+    const writes = [], keyWarnings = [], paymentErrors = [];
+    let reads = 0;
+    page.on('console', message => {
+      if (/same key|unique.*key/i.test(message.text())) keyWarnings.push(message.text());
+      if (message.text().includes('Invoice payment status update error:')) paymentErrors.push(message.text());
+    });
+    await context.route('**/rest/v1/invoices*', async route => {
+      const request = route.request();
+      if (request.method() === 'GET') {
+        reads++;
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rows) });
+      }
+      writes.push({ method: request.method(), url: request.url(), payload: request.postDataJSON() });
+      if (selected === 'remote-error') return route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ message: 'synthetic payment rejected' }) });
+      if (request.method() === 'PATCH') Object.assign(rows[0], request.postDataJSON());
+      return route.fulfill({ status: 204 });
+    });
+    await page.goto('/'); await openInvoices(page);
+    expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
+    const card = number => page.locator('.revenueItem').filter({ has: page.getByText(`N° ${number}`, { exact: true }) });
+    const readsBeforePayment = reads;
+    await card(selected === 'local' ? 'LEGACY' : 'REMOTE').getByRole('button', { name: 'Marquer comme payée' }).click();
+    if (selected === 'local') {
+      await expect.poll(() => page.evaluate(key => JSON.parse(localStorage.getItem(key))[0].status, key)).toBe('paid');
+      const saved = await page.evaluate(key => JSON.parse(localStorage.getItem(key)), key);
+      expect(saved[0].paid_at).toBeTruthy();
+      expect(saved[0]).not.toHaveProperty('localOnly'); expect(saved[0]).not.toHaveProperty('origin');
+      expect(saved.slice(1)).toEqual(JSON.parse(raw).slice(1));
+      expect(writes).toEqual([]); expect(rows[0].status).toBe('unpaid');
+      await page.reload(); await openInvoices(page);
+      await expect(card('LEGACY').getByRole('button', { name: 'Marquer comme payée' })).toHaveCount(0);
+      await expect(card('REMOTE').getByRole('button', { name: 'Marquer comme payée' })).toBeVisible();
+      // Existing Factur-X local payment uses the same explicit collection provenance.
+      await card('FX-PAYMENT').getByRole('button', { name: 'Marquer comme payée' }).click();
+      await expect.poll(() => page.evaluate(key => JSON.parse(localStorage.getItem(key))[1].status, key)).toBe('paid');
+      expect(writes).toEqual([]);
+    } else {
+      await expect.poll(() => writes.length).toBe(1);
+      const url = new URL(writes[0].url);
+      expect(writes[0].method).toBe('PATCH');
+      expect(url.searchParams.get('id')).toBe(`eq.${id}`);
+      expect(url.searchParams.get('user_id')).toBe('eq.11111111-1111-4111-8111-111111111111');
+      expect(Object.keys(writes[0].payload).sort()).toEqual(['paid_at', 'status']);
+      expect(writes[0].payload.status).toBe('paid');
+      expect(Number.isNaN(Date.parse(writes[0].payload.paid_at))).toBe(false);
+      expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
+      await expect(card('LEGACY').getByRole('button', { name: 'Marquer comme payée' })).toBeVisible();
+      if (selected === 'remote-error') {
+        await expect.poll(() => paymentErrors).toEqual(['Invoice payment status update error: synthetic payment rejected']);
+        await expect.poll(() => reads).toBeGreaterThan(readsBeforePayment);
+        await openInvoices(page);
+        await expect(card('REMOTE').getByRole('button', { name: 'Marquer comme payée' })).toBeVisible();
+      } else {
+        await expect(card('REMOTE').getByRole('button', { name: 'Marquer comme payée' })).toHaveCount(0);
+      }
+      expect(rows[1].status).toBe('unpaid');
+    }
+    expect(attempts).toEqual([]); expect(keyWarnings).toEqual([]);
+  });
+}
+
+test('guest legacy payment persists locally without invoice service writes', async ({ context, page }) => {
+  const attempts = await setup(context, mixed);
+  await context.addInitScript(() => {
+    localStorage.removeItem('sb-bvymwuokljxgoavfehav-auth-token');
+    localStorage.removeItem('microassist_pending_auth_success');
+  });
+  const writes = [];
+  await context.route('**/rest/v1/invoices*', async route => {
+    if (route.request().method() !== 'GET') writes.push(route.request().method());
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+  });
+  await page.goto('/');
+  const onboarding = page.getByRole('dialog', { name: 'Configurer ton profil fiscal' });
+  await onboarding.getByRole('button', { name: 'Fermer l’onboarding' }).click();
+  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Factures', exact: true }).click();
+  const card = page.locator('.revenueItem').filter({ has: page.getByText('N° CLASSIC', { exact: true }) });
+  await card.getByRole('button', { name: 'Marquer comme payée' }).click();
+  await expect.poll(() => page.evaluate(key => JSON.parse(localStorage.getItem(key))[0].status, key)).toBe('paid');
+  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key))[1], key)).toEqual(JSON.parse(mixed)[1]);
+  await page.reload();
+  await onboarding.getByRole('button', { name: 'Fermer l’onboarding' }).click();
+  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Factures', exact: true }).click();
+  await expect(card).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Marquer comme payée' })).toHaveCount(0);
+  expect(writes).toEqual([]); expect(attempts).toEqual([]);
+});
