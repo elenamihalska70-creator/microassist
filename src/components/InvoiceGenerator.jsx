@@ -1,5 +1,7 @@
 import { useState } from "react";
 import jsPDF from "jspdf";
+import notoSansRegular from "../assets/fonts/noto-sans/NotoSans-Regular.ttf?inline";
+import notoSansBold from "../assets/fonts/noto-sans/NotoSans-Bold.ttf?inline";
 import {
   FACTURX_NOT_TRANSMITTED_NOTE,
   FACTURX_PREPARATION_LABEL,
@@ -103,122 +105,152 @@ export function generateB2CInvoicePdf(invoice, { userEmail = "" } = {}) {
     email: invoice.client_email || "",
   };
 
-  doc.setFillColor(91, 33, 182);
-  doc.rect(0, 0, pageWidth, 42, "F");
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(22);
-  doc.setFont("helvetica", "bold");
-  doc.text("FACTURE", 20, 18);
-
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(`N° ${number}`, 20, 28);
-  doc.text(`Date : ${formatDateFr(invoice.issueDate || invoice.invoice_date)}`, 20, 35);
-  doc.text(FACTURX_PREPARATION_LABEL, 20, 40);
-
-  doc.setTextColor(30, 27, 75);
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.text("Émetteur", 20, 58);
-
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(55, 65, 81);
-  doc.setFontSize(10);
-  doc.text(seller.name || SELLER_NAME, 20, 66);
-  doc.text(seller.email || SELLER_EMAIL || userEmail || "Email non renseigne", 20, 73);
-  doc.text(doc.splitTextToSize(seller.address || SELLER_ADDRESS, 78), 20, 80);
-  if (seller.siret) doc.text(`SIRET : ${seller.siret}`, 20, 96);
-  if (!seller.siret) {
-    doc.setTextColor(190, 18, 60);
-    doc.text("Facture non conforme (SIRET manquant)", 20, 96);
-    doc.setTextColor(55, 65, 81);
+  // Embed both faces in every invoice; all layout measurements use the same fonts.
+  for (const [style, data] of [["normal", notoSansRegular], ["bold", notoSansBold]]) {
+    const file = `NotoSans-${style}.ttf`;
+    doc.addFileToVFS(file, data.substring(data.indexOf(",") + 1));
+    doc.addFont(file, "NotoSans", style);
   }
-  if (seller.vatNumber) doc.text(`TVA : ${seller.vatNumber}`, 20, 102);
-
-  doc.setTextColor(30, 27, 75);
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.text("Client", 120, 58);
-
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(55, 65, 81);
-  doc.setFontSize(10);
-  doc.text(buyer.name || "—", 120, 66);
-  if (buyer.address) doc.text(doc.splitTextToSize(buyer.address, 68), 120, 73);
-  if (buyer.email) doc.text(buyer.email, 120, 88);
-  if (buyer.siret) doc.text(`SIRET : ${buyer.siret}`, 120, 96);
-  if (buyer.vatNumber) doc.text(`TVA : ${buyer.vatNumber}`, 120, 102);
-
-  doc.setDrawColor(229, 231, 235);
-  doc.setLineWidth(0.5);
-  doc.line(20, 112, pageWidth - 20, 112);
-
-  doc.setFillColor(245, 243, 255);
-  doc.rect(20, 118, pageWidth - 40, 10, "F");
-
-  doc.setTextColor(91, 33, 182);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.text("Prestation", 25, 125);
-  doc.text("Qté", 98, 125);
-  doc.text("PU HT", 116, 125);
-  doc.text("TVA", 142, 125);
-  doc.text(totals.isVatExempt ? "Total HT" : "Total TTC", pageWidth - 48, 125);
-
-  doc.setTextColor(55, 65, 81);
-  doc.setFont("helvetica", "normal");
-  const descLines = doc.splitTextToSize(line.description || "Prestation", 68);
-  doc.text(descLines, 25, 139);
-  doc.text(String(line.quantity || 0), 98, 139);
-  doc.text(formatInvoiceAmount(line.unitPrice), 116, 139);
-  doc.text(`${totals.vatRate || 0}%`, 142, 139);
-  doc.text(
-    formatInvoiceAmount(totals.isVatExempt ? totals.totalHT : totals.totalTTC),
-    pageWidth - 48,
-    139,
-  );
-
-  const tableBottom = Math.max(160, 139 + descLines.length * 6);
-
-  doc.setDrawColor(229, 231, 235);
-  doc.line(20, tableBottom + 5, pageWidth - 20, tableBottom + 5);
-
-  doc.setTextColor(55, 65, 81);
-  doc.setFontSize(10);
-  doc.text("Total HT", pageWidth - 82, tableBottom + 16);
-  doc.text(formatInvoiceAmount(totals.totalHT), pageWidth - 44, tableBottom + 16);
-  doc.text("TVA", pageWidth - 82, tableBottom + 24);
-  doc.text(formatInvoiceAmount(totals.totalTVA), pageWidth - 44, tableBottom + 24);
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFillColor(91, 33, 182);
-  doc.rect(pageWidth - 88, tableBottom + 32, 68, 14, "F");
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.text("TOTAL À PAYER", pageWidth - 84, tableBottom + 41);
-  doc.text(formatInvoiceAmount(totals.totalTTC), pageWidth - 50, tableBottom + 41);
-
-  doc.setTextColor(107, 114, 128);
-  doc.setFontSize(7.5);
-  doc.setFont("helvetica", "normal");
-  if (exemptionReason) {
-    doc.text(exemptionReason, 20, tableBottom + 18);
+  doc.setFont("NotoSans", "normal");
+  // Never silently replace unsupported user characters with a missing glyph.
+  const glyphs = doc.getFont().metadata.cmap.unicode.codeMap;
+  for (const value of [number, ...Object.values(seller), ...Object.values(buyer), line.description, exemptionReason]) {
+    for (const character of String(value ?? "")) {
+      if (!/[\n\r\t]/.test(character) && !glyphs[character.codePointAt(0)]) {
+        throw new Error(`Caractère non pris en charge dans le PDF : U+${character.codePointAt(0).toString(16).toUpperCase()}`);
+      }
+    }
   }
-  doc.text(`Date d'échéance : ${formatDateFr(invoice.dueDate || invoice.due_date)}`, 20, tableBottom + 28);
-  doc.text(FACTURX_NOT_TRANSMITTED_NOTE, 20, tableBottom + 38);
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 20, width = pageWidth - margin * 2;
+  const footerTop = pageHeight - 29, contentBottom = footerTop - 8;
+  let y = 0;
+  const font = (size = 10, style = "normal", color = [55, 65, 81]) => {
+    doc.setFont("NotoSans", style);
+    doc.setFontSize(size);
+    doc.setTextColor(...color);
+  };
+  const lines = (text, availableWidth, size = 10, style = "normal") => {
+    font(size, style);
+    return doc.splitTextToSize(String(text ?? ""), availableWidth);
+  };
+  const newPage = () => { doc.addPage(); y = 24; };
+  const ensure = height => { if (y + height > contentBottom) newPage(); };
+  const textBlock = (text, size = 9, gap = 4) => {
+    const wrapped = lines(text, width, size);
+    const step = size * 0.3528 * 1.5;
+    for (const row of wrapped) {
+      ensure(step);
+      font(size);
+      doc.text(row, margin, y);
+      y += step;
+    }
+    y += gap;
+  };
 
-  doc.setFillColor(245, 243, 255);
-  doc.rect(0, 268, pageWidth, 29, "F");
-  doc.setTextColor(91, 33, 182);
-  doc.setFontSize(7.5);
-  doc.text(LATE_PENALTY_MENTION, pageWidth / 2, 278, { align: "center" });
-  doc.text(FLAT_FEE_MENTION, pageWidth / 2, 284, { align: "center" });
-  doc.setFontSize(8.5);
-  doc.text("Microassist - Assistant fiscal pour micro-entrepreneurs", pageWidth / 2, 291, {
-    align: "center",
-  });
+  const numberLines = lines(`N° ${number}`, width, 10);
+  const preparationLines = lines(FACTURX_PREPARATION_LABEL, width, 8);
+  const headerHeight = 34 + numberLines.length * 5 + preparationLines.length * 4;
+  doc.setFillColor(91, 33, 182);
+  doc.rect(0, 0, pageWidth, headerHeight, "F");
+  font(22, "bold", [255, 255, 255]);
+  doc.text("FACTURE", margin, 18);
+  font(10, "normal", [255, 255, 255]);
+  numberLines.forEach((row, i) => doc.text(row, margin, 28 + i * 5));
+  const dateY = 28 + numberLines.length * 5;
+  doc.text(`Date : ${formatDateFr(invoice.issueDate || invoice.invoice_date)}`, margin, dateY);
+  font(8, "normal", [255, 255, 255]);
+  preparationLines.forEach((row, i) => doc.text(row, margin, dateY + 7 + i * 4));
+  y = headerHeight + 12;
 
+  const partyRows = (title, fields) => [
+    { text: title, bold: true },
+    ...fields.filter(value => value !== undefined && value !== "").flatMap(value =>
+      lines(value, 78).map(text => ({ text, bold: false }))),
+  ];
+  const sellerRows = partyRows("Émetteur", [seller.name || SELLER_NAME,
+    seller.email || SELLER_EMAIL || userEmail || "Email non renseigne",
+    seller.address || SELLER_ADDRESS,
+    seller.siret ? `SIRET : ${seller.siret}` : "Facture non conforme (SIRET manquant)",
+    seller.vatNumber ? `TVA : ${seller.vatNumber}` : ""]);
+  const buyerRows = partyRows("Client", [buyer.name || "—", buyer.address, buyer.email,
+    buyer.siret ? `SIRET : ${buyer.siret}` : "", buyer.vatNumber ? `TVA : ${buyer.vatNumber}` : ""]);
+  for (let i = 0; i < Math.max(sellerRows.length, buyerRows.length); i++) {
+    ensure(6);
+    for (const [rows, x] of [[sellerRows, margin], [buyerRows, pageWidth - margin - 78]]) {
+      if (rows[i]) {
+        font(rows[i].bold ? 11 : 10, rows[i].bold ? "bold" : "normal");
+        doc.text(rows[i].text, x, y);
+      }
+    }
+    y += 6;
+  }
+  y += 8;
+
+  const columns = [
+    { x: 25, width: 68, title: "Prestation", value: line.description || "Prestation" },
+    { x: 98, width: 14, title: "Qté", value: String(line.quantity || 0) },
+    { x: 116, width: 22, title: "PU HT", value: formatInvoiceAmount(line.unitPrice) },
+    { x: 142, width: 16, title: "TVA", value: `${totals.vatRate || 0}%` },
+    { x: pageWidth - 48, width: 26, title: totals.isVatExempt ? "Total HT" : "Total TTC",
+      value: formatInvoiceAmount(totals.isVatExempt ? totals.totalHT : totals.totalTTC) },
+  ];
+  const tableHeader = () => {
+    ensure(21); // Keep the header with at least the first description row.
+    doc.setFillColor(245, 243, 255);
+    doc.rect(margin, y - 5, width, 10, "F");
+    font(9, "bold", [91, 33, 182]);
+    columns.forEach(column => doc.text(column.title, column.x, y + 2));
+    y += 15;
+  };
+  const cells = columns.map(column => lines(column.value, column.width, 9));
+  tableHeader();
+  for (let i = 0; i < Math.max(...cells.map(cell => cell.length)); i++) {
+    if (y + 5 > contentBottom) { newPage(); tableHeader(); }
+    font(9);
+    columns.forEach((column, c) => { if (cells[c][i]) doc.text(cells[c][i], column.x, y); });
+    y += 5;
+  }
+  y += 8;
+
+  // Totals stay together. Notes start below the measured total box, never beside it.
+  const amountLines = lines(formatInvoiceAmount(totals.totalTTC), 32, 11, "bold");
+  const totalHeight = Math.max(14, amountLines.length * 5 + 8);
+  ensure(24 + totalHeight);
+  doc.setDrawColor(229, 231, 235);
+  doc.line(margin, y - 4, pageWidth - margin, y - 4);
+  font(10);
+  doc.text("Total HT", 112, y + 4);
+  doc.text(formatInvoiceAmount(totals.totalHT), pageWidth - margin, y + 4, { align: "right" });
+  doc.text("TVA", 112, y + 12);
+  doc.text(formatInvoiceAmount(totals.totalTVA), pageWidth - margin, y + 12, { align: "right" });
+  doc.setFillColor(91, 33, 182);
+  doc.rect(108, y + 19, pageWidth - margin - 108, totalHeight, "F");
+  font(10, "bold", [255, 255, 255]);
+  doc.text("TOTAL À PAYER", 112, y + 28);
+  font(11, "bold", [255, 255, 255]);
+  amountLines.forEach((row, i) => doc.text(row, pageWidth - margin - 4, y + 28 + i * 5, { align: "right" }));
+  y += 19 + totalHeight + 10;
+  if (exemptionReason) textBlock(exemptionReason, 8.5);
+  textBlock(`Date d'échéance : ${formatDateFr(invoice.dueDate || invoice.due_date)}`, 8.5);
+  textBlock(FACTURX_NOT_TRANSMITTED_NOTE, 8.5);
+
+  const pages = doc.getNumberOfPages();
+  for (let page = 1; page <= pages; page++) {
+    doc.setPage(page);
+    doc.setFillColor(245, 243, 255);
+    doc.rect(0, footerTop, pageWidth, 29, "F");
+    let footerY = footerTop + 6;
+    for (const text of [LATE_PENALTY_MENTION, FLAT_FEE_MENTION,
+      "Microassist - Assistant fiscal pour micro-entrepreneurs", `Page ${page} / ${pages}`]) {
+      const wrapped = lines(text, width, 7);
+      font(7, "normal", [91, 33, 182]);
+      for (const row of wrapped) {
+        doc.text(row, pageWidth / 2, footerY, { align: "center" });
+        footerY += 4;
+      }
+    }
+  }
   doc.save(`facture-${getSafeFilenamePart(number)}.pdf`);
 }
 
