@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import jsPDF from "jspdf";
-import notoSansRegular from "../assets/fonts/noto-sans/NotoSans-Regular.ttf?inline";
-import notoSansBold from "../assets/fonts/noto-sans/NotoSans-Bold.ttf?inline";
+import { loadInvoicePdfFonts } from "../utils/invoicePdfFonts.js";
+import { InvoicePdfError, invoicePdfErrorMessage } from "../utils/invoicePdfErrors.js";
 import {
   FACTURX_NOT_TRANSMITTED_NOTE,
   FACTURX_PREPARATION_LABEL,
@@ -72,7 +72,8 @@ function getSafeFilenamePart(value) {
     .toLowerCase();
 }
 
-export function generateB2CInvoicePdf(invoice, { userEmail = "" } = {}) {
+export async function generateB2CInvoicePdf(invoice, { userEmail = "" } = {}) {
+  const [notoSansRegular, notoSansBold] = await loadInvoicePdfFonts();
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const number = invoice.invoiceNumber || invoice.invoice_number || "FACTURE";
@@ -108,16 +109,22 @@ export function generateB2CInvoicePdf(invoice, { userEmail = "" } = {}) {
   // Embed both faces in every invoice; all layout measurements use the same fonts.
   for (const [style, data] of [["normal", notoSansRegular], ["bold", notoSansBold]]) {
     const file = `NotoSans-${style}.ttf`;
-    doc.addFileToVFS(file, data.substring(data.indexOf(",") + 1));
+    doc.addFileToVFS(file, data);
     doc.addFont(file, "NotoSans", style);
   }
   doc.setFont("NotoSans", "normal");
   // Never silently replace unsupported user characters with a missing glyph.
   const glyphs = doc.getFont().metadata.cmap.unicode.codeMap;
-  for (const value of [number, ...Object.values(seller), ...Object.values(buyer), line.description, exemptionReason]) {
+  const fields = [["Numéro de facture", number], ["Nom du vendeur", seller.name],
+    ["Adresse du vendeur", seller.address], ["Email du vendeur", seller.email],
+    ["SIRET du vendeur", seller.siret], ["TVA du vendeur", seller.vatNumber],
+    ["Client", buyer.name], ["Adresse client", buyer.address], ["Email client", buyer.email],
+    ["SIRET client", buyer.siret], ["TVA client", buyer.vatNumber],
+    ["Prestation", line.description], ["Mention de TVA", exemptionReason]];
+  for (const [field, value] of fields) {
     for (const character of String(value ?? "")) {
       if (!/[\n\r\t]/.test(character) && !glyphs[character.codePointAt(0)]) {
-        throw new Error(`Caractère non pris en charge dans le PDF : U+${character.codePointAt(0).toString(16).toUpperCase()}`);
+        throw new InvoicePdfError("unsupported-glyph", { character, field });
       }
     }
   }
@@ -251,7 +258,7 @@ export function generateB2CInvoicePdf(invoice, { userEmail = "" } = {}) {
       }
     }
   }
-  doc.save(`facture-${getSafeFilenamePart(number)}.pdf`);
+  await doc.save(`facture-${getSafeFilenamePart(number)}.pdf`, { returnPromise: true });
 }
 
 const today = formatDateInput(new Date());
@@ -286,6 +293,8 @@ export default function InvoiceGenerator({
     ...(initialValues || {}),
   }));
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [pdfError, setPdfError] = useState("");
   const [showMissingSiretWarning, setShowMissingSiretWarning] = useState(false);
 
   function handleChange(field, value) {
@@ -367,7 +376,7 @@ export default function InvoiceGenerator({
   }
 
   async function handleSave(options = {}) {
-    if (saving) return;
+    if (savingRef.current) return;
 
     const validationError = validateForm();
 
@@ -381,16 +390,19 @@ export default function InvoiceGenerator({
       return;
     }
 
+    savingRef.current = true;
     setSaving(true);
+    setPdfError("");
 
     try {
       const number = generateGuestInvoiceNumber();
       const invoice = buildStructuredInvoice(number);
 
-      generateB2CInvoicePdf(invoice, { userEmail: user?.email });
+      const xml = generateFacturXXml(invoice);
+      await generateB2CInvoicePdf(invoice, { userEmail: user?.email });
       downloadTextFile(
         `facturx-draft-${number}.xml`,
-        generateFacturXXml(invoice),
+        xml,
       );
 
       if (onSaved) {
@@ -416,8 +428,9 @@ export default function InvoiceGenerator({
       }
     } catch (err) {
       console.error("Erreur sauvegarde facture:", err);
-      alert("Impossible de créer la facture.");
+      setPdfError(invoicePdfErrorMessage(err, { editable: true }));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
@@ -662,6 +675,7 @@ export default function InvoiceGenerator({
           </p>
         </div>
 
+        {pdfError && <p role="alert">{pdfError}</p>}
         <div
           className="miniActions"
           style={{

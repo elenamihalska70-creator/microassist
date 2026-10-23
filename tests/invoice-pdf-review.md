@@ -22,3 +22,20 @@ The Node suite checks exact extracted Unicode strings, complete party/descriptio
 text across pages, embedded normal/bold fonts, clipping/overlap, non-orphaned table
 headers, long pagination and byte-identical baseline/fixed XML. PNGs still require
 visual review; these checks do not certify Factur-X or PDF/A-3.
+
+## Async errors and deferred font loading
+
+`generateB2CInvoicePdf` is async; callers must await it. Both App download buttons
+use InvoicePdfDownloadButton. Creation prepares XML first, awaits PDF completion,
+then downloads XML and invokes the existing onSaved callback. Expected glyph/load
+errors are shown in French; form data and stored invoices are not rewritten.
+
+The browser suite now has nine tests, including a font HTTP failure followed by a
+successful retry, historical list errors, notice render errors (scoped fault injection),
+zero font requests on app opening, shared concurrent loads and cached reuse.
+Unhandled page errors are collected and forbidden in every test.
+
+Pure loader/message tests:
+`node --test --test-isolation=none tests/invoice-pdf-loading.test.js`.
+The six tests cover HTTP, network and invalid-font failures, retry, lazy loading,
+single-flight caching and editable/non-editable error guidance.

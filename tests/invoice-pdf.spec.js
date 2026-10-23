@@ -79,7 +79,7 @@ for (const [name, invoice] of Object.entries(fixtures)) {
     const downloadPromise=page.waitForEvent('download');
     await page.evaluate(async invoice=>{
       const {generateB2CInvoicePdf}=await import('/src/components/InvoiceGenerator.jsx');
-      generateB2CInvoicePdf(invoice);
+      await generateB2CInvoicePdf(invoice);
     },invoice);
     await mkdir(artifactDir,{recursive:true});
     await (await downloadPromise).saveAs(`${artifactDir}/${name}.pdf`);
@@ -128,8 +128,110 @@ test('Unicode creation and list redownload preserve PDF/XML and local invoice da
 test('unsupported glyph fails explicitly instead of silently substituting text', async ({context,page}) => {
   await setup(context,'[]'); await syntheticSellerEmail(page); await page.goto('/');
   const error = await page.evaluate(async invoice => {
-    try { (await import('/src/components/InvoiceGenerator.jsx')).generateB2CInvoicePdf(invoice); }
-    catch (error) { return error.message; }
+    try { await (await import('/src/components/InvoiceGenerator.jsx')).generateB2CInvoicePdf(invoice); }
+    catch (error) { return { code: error.code, character: error.character, field: error.field }; }
   }, {...fixtures.short, buyer:{name:'🙂'}});
-  expect(error).toContain('U+1F642');
+  expect(error).toEqual({code:'unsupported-glyph',character:'🙂',field:'Client'});
+});
+
+const browserErrors = new WeakMap();
+test.beforeEach(async ({page})=>{
+  const errors=[];browserErrors.set(page,errors);page.on('pageerror',error=>errors.push(error.message));
+});
+test.afterEach(async ({page})=>{expect(browserErrors.get(page)).toEqual([]);});
+
+async function fillPdfForm(page, name='Тестовий клієнт — Київ, ї є ґ і') {
+  await page.getByRole('button',{name:'Créer une facture',exact:true}).first().click();
+  await page.getByLabel('Client *',{exact:true}).fill(name);
+  await page.getByLabel('Adresse client',{exact:true}).fill('тест');
+  await page.getByLabel('Prestation *',{exact:true}).fill('тест — Élodie François');
+  await page.getByLabel('Prix unitaire HT (€) *',{exact:true}).fill('9.96');
+  await page.getByLabel('SIRET vendeur',{exact:true}).fill('12345678901234');
+  await page.getByLabel('Raison sociale vendeur',{exact:true}).fill('Élodie François');
+  await page.getByLabel('Adresse vendeur',{exact:true}).fill('10 rue de la République, Besançon');
+}
+
+test('unsupported creation retains input with useful guidance, zero storage/downloads, then succeeds',async({context,page})=>{
+  const attempts=await setup(context,'[]');await syntheticSellerEmail(page);
+  const downloads=[];page.on('download',d=>downloads.push(d));
+  await page.goto('/');await openInvoices(page);await fillPdfForm(page,'🙂');
+  const create=page.getByRole('button',{name:'Créer facture compatible 2026',exact:true});
+  await create.click();
+  await expect(page.getByRole('alert')).toContainText('« 🙂 » (U+1F642)');
+  await expect(page.getByRole('alert')).toContainText('champ « Client »');
+  await expect(page.getByRole('alert')).toContainText('Corrige ce champ');
+  await expect(create).toBeEnabled();
+  await expect(page.getByLabel('Client *',{exact:true})).toHaveValue('🙂');
+  await expect(page.getByLabel('Prestation *',{exact:true})).toHaveValue('тест — Élodie François');
+  expect(await page.evaluate(()=>localStorage.getItem('guest_invoices'))).toBe('[]');expect(downloads).toEqual([]);
+  await page.getByLabel('Client *',{exact:true}).fill('Тестовий клієнт — Київ, ї є ґ і');await create.click();
+  await expect.poll(()=>downloads.length).toBe(2);expect(attempts).toEqual([]);
+});
+
+test('historical list PDF shows glyph limitation without inventing an edit action or mutating data',async({context,page})=>{
+  const invoice={...fixtures.short,id:'historical',invoiceNumber:'HISTORICAL',invoice_number:'HISTORICAL',client_name:'🙂',buyer:{...fixtures.short.buyer,name:'🙂'},localOnly:true,formatStatus:'facturx_ready_draft'};
+  const raw=JSON.stringify([invoice]);const attempts=await setup(context,raw);await syntheticSellerEmail(page);
+  const downloads=[];page.on('download',d=>downloads.push(d));
+  await page.goto('/');await openInvoices(page);
+  const card=page.locator('.revenueItem').filter({has:page.getByText('N° HISTORICAL',{exact:true})});
+  const button=card.getByRole('button',{name:'PDF',exact:true});await button.click();
+  await expect(card.getByRole('alert')).toContainText('« 🙂 » (U+1F642)');
+  await expect(card.getByRole('alert')).toContainText('n’est pas modifiable ici');
+  await expect(card.getByRole('alert')).not.toContainText('Corrige');await expect(button).toBeEnabled();
+  await button.click();await expect(button).toBeEnabled();
+  expect(await page.evaluate(()=>localStorage.getItem('guest_invoices'))).toBe(raw);expect(downloads).toEqual([]);expect(attempts).toEqual([]);
+});
+
+test('font failure on creation produces no partial output, then retry succeeds with fonts reused',async({context,page})=>{
+  const attempts=await setup(context,'[]');await syntheticSellerEmail(page);
+  let fail=true;const fonts=[],downloads=[];
+  await context.route('**/*.ttf',async route=>{
+    fonts.push(route.request().url());
+    if(fail)return route.fulfill({status:503,body:'synthetic unavailable'});
+    return route.continue();
+  });
+  page.on('download',d=>downloads.push(d));
+  await page.goto('/');await openInvoices(page);await fillPdfForm(page);expect(fonts).toEqual([]);
+  const create=page.getByRole('button',{name:'Créer facture compatible 2026',exact:true});await create.click();
+  await expect(page.getByRole('alert')).toContainText('polices du PDF n’ont pas pu être chargées');
+  await expect(create).toBeEnabled();expect(fonts).toHaveLength(2);expect(downloads).toEqual([]);
+  expect(await page.evaluate(()=>localStorage.getItem('guest_invoices'))).toBe('[]');
+  await expect(page.getByLabel('Adresse client',{exact:true})).toHaveValue('тест');
+  fail=false;await create.click();await expect.poll(()=>downloads.length).toBe(2);expect(fonts).toHaveLength(4);
+  const raw=await page.evaluate(()=>localStorage.getItem('guest_invoices'));
+  const again=page.waitForEvent('download');await page.getByRole('button',{name:'Télécharger la facture',exact:true}).click();await again;
+  expect(fonts).toHaveLength(4);expect(await page.evaluate(()=>localStorage.getItem('guest_invoices'))).toBe(raw);expect(attempts).toEqual([]);
+});
+
+test('concurrent PDF requests share first font loads and subsequent requests reuse them',async({context,page})=>{
+  await setup(context,'[]');await syntheticSellerEmail(page);const fonts=[],downloads=[];
+  await context.route('**/*.ttf',async route=>{fonts.push(route.request().url());await route.continue();});
+  page.on('download',d=>downloads.push(d));await page.goto('/');await openInvoices(page);expect(fonts).toEqual([]);
+  await page.evaluate(async invoice=>{
+    const {generateB2CInvoicePdf:generate}=await import('/src/components/InvoiceGenerator.jsx');
+    await Promise.all([generate(invoice),generate({...invoice,invoiceNumber:'CONCURRENT'})]);
+    await generate({...invoice,invoiceNumber:'REUSED'});
+  },fixtures.short);
+  await expect.poll(()=>downloads.length).toBe(3);expect(fonts).toHaveLength(2);
+});
+
+test('notice PDF handles general render failure and retries without changing stored invoice',async({context,page})=>{
+  const attempts=await setup(context,'[]');await syntheticSellerEmail(page);
+  // Scoped fault injection at the real async generator boundary, after a successful creation.
+  await page.route('**/src/components/InvoiceGenerator.jsx*',async route=>{
+    const response=await route.fetch();let source=await response.text();
+    source=source.replace(/const SELLER_EMAIL = [^\n]+/,'const SELLER_EMAIL = "elodie@example.test";');
+    expect(source).toContain('const [notoSansRegular, notoSansBold] = await loadInvoicePdfFonts();');
+    source=source.replace('const [notoSansRegular, notoSansBold] = await loadInvoicePdfFonts();','if (window.__syntheticPdfFailure) throw new Error("synthetic rendering failure");\nconst [notoSansRegular, notoSansBold] = await loadInvoicePdfFonts();');
+    await route.fulfill({response,body:source});
+  });
+  const downloads=[];page.on('download',d=>downloads.push(d));await page.goto('/');await openInvoices(page);await fillPdfForm(page);
+  await page.getByRole('button',{name:'Créer facture compatible 2026',exact:true}).click();await expect.poll(()=>downloads.length).toBe(2);
+  const raw=await page.evaluate(()=>localStorage.getItem('guest_invoices'));
+  await page.evaluate(()=>{window.__syntheticPdfFailure=true;});
+  const notice=page.getByRole('button',{name:'Télécharger la facture',exact:true});await notice.click();
+  await expect(page.getByRole('alert')).toContainText('La préparation ou le téléchargement de la facture a échoué');await expect(notice).toBeEnabled();
+  expect(downloads).toHaveLength(2);expect(await page.evaluate(()=>localStorage.getItem('guest_invoices'))).toBe(raw);
+  await page.evaluate(()=>{window.__syntheticPdfFailure=false;});await notice.click();await expect.poll(()=>downloads.length).toBe(3);
+  await expect(page.getByRole('alert')).toHaveCount(0);expect(await page.evaluate(()=>localStorage.getItem('guest_invoices'))).toBe(raw);expect(attempts).toEqual([]);
 });

@@ -49,9 +49,8 @@ import { showConsoleSignature } from "./consoleSignature.js";
 import { useAuth } from "./context/AuthContext.jsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import InvoiceGenerator, {
-  generateB2CInvoicePdf,
-} from "./components/InvoiceGenerator.jsx";
+import InvoiceGenerator from "./components/InvoiceGenerator.jsx";
+import InvoicePdfDownloadButton from "./components/InvoicePdfDownloadButton.jsx";
 import {
   PDP_ROADMAP_NOTE,
   TVA_EXEMPTION_MENTION,
@@ -15617,17 +15616,9 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                         <div>{invoiceNotice.body}</div>
                         {invoiceNotice.invoice && (
                           <div>
-                            <button
-                              className="btn btnActionSecondary btnSmall"
-                              type="button"
-                              onClick={() =>
-                                generateB2CInvoicePdf(invoiceNotice.invoice, {
-                                  userEmail: user?.email || "",
-                                })
-                              }
-                            >
+                            <InvoicePdfDownloadButton invoice={invoiceNotice.invoice} userEmail={user?.email || ""}>
                               Télécharger la facture
-                            </button>
+                            </InvoicePdfDownloadButton>
                           </div>
                         )}
                         {invoiceNotice.cta === "auth" && (
@@ -15788,17 +15779,9 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                               Brouillon Factur-X
                             </span>
                           )}
-                          <button
-                            className="btn btnActionSecondary btnSmall"
-                            type="button"
-                            onClick={() =>
-                              generateB2CInvoicePdf(invoice, {
-                                userEmail: user?.email || "",
-                              })
-                            }
-                          >
+                          <InvoicePdfDownloadButton invoice={invoice} userEmail={user?.email || ""}>
                             PDF
-                          </button>
+                          </InvoicePdfDownloadButton>
                           {getInvoicePaymentStatus(invoice) !== "paid" && (
                             <button
                               className="btn btnActionSecondary btnSmall"
