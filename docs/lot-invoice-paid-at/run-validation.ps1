@@ -36,7 +36,7 @@ try {
   $copies = @{
     'setup.sql'=(Join-Path $root 'setup.sql')
     'verify.sql'=(Join-Path $root 'verify.sql')
-    'migration.sql'=(Join-Path $repo 'supabase/migrations/20261022194733_add_invoice_paid_at_guarded.sql')
+    'migration.sql'=(Join-Path $repo 'supabase/migrations/20261022221124_add_invoice_paid_at_guarded.sql')
   }
   $records.hashes=@{}
   foreach ($name in $copies.Keys) {

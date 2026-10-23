@@ -5,7 +5,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 
 // Read-only Git operations. Accept HEAD or a staged tree from git write-tree.
 const ref = process.argv[2] || 'HEAD';
-const path = 'supabase/migrations/20261022194733_add_invoice_paid_at_guarded.sql';
+const path = 'supabase/migrations/20261022221124_add_invoice_paid_at_guarded.sql';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex').toUpperCase();
 const local = readFileSync(path);
 const blob = execFileSync('git', ['show', `${ref}:${path}`]);
