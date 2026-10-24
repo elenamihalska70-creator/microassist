@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import jsPDF from "jspdf";
 import { loadInvoicePdfFonts } from "../utils/invoicePdfFonts.js";
 import { InvoicePdfError, invoicePdfErrorMessage } from "../utils/invoicePdfErrors.js";
@@ -72,8 +72,10 @@ function getSafeFilenamePart(value) {
     .toLowerCase();
 }
 
-export async function generateB2CInvoicePdf(invoice, { userEmail = "" } = {}) {
+export async function generateB2CInvoicePdf(invoice, { userEmail = "", isCurrent = () => true } = {}) {
+  if (!isCurrent()) return false;
   const [notoSansRegular, notoSansBold] = await loadInvoicePdfFonts();
+  if (!isCurrent()) return false;
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const number = invoice.invoiceNumber || invoice.invoice_number || "FACTURE";
@@ -258,7 +260,9 @@ export async function generateB2CInvoicePdf(invoice, { userEmail = "" } = {}) {
       }
     }
   }
+  if (!isCurrent()) return false;
   await doc.save(`facture-${getSafeFilenamePart(number)}.pdf`, { returnPromise: true });
+  return isCurrent();
 }
 
 const today = formatDateInput(new Date());
@@ -294,6 +298,16 @@ export default function InvoiceGenerator({
   }));
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
+  const lifetimeRef = useRef(null);
+  useLayoutEffect(() => {
+    const lifetime = { active: true };
+    lifetimeRef.current = lifetime;
+    return () => { lifetime.active = false; };
+  }, [user?.id]);
+  function closeGenerator() {
+    if (lifetimeRef.current) lifetimeRef.current.active = false;
+    onClose?.();
+  }
   const [pdfError, setPdfError] = useState("");
   const [showMissingSiretWarning, setShowMissingSiretWarning] = useState(false);
 
@@ -376,7 +390,9 @@ export default function InvoiceGenerator({
   }
 
   async function handleSave(options = {}) {
-    if (savingRef.current) return;
+    const lifetime = lifetimeRef.current;
+    const isCurrent = () => lifetime?.active && lifetimeRef.current === lifetime;
+    if (savingRef.current || !isCurrent()) return;
 
     const validationError = validateForm();
 
@@ -399,13 +415,14 @@ export default function InvoiceGenerator({
       const invoice = buildStructuredInvoice(number);
 
       const xml = generateFacturXXml(invoice);
-      await generateB2CInvoicePdf(invoice, { userEmail: user?.email });
+      const generated = await generateB2CInvoicePdf(invoice, { userEmail: user?.email, isCurrent });
+      if (!generated || !isCurrent()) return;
       downloadTextFile(
         `facturx-draft-${number}.xml`,
         xml,
       );
 
-      if (onSaved) {
+      if (isCurrent() && onSaved) {
         onSaved({
           // FUTURE: persist invoices after invoice schema migration.
           savedToSupabase: false,
@@ -427,11 +444,14 @@ export default function InvoiceGenerator({
         });
       }
     } catch (err) {
+      if (!isCurrent()) return;
       console.error("Erreur sauvegarde facture:", err);
       setPdfError(invoicePdfErrorMessage(err, { editable: true }));
     } finally {
-      savingRef.current = false;
-      setSaving(false);
+      if (isCurrent()) {
+        savingRef.current = false;
+        setSaving(false);
+      }
     }
   }
 
@@ -477,7 +497,7 @@ export default function InvoiceGenerator({
   return (
     <div
       className="modalOverlay"
-      onClick={onClose}
+      onClick={closeGenerator}
       style={{ overflowY: "auto", alignItems: "flex-start" }}
     >
       <div
@@ -494,7 +514,7 @@ export default function InvoiceGenerator({
       >
         <div className="sectionHead">
           <h3>🧾 Créer une facture</h3>
-          <button className="iconBtn" onClick={onClose} type="button">
+          <button className="iconBtn" onClick={closeGenerator} type="button">
             ✕
           </button>
         </div>
@@ -686,7 +706,7 @@ export default function InvoiceGenerator({
             paddingTop: 12,
           }}
         >
-          <button className="btn btnGhost" onClick={onClose} type="button">
+          <button className="btn btnGhost" onClick={closeGenerator} type="button">
             Annuler
           </button>
 
@@ -748,6 +768,7 @@ export default function InvoiceGenerator({
                 type="button"
                 onClick={() => {
                   setShowMissingSiretWarning(false);
+                  if (lifetimeRef.current) lifetimeRef.current.active = false;
                   onGoToProfile?.();
                 }}
               >

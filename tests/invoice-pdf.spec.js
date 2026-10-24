@@ -235,3 +235,50 @@ test('notice PDF handles general render failure and retries without changing sto
   await page.evaluate(()=>{window.__syntheticPdfFailure=false;});await notice.click();await expect.poll(()=>downloads.length).toBe(3);
   await expect(page.getByRole('alert')).toHaveCount(0);expect(await page.evaluate(()=>localStorage.getItem('guest_invoices'))).toBe(raw);expect(attempts).toEqual([]);
 });
+
+for (const transition of ['cancel-reopen','auth-unmount']) {
+  test(`obsolete creation cannot affect a new form after ${transition}`,async({context,page})=>{
+    const attempts=await setup(context,'[]');await syntheticSellerEmail(page);
+    let releaseFonts;const fontGate=new Promise(resolve=>{releaseFonts=resolve;});
+    const fonts=[],downloads=[];
+    await context.route('**/*.ttf',async route=>{fonts.push(route.request().url());await fontGate;await route.continue();});
+    page.on('download',d=>downloads.push(d));
+    await page.goto('/');await openInvoices(page);await fillPdfForm(page,'Client annulé');
+    await page.getByRole('button',{name:'Créer facture compatible 2026',exact:true}).click();
+    await expect.poll(()=>fonts.length).toBe(2);
+    await expect(page.getByRole('button',{name:'Préparation...',exact:true})).toBeDisabled();
+    if(transition==='cancel-reopen') {
+      await page.getByRole('button',{name:'Annuler',exact:true}).click();
+    } else {
+      // Real SDK auth notification closes/unmounts the mounted generator.
+      await page.evaluate(async()=>{
+        const {supabase}=await import('/src/lib/supabase.js');
+        const id='22222222-2222-4222-8222-222222222222',exp=Math.floor(Date.now()/1000)+3600;
+        const encode=value=>btoa(JSON.stringify(value)).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');
+        const {error}=await supabase.auth.setSession({access_token:`${encode({alg:'HS256',typ:'JWT'})}.${encode({sub:id,aud:'authenticated',role:'authenticated',exp})}.${encode('synthetic-signature')}`,refresh_token:'synthetic-refresh-b'});
+        if(error)throw error;
+      });
+      await expect(page.getByText('Connectée : synthetic-22222222-2222-4222-8222-222222222222@example.test',{exact:true})).toBeVisible();
+    }
+    await expect(page.getByLabel('Client *',{exact:true})).toHaveCount(0);
+    await openInvoices(page);await fillPdfForm(page,'Nouveau client intact');
+    releaseFonts();
+    // Join the exact shared promise and drain its continuations; no timed race/sleep.
+    await page.evaluate(async()=>{
+      await(await import('/src/utils/invoicePdfFonts.js')).loadInvoicePdfFonts();
+      await new Promise(resolve=>setTimeout(resolve,0));
+    });
+    await expect(page.getByLabel('Client *',{exact:true})).toHaveValue('Nouveau client intact');
+    await expect(page.getByLabel('Prestation *',{exact:true})).toHaveValue('тест — Élodie François');
+    await expect(page.getByRole('button',{name:'Créer facture compatible 2026',exact:true})).toBeEnabled();
+    expect(downloads).toEqual([]);expect(await page.evaluate(()=>localStorage.getItem('guest_invoices'))).toBe('[]');
+    await expect(page.getByRole('button',{name:'Télécharger la facture',exact:true})).toHaveCount(0);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    // The cancelled operation did not abort shared loading or poison its cache.
+    await page.getByRole('button',{name:'Créer facture compatible 2026',exact:true}).click();
+    await expect.poll(()=>downloads.length).toBe(2);expect(fonts).toHaveLength(2);
+    const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('guest_invoices')));
+    expect(stored).toHaveLength(1);expect(stored[0].buyer.name).toBe('Nouveau client intact');
+    expect(attempts).toEqual([]);
+  });
+}
