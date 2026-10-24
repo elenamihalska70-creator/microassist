@@ -169,3 +169,29 @@ for(const action of ['cancel','auth-transition']) {
   await expect(page.getByRole('heading',{name:'Aperçu de la restauration',exact:true})).toHaveCount(0);expect(await raw(page)).toBe('[]');await expect(confirm(page)).toHaveCount(0);expect(attempts).toEqual([]);
  });
 }
+
+test('incompatible historical consumer fields are refused, mixed import and reload remain usable',async({context,page})=>{
+ const attempts=await setup(context,JSON.stringify([classic]));
+ await page.goto('/');await openInvoices(page);
+ await page.evaluate(()=>{localStorage.setItem('backup_protected','synthetic-preserved');localStorage.setItem('revenues_guest','[{"amount":123}]');});
+ const before=await raw(page);
+ const bad=await readFile('docs/local-invoice-backup/examples/malformed-consumer.json','utf8');
+ await select(page,bad);
+ await expect(page.getByText(/0 ajout\(s\).*1 entrée\(s\) refusée\(s\)/)).toBeVisible();
+ await expect(page.getByText(/Texte invalide : facture\.seller_siret/)).toBeVisible();
+ await expect(confirm(page)).toBeDisabled();expect(await raw(page)).toBe(before);
+ await page.getByRole('button',{name:'Annuler la restauration',exact:true}).click();
+ await page.reload();await openInvoices(page);
+ await expect(page.getByText('N° SAME-NUMBER',{exact:true})).toBeVisible();expect(await raw(page)).toBe(before);
+ const invalid=JSON.parse(bad).invoices[0];
+ const mixedEntries=[invalid,{...fx,id:'bad-buyer',buyer:{name:{toString:null}}},{...fx,id:'bad-line',lines:[null]},fx];
+ await select(page,JSON.stringify({...sample,invoices:mixedEntries}));
+ await expect(page.getByText(/1 ajout\(s\).*3 entrée\(s\) refusée\(s\)/)).toBeVisible();
+ await confirm(page).click();expect(JSON.parse(await raw(page))).toEqual([classic,fx]);
+ await page.reload();await openInvoices(page);
+ await expect(page.locator('.revenueItem').filter({hasText:'Brouillon Factur-X'})).toBeVisible();
+ expect(JSON.parse(await raw(page))).toEqual([classic,fx]);
+ expect(await page.evaluate(()=>localStorage.getItem('backup_protected'))).toBe('synthetic-preserved');
+ expect(await page.evaluate(()=>localStorage.getItem('revenues_guest'))).toBe('[{"amount":123}]');
+ expect(attempts).toEqual([]);
+});

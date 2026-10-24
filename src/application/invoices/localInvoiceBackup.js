@@ -7,7 +7,10 @@ const bytes = value => new TextEncoder().encode(value).length;
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const unsafe = /^(?:__proto__|prototype|constructor)$|token|session|password|secret|credential|authorization|api.?key|jwt/i;
 const amounts = new Set(['amount','quantity','unitPrice','unit_price','vatRate','vat_rate','totalHT','totalTVA','totalTTC','total_ht','total_tva','total_ttc']);
+// Includes the flat historical fallbacks in facturx.js, alongside the fields
+// read by App.jsx and the PDF/XML consumers. Unknown JSON extensions stay inert.
 const textFields = new Set(['invoiceNumber','invoice_number','number','client_name','client_address','client_email','description','name','address','email','siret','vatNumber','vatMode','vat_mode','vatExemptionReason','vat_exemption_reason','paymentTerms','formatStatus','format_status','transmissionStatus','transmission_status','source']);
+const legacySellerTextFields = new Set(['seller_siret','seller_name','seller_address']);
 const booleanFields = new Set(['localOnly','local_only','is_compliant','isCompliant']);
 const dateFields = new Set(['issueDate','invoice_date','dueDate','due_date']);
 const timestampFields = new Set(['paid_at','paidAt','created_at','createdAt','updated_at','updatedAt']);
@@ -26,14 +29,15 @@ function safeJson(value, depth = 0, budget = { nodes: 0 }) {
     safeJson(item, depth + 1, budget);
   }
 }
-function fields(value) {
+function fields(value, path = 'facture') {
   for (const [key, item] of Object.entries(value)) {
+    const field = `${path}.${key}`;
     if (item === null) continue;
-    if (amounts.has(key) && (typeof item !== 'number' || !Number.isFinite(item) || item < 0 || item > Number.MAX_SAFE_INTEGER)) fail(`Montant ou quantité invalide : ${key}.`);
-    if (textFields.has(key) && typeof item !== 'string') fail(`Texte invalide : ${key}.`);
-    if (booleanFields.has(key) && typeof item !== 'boolean') fail(`Indicateur invalide : ${key}.`);
-    if (dateFields.has(key) && (typeof item !== 'string' || (item !== '' && (!/^\d{4}-\d{2}-\d{2}$/.test(item) || !Number.isFinite(Date.parse(item)) || new Date(item).toISOString().slice(0,10) !== item)))) fail(`Date invalide : ${key}.`);
-    if (timestampFields.has(key) && (typeof item !== 'string' || (item !== '' && !Number.isFinite(Date.parse(item))))) fail(`Horodatage invalide : ${key}.`);
+    if (amounts.has(key) && (typeof item !== 'number' || !Number.isFinite(item) || item < 0 || item > Number.MAX_SAFE_INTEGER)) fail(`Montant ou quantité invalide : ${field}.`);
+    if ((textFields.has(key) || (path === 'facture' && legacySellerTextFields.has(key))) && typeof item !== 'string') fail(`Texte invalide : ${field} (chaîne ou null attendu).`);
+    if (booleanFields.has(key) && typeof item !== 'boolean') fail(`Indicateur invalide : ${field}.`);
+    if (dateFields.has(key) && (typeof item !== 'string' || (item !== '' && (!/^\d{4}-\d{2}-\d{2}$/.test(item) || !Number.isFinite(Date.parse(item)) || new Date(item).toISOString().slice(0,10) !== item)))) fail(`Date invalide : ${field}.`);
+    if (timestampFields.has(key) && (typeof item !== 'string' || (item !== '' && !Number.isFinite(Date.parse(item))))) fail(`Horodatage invalide : ${field}.`);
   }
 }
 export function validateInvoice(invoice) {
@@ -42,11 +46,11 @@ export function validateInvoice(invoice) {
   fields(invoice);
   if (invoice.status != null && !['draft','unpaid','paid'].includes(invoice.status)) fail('Statut de paiement non pris en charge.');
   for (const key of ['seller','buyer','client','totals']) {
-    if (invoice[key] != null) { if (!object(invoice[key])) fail(`Objet invalide : ${key}.`); fields(invoice[key]); }
+    if (invoice[key] != null) { if (!object(invoice[key])) fail(`Objet invalide : ${key}.`); fields(invoice[key], key); }
   }
   if (invoice.lines != null) {
     if (!Array.isArray(invoice.lines) || invoice.lines.length > 100) fail('Lignes de facture invalides (100 maximum).');
-    invoice.lines.forEach(line => { if (!object(line)) fail('Ligne de facture invalide.'); fields(line); });
+    invoice.lines.forEach((line, index) => { if (!object(line)) fail('Ligne de facture invalide.'); fields(line, `lines[${index}]`); });
   }
   if (invoice.statuses != null && (!Array.isArray(invoice.statuses) || invoice.statuses.some(s => typeof s !== 'string'))) fail('Liste de statuts invalide.');
 }
@@ -126,8 +130,14 @@ export function previewRestore(incoming, current) {
 }
 export function confirmRestore(preview, read, write) {
   const current = readCurrentInvoices(read);
-  if (current.raw !== preview.raw) return { kind: 'changed', preview: previewRestore(preview.incoming, current) };
-  if (!preview.additions.length) return { kind: 'nothing' };
-  try { write(preview.serialized); } catch { fail('La sauvegarde n’a pas pu être restaurée (quota ou stockage indisponible). Les factures précédentes sont conservées.'); }
-  return { kind: 'written', invoices: [...current.invoices, ...preview.additions], count: preview.additions.length };
+  // Recompute validation, identities and the payload even when storage did not
+  // change. Never trust additions or serialized data cached by the UI preview.
+  const final = previewRestore(preview.incoming, current);
+  if (current.raw !== preview.raw || final.serialized !== preview.serialized ||
+      canonical(final.counts) !== canonical(preview.counts) || canonical(final.issues) !== canonical(preview.issues)) {
+    return { kind: 'changed', preview: final };
+  }
+  if (!final.additions.length) return { kind: 'nothing' };
+  try { write(final.serialized); } catch { fail('La sauvegarde n’a pas pu être restaurée (quota ou stockage indisponible). Les factures précédentes sont conservées.'); }
+  return { kind: 'written', invoices: [...current.invoices, ...final.additions], count: final.additions.length };
 }
