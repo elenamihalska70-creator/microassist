@@ -1,0 +1,42 @@
+{
+  "format": "microassist.local-invoices",
+  "version": 1,
+  "exportedAt": "2026-10-24T10:00:00Z",
+  "invoices": [
+    {
+      "invoice_number": "NO-ID",
+      "description": "Historique sans identité"
+    },
+    {
+      "id": 42,
+      "invoice_number": "SAME-NUMBER",
+      "client_name": "Élodie François — тест",
+      "client_address": "Київ, ї є ґ і",
+      "description": "тест",
+      "amount": 9.96,
+      "invoice_date": "2026-10-24",
+      "due_date": "2026-11-24",
+      "status": "paid",
+      "paid_at": "2026-10-24T10:00:00Z",
+      "legacyMetadata": {
+        "note": "à conserver"
+      }
+    },
+    {
+      "id": "account-owned",
+      "invoice_number": "SAME-NUMBER",
+      "client_name": "Élodie François — тест",
+      "client_address": "Київ, ї є ґ і",
+      "description": "тест",
+      "amount": 9.96,
+      "invoice_date": "2026-10-24",
+      "due_date": "2026-11-24",
+      "status": "paid",
+      "paid_at": "2026-10-24T10:00:00Z",
+      "legacyMetadata": {
+        "note": "à conserver"
+      },
+      "user_id": "synthetic-account"
+    }
+  ]
+}

@@ -67,6 +67,7 @@ import MainNavigation from "./navigation/MainNavigation.jsx";
 import { resolveNavigationLocation } from "./navigation/navigationLocation.js";
 import ModalFocusBoundary from "./components/profile/ModalFocusBoundary.jsx";
 import LocalInvoiceStatus from "./components/LocalInvoiceStatus.jsx";
+import LocalInvoiceBackup from "./components/LocalInvoiceBackup.jsx";
 import { readLocalInvoices } from "./application/invoices/localInvoiceStatus.js";
 import { selectProfileModal, canApplyProfileConflictChoice, authProfileResolutionMessage } from "./application/profile/profileModalState.js";
 import {
@@ -15605,6 +15606,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 )}
 
                 <LocalInvoiceStatus userId={user?.id ?? null} invoices={guestInvoices} onStorageChange={setGuestInvoices} />
+                <LocalInvoiceBackup key={user?.id ?? "guest"} onRestored={setGuestInvoices} />
 
                 {invoiceNotice && (
                   <div className="saveNotice" style={{ marginTop: 16, width: "100%" }}>

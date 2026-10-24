@@ -1,0 +1,61 @@
+{
+  "format": "microassist.local-invoices",
+  "version": 1,
+  "exportedAt": "2026-10-24T10:00:00Z",
+  "invoices": [
+    {
+      "id": "classic-backup",
+      "invoice_number": "SAME-NUMBER",
+      "client_name": "Élodie François — тест",
+      "client_address": "Київ, ї є ґ і",
+      "description": "тест",
+      "amount": 9.96,
+      "invoice_date": "2026-10-24",
+      "due_date": "2026-11-24",
+      "status": "paid",
+      "paid_at": "2026-10-24T10:00:00Z",
+      "legacyMetadata": {
+        "note": "à conserver"
+      }
+    },
+    {
+      "invoiceNumber": "SAME-NUMBER",
+      "issueDate": "2026-10-23",
+      "dueDate": "2026-11-23",
+      "seller": {
+        "name": "Élodie François",
+        "email": "elodie@example.test",
+        "address": "10 rue de la République, Besançon",
+        "siret": "12345678901234"
+      },
+      "buyer": {
+        "name": "тест\nТестовий клієнт — Київ, ї є ґ і",
+        "address": "тест",
+        "email": "synthetic@example.test"
+      },
+      "lines": [
+        {
+          "description": "тест — Élodie François",
+          "quantity": 1,
+          "unitPrice": 9.96,
+          "totalHT": 9.96,
+          "totalTVA": 0,
+          "totalTTC": 9.96,
+          "vatRate": 0
+        }
+      ],
+      "totals": {
+        "totalHT": 9.96,
+        "totalTVA": 0,
+        "totalTTC": 9.96
+      },
+      "id": "fx-backup",
+      "invoice_number": "SAME-NUMBER",
+      "localOnly": true,
+      "formatStatus": "facturx_ready_draft",
+      "transmissionStatus": "not_transmitted",
+      "status": "paid",
+      "paid_at": "2026-10-24T10:00:00Z"
+    }
+  ]
+}
