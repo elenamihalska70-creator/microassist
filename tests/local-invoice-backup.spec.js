@@ -79,7 +79,7 @@ test('export only local raw invoices, restore in a separate guest context, repea
   await other.getByRole('navigation',{name:'Navigation principale'}).getByRole('button',{name:'Factures',exact:true}).click();
   await select(other,exported);await expect(other.getByText(/2 ajout\(s\) possible\(s\)/)).toBeVisible();expect(await raw(other)).toBeNull();
   await confirm(other).click();await expect.poll(()=>raw(other).then(JSON.parse)).toEqual(sample.invoices);
-  await expect(other.getByTestId('local-invoice-status')).toContainText('restent sur cet appareil');
+  await expect(other.getByTestId('local-invoice-status')).toContainText('dans ce navigateur');
   await select(other,exported);await expect(other.getByText(/0 ajout\(s\).*2 doublon\(s\)/)).toBeVisible();await expect(confirm(other)).toBeDisabled();
   await other.getByRole('button',{name:'Annuler la restauration',exact:true}).click();
   await other.reload();await onboarding.getByRole('button',{name:'Fermer l’onboarding'}).click();
@@ -113,7 +113,7 @@ test('source changed after preview requires renewed confirmation and reconciles 
  await confirm(page).click();await expect(page.getByText(/changé depuis l’aperçu/)).toBeVisible();expect(JSON.parse(await raw(page))).toHaveLength(1);
  await confirm(page).click();await expect.poll(()=>raw(page).then(JSON.parse).then(x=>x.length)).toBe(3);
  await other.getByRole('navigation',{name:'Navigation principale'}).getByRole('button',{name:'Factures',exact:true}).click();
- await expect(other.getByTestId('local-invoice-status')).toContainText('restent sur cet appareil');expect(JSON.parse(await raw(other))).toHaveLength(3);expect(attempts).toEqual([]);
+ await expect(other.getByTestId('local-invoice-status')).toContainText('dans ce navigateur');expect(JSON.parse(await raw(other))).toHaveLength(3);expect(attempts).toEqual([]);
 });
 
 for(const broken of ['invalid-current','inaccessible','quota']) {

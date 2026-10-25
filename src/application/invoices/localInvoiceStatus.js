@@ -1,5 +1,5 @@
 export const LOCAL_INVOICE_MESSAGES = {
-  local: "Tes factures restent sur cet appareil et n’ont pas été importées dans ton compte.",
+  local: "Tes nouvelles factures sont enregistrées dans ce navigateur, même après connexion. Elles n’ont pas été importées dans ton compte.",
   invalid: "Les données locales de factures n’ont pas pu être lues. Elles n’ont pas été importées. Ne réinitialise pas les données de cet appareil.",
   unavailable: "L’accès aux factures de cet appareil est indisponible. Aucun import automatique n’est effectué.",
 };

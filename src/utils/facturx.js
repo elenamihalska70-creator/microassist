@@ -1,11 +1,15 @@
 export const FACTURX_PREPARATION_LABEL =
-  "Facture électronique prête (Factur-X) — transmission via plateforme agréée prévue dans une prochaine version.";
+  "PDF et brouillon XML séparés";
 
 export const FACTURX_NOT_TRANSMITTED_NOTE =
   "Ce document contient un brouillon Factur-X. Il n’est pas encore transmis automatiquement via une plateforme agréée.";
 
 export const PDP_ROADMAP_NOTE =
-  "La connexion à une plateforme agréée sera ajoutée dans une prochaine version.";
+  "La transmission via une plateforme agréée n’est pas disponible dans cette version.";
+
+// UI/PDF copy is separate from the historical XML note, whose bytes stay unchanged.
+export const INVOICE_DOCUMENTS_NOTE =
+  "PDF et brouillon XML séparés, sans validation de conformité fiscale ni certification Factur-X/PDF/A-3.";
 
 export const TVA_EXEMPTION_MENTION =
   "TVA non applicable, art. 293 B du CGI";
@@ -144,7 +148,7 @@ export function getInvoiceComplianceScore(invoice = {}, profile = {}) {
 
   if (!hasValue(sellerSiret)) {
     alerts.push(
-      "⚠️ SIRET manquant : complète ton profil pour rendre cette facture conforme.",
+      "⚠️ SIRET vendeur non renseigné : complète ce champ. Un SIRET ne suffit pas à valider la conformité fiscale du document.",
     );
   }
 

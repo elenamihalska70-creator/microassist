@@ -3,7 +3,7 @@ import jsPDF from "jspdf";
 import { loadInvoicePdfFonts } from "../utils/invoicePdfFonts.js";
 import { InvoicePdfError, invoicePdfErrorMessage } from "../utils/invoicePdfErrors.js";
 import {
-  FACTURX_NOT_TRANSMITTED_NOTE,
+  INVOICE_DOCUMENTS_NOTE,
   FACTURX_PREPARATION_LABEL,
   PDP_ROADMAP_NOTE,
   TVA_EXEMPTION_MENTION,
@@ -180,7 +180,7 @@ export async function generateB2CInvoicePdf(invoice, { userEmail = "", isCurrent
   const sellerRows = partyRows("Émetteur", [seller.name || SELLER_NAME,
     seller.email || SELLER_EMAIL || userEmail || "Email non renseigne",
     seller.address || SELLER_ADDRESS,
-    seller.siret ? `SIRET : ${seller.siret}` : "Facture non conforme (SIRET manquant)",
+    seller.siret ? `SIRET : ${seller.siret}` : "SIRET vendeur non renseigné",
     seller.vatNumber ? `TVA : ${seller.vatNumber}` : ""]);
   const buyerRows = partyRows("Client", [buyer.name || "—", buyer.address, buyer.email,
     buyer.siret ? `SIRET : ${buyer.siret}` : "", buyer.vatNumber ? `TVA : ${buyer.vatNumber}` : ""]);
@@ -242,7 +242,8 @@ export async function generateB2CInvoicePdf(invoice, { userEmail = "", isCurrent
   y += 19 + totalHeight + 10;
   if (exemptionReason) textBlock(exemptionReason, 8.5);
   textBlock(`Date d'échéance : ${formatDateFr(invoice.dueDate || invoice.due_date)}`, 8.5);
-  textBlock(FACTURX_NOT_TRANSMITTED_NOTE, 8.5);
+  textBlock(INVOICE_DOCUMENTS_NOTE, 8.5);
+  textBlock(PDP_ROADMAP_NOTE, 8.5);
 
   const pages = doc.getNumberOfPages();
   for (let page = 1; page <= pages; page++) {
@@ -440,7 +441,7 @@ export default function InvoiceGenerator({
             localOnly: true,
           },
           message:
-            "Facture préparée en brouillon Factur-X. PDF et XML ont été téléchargés.",
+            "Facture enregistrée dans ce navigateur. Téléchargements du PDF et du brouillon XML déclenchés.",
         });
       }
     } catch (err) {
@@ -688,7 +689,7 @@ export default function InvoiceGenerator({
         <div className="revenuePreview" style={{ marginTop: 12 }}>
           <div className="previewTitle">{FACTURX_PREPARATION_LABEL}</div>
           <p className="muted" style={{ margin: "6px 0 0" }}>
-            {FACTURX_NOT_TRANSMITTED_NOTE}
+            {INVOICE_DOCUMENTS_NOTE}
           </p>
           <p className="muted" style={{ margin: "6px 0 0" }}>
             {PDP_ROADMAP_NOTE}
@@ -716,7 +717,7 @@ export default function InvoiceGenerator({
             disabled={saving}
             type="button"
           >
-            {saving ? "Préparation..." : "Créer facture compatible 2026"}
+            {saving ? "Préparation..." : "Créer et télécharger PDF + XML"}
           </button>
         </div>
       </div>
@@ -749,7 +750,9 @@ export default function InvoiceGenerator({
             </div>
 
             <p className="muted" style={{ marginTop: 8 }}>
-              Pour créer une facture conforme, complète ton SIRET.
+              Le SIRET vendeur n’est pas renseigné. Tu peux compléter ce champ ou
+              continuer en brouillon. Un SIRET ne suffit pas à valider la conformité
+              fiscale du document.
             </p>
 
             <div className="miniActions" style={{ marginTop: 16 }}>

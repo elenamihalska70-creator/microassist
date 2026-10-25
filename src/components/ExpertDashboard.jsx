@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import jsPDF from "jspdf";
 import {
-  FACTURX_NOT_TRANSMITTED_NOTE,
+  INVOICE_DOCUMENTS_NOTE,
   FACTURX_PREPARATION_LABEL,
   PDP_ROADMAP_NOTE,
   TVA_EXEMPTION_MENTION,
@@ -314,7 +314,7 @@ function generateExpertInvoicePdf(client, invoice) {
     doc.text(invoice.vatExemptionReason, 20, totalY + 18);
   }
   doc.text(invoice.paymentTerms || "Conditions de paiement à compléter", 20, totalY + 28);
-  doc.text(FACTURX_NOT_TRANSMITTED_NOTE, 20, totalY + 40);
+  doc.text(doc.splitTextToSize(`${INVOICE_DOCUMENTS_NOTE} ${PDP_ROADMAP_NOTE}`, pageWidth - 40), 20, totalY + 40);
 
   doc.setFillColor(248, 250, 252);
   doc.rect(0, pageHeight - 27, pageWidth, 27, "F");
@@ -1104,7 +1104,7 @@ export default function ExpertDashboard() {
               </div>
 
               <div className="expertFacturxNotice">
-                {FACTURX_NOT_TRANSMITTED_NOTE}
+                {INVOICE_DOCUMENTS_NOTE}
               </div>
 
               {invoiceError && (

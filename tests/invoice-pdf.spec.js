@@ -105,7 +105,7 @@ test('Unicode creation and list redownload preserve PDF/XML and local invoice da
   await page.getByLabel('Raison sociale vendeur',{exact:true}).fill('Élodie François');
   await page.getByLabel('Adresse vendeur',{exact:true}).fill('10 rue de la République, Besançon');
   const downloads=[];page.on('download',d=>downloads.push(d));
-  await page.getByRole('button',{name:'Créer facture compatible 2026',exact:true}).click();
+  await page.getByRole('button',{name:'Créer et télécharger PDF + XML',exact:true}).click();
   await expect.poll(()=>downloads.length).toBe(2);
   await mkdir(artifactDir,{recursive:true});
   await downloads.find(d=>d.suggestedFilename().endsWith('.pdf')).saveAs(`${artifactDir}/created.pdf`);
@@ -155,7 +155,7 @@ test('unsupported creation retains input with useful guidance, zero storage/down
   const attempts=await setup(context,'[]');await syntheticSellerEmail(page);
   const downloads=[];page.on('download',d=>downloads.push(d));
   await page.goto('/');await openInvoices(page);await fillPdfForm(page,'🙂');
-  const create=page.getByRole('button',{name:'Créer facture compatible 2026',exact:true});
+  const create=page.getByRole('button',{name:'Créer et télécharger PDF + XML',exact:true});
   await create.click();
   await expect(page.getByRole('alert')).toContainText('« 🙂 » (U+1F642)');
   await expect(page.getByRole('alert')).toContainText('champ « Client »');
@@ -192,7 +192,7 @@ test('font failure on creation produces no partial output, then retry succeeds w
   });
   page.on('download',d=>downloads.push(d));
   await page.goto('/');await openInvoices(page);await fillPdfForm(page);expect(fonts).toEqual([]);
-  const create=page.getByRole('button',{name:'Créer facture compatible 2026',exact:true});await create.click();
+  const create=page.getByRole('button',{name:'Créer et télécharger PDF + XML',exact:true});await create.click();
   await expect(page.getByRole('alert')).toContainText('polices du PDF n’ont pas pu être chargées');
   await expect(create).toBeEnabled();expect(fonts).toHaveLength(2);expect(downloads).toEqual([]);
   expect(await page.evaluate(()=>localStorage.getItem('guest_invoices'))).toBe('[]');
@@ -226,7 +226,7 @@ test('notice PDF handles general render failure and retries without changing sto
     await route.fulfill({response,body:source});
   });
   const downloads=[];page.on('download',d=>downloads.push(d));await page.goto('/');await openInvoices(page);await fillPdfForm(page);
-  await page.getByRole('button',{name:'Créer facture compatible 2026',exact:true}).click();await expect.poll(()=>downloads.length).toBe(2);
+  await page.getByRole('button',{name:'Créer et télécharger PDF + XML',exact:true}).click();await expect.poll(()=>downloads.length).toBe(2);
   const raw=await page.evaluate(()=>localStorage.getItem('guest_invoices'));
   await page.evaluate(()=>{window.__syntheticPdfFailure=true;});
   const notice=page.getByRole('button',{name:'Télécharger la facture',exact:true});await notice.click();
@@ -244,7 +244,7 @@ for (const transition of ['cancel-reopen','auth-unmount']) {
     await context.route('**/*.ttf',async route=>{fonts.push(route.request().url());await fontGate;await route.continue();});
     page.on('download',d=>downloads.push(d));
     await page.goto('/');await openInvoices(page);await fillPdfForm(page,'Client annulé');
-    await page.getByRole('button',{name:'Créer facture compatible 2026',exact:true}).click();
+    await page.getByRole('button',{name:'Créer et télécharger PDF + XML',exact:true}).click();
     await expect.poll(()=>fonts.length).toBe(2);
     await expect(page.getByRole('button',{name:'Préparation...',exact:true})).toBeDisabled();
     if(transition==='cancel-reopen') {
@@ -270,12 +270,12 @@ for (const transition of ['cancel-reopen','auth-unmount']) {
     });
     await expect(page.getByLabel('Client *',{exact:true})).toHaveValue('Nouveau client intact');
     await expect(page.getByLabel('Prestation *',{exact:true})).toHaveValue('тест — Élodie François');
-    await expect(page.getByRole('button',{name:'Créer facture compatible 2026',exact:true})).toBeEnabled();
+    await expect(page.getByRole('button',{name:'Créer et télécharger PDF + XML',exact:true})).toBeEnabled();
     expect(downloads).toEqual([]);expect(await page.evaluate(()=>localStorage.getItem('guest_invoices'))).toBe('[]');
     await expect(page.getByRole('button',{name:'Télécharger la facture',exact:true})).toHaveCount(0);
     await expect(page.getByRole('alert')).toHaveCount(0);
     // The cancelled operation did not abort shared loading or poison its cache.
-    await page.getByRole('button',{name:'Créer facture compatible 2026',exact:true}).click();
+    await page.getByRole('button',{name:'Créer et télécharger PDF + XML',exact:true}).click();
     await expect.poll(()=>downloads.length).toBe(2);expect(fonts).toHaveLength(2);
     const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('guest_invoices')));
     expect(stored).toHaveLength(1);expect(stored[0].buyer.name).toBe('Nouveau client intact');

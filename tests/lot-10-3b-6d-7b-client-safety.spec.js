@@ -3,7 +3,7 @@ import { Buffer } from "node:buffer";
 
 const key = "guest_invoices";
 const mixed = '[ {"id":"classic","invoice_number":"CLASSIC","amount":10}, {"id":"fx","invoice_number":"FX","amount":20,"formatStatus":"facturx_ready_draft","localOnly":true} ]';
-const message = "Tes factures restent sur cet appareil et n’ont pas été importées dans ton compte.";
+const message = "Tes nouvelles factures sont enregistrées dans ce navigateur, même après connexion. Elles n’ont pas été importées dans ton compte.";
 async function setup(context, raw = mixed, onProfileRead = () => {}) {
   const attempts = [];
   // No external request may reach a real service, including Supabase.
@@ -186,7 +186,7 @@ test("local Factur-X creation still produces a draft and downloads", async ({ co
   await expect(page.getByLabel("Prix unitaire HT (€) *", { exact: true })).toHaveValue("10");
   const downloads = [];
   page.on("download", download => downloads.push(download));
-  await page.getByRole("button", { name: "Créer facture compatible 2026", exact: true }).click();
+  await page.getByRole("button", { name: "Créer et télécharger PDF + XML", exact: true }).click();
   await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem("guest_invoices"))).then(items => items.length)).toBe(1);
   const [invoice] = await page.evaluate(() => JSON.parse(localStorage.getItem("guest_invoices")));
   expect(invoice.formatStatus).toBe("facturx_ready_draft");

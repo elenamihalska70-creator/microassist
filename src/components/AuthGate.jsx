@@ -739,7 +739,7 @@ export default function AuthGate({
           {mode === "recovery"
             ? "Le lien reçu par email ouvre cette étape de réinitialisation sécurisée."
             : mode === "signup"
-            ? "Ton compte gratuit te permet de synchroniser ton espace fiscal sur plusieurs appareils."
+            ? "Ton compte gratuit permet de synchroniser le profil fiscal et les revenus. Les nouvelles factures restent dans ce navigateur, même après connexion."
             : "Si tu as oublié ton mot de passe, utilise le lien de réinitialisation ci-dessus."}
         </p>
 

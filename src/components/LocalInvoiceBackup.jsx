@@ -61,6 +61,7 @@ export default function LocalInvoiceBackup({ onRestored }) {
   }
   return <section aria-label="Sauvegarde des factures locales" style={{ marginTop: 16 }}>
     <p>Le fichier contient les informations des clients. Conserve-le dans un endroit sûr. La sauvegarde et la restauration restent sur cet appareil, sans import dans un compte.</p>
+    <p>Pour transférer manuellement tes factures vers un autre navigateur ou appareil, exporte une sauvegarde JSON puis restaure-la à destination.</p>
     <div className="miniActions" style={{ flexWrap: 'wrap' }}>
       <button type="button" className="btn btnActionSecondary" onClick={exportInvoices}>Sauvegarder les factures de cet appareil</button>
       <button type="button" className="btn btnActionSecondary" onClick={() => { setOpen(true); setMessage(''); setError(''); }}>Restaurer une sauvegarde</button>

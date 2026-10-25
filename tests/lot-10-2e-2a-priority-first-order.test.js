@@ -88,7 +88,7 @@ test("the page heading ('Mon espace fiscal') still renders before PriorityCard, 
 test("ADDITIVE: none of the moved surfaces were deleted -- founder banner, all 4 discovery-banner variants, and the inline Premium banner are all still present", () => {
   const source = dashboardBranchSource();
   assert.match(source, /Offre fondateur/);
-  assert.match(source, /Session temporaire/); // guest discovery variant
+  assert.match(source, /Session invitée/); // guest discovery variant, with scoped storage copy
   assert.match(source, /Ton mode découverte se termine aujourd’hui/); // early_access_ending variant
   assert.match(source, /Mode découverte activé/); // isEarlyFullAccess variant
   assert.match(source, /Certaines fonctionnalités sont maintenant en Premium/); // post_early_access variant

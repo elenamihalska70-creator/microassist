@@ -52,6 +52,7 @@ import autoTable from "jspdf-autotable";
 import InvoiceGenerator from "./components/InvoiceGenerator.jsx";
 import InvoicePdfDownloadButton from "./components/InvoicePdfDownloadButton.jsx";
 import {
+  INVOICE_DOCUMENTS_NOTE,
   PDP_ROADMAP_NOTE,
   TVA_EXEMPTION_MENTION,
   downloadTextFile,
@@ -5673,7 +5674,7 @@ useEffect(() => {
       ? `Bonjour ${authGreetingName} 👋`
       : "Bonjour 👋";
   const trustBadgeLabel = user
-    ? "🔒 Profil, revenus et historique sécurisés dans ton espace"
+    ? "🔒 Profil et revenus dans ton compte • nouvelles factures dans ce navigateur"
     : "🖥️ Test sans compte : données conservées sur cet appareil.";
   const connectedAccountLabel = user?.email?.trim() || "";
   const fiscalProfilePageMode = hasProfileCore
@@ -7345,7 +7346,7 @@ useEffect(() => {
     }
 
     if (!user && visibleInvoices.length > 0) {
-      return "Pense à sécuriser ton compte pour conserver les factures.";
+      return "Pense à sauvegarder les factures de ce navigateur.";
     }
 
     if (revenues.length > 0 && revenues.length < 5) {
@@ -7697,7 +7698,7 @@ useEffect(() => {
       case "premium_active":
         return {
           line1: "⭐ Premium actif",
-          line2: "Ton espace est synchronisé et Premium débloque les options avancées.",
+          line2: "Profil et revenus synchronisés ; nouvelles factures dans ce navigateur. Premium débloque les options avancées.",
           line3: "",
           cta: "Gérer mes rappels",
         };
@@ -10860,8 +10861,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
           <div className="dashboardSectionHeaderMain">
             <h3>Identité de facturation</h3>
             <p className="muted" style={{ marginTop: 6 }}>
-              Le SIRET peut être complété dès réception pour créer des factures
-              conformes.
+              Complète le SIRET dès réception pour renseigner l’identité du vendeur.
+              Ce champ seul ne valide pas la conformité fiscale des factures.
             </p>
           </div>
         </div>
@@ -12004,7 +12005,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
             </div>
             {!user && (
             <p className="muted" style={{ margin: "10px 0 0", fontSize: 13 }}>
-              Tes données restent temporaires tant que ton compte n’est pas créé.
+              Sans compte, tes données restent dans ce navigateur. Le compte permet
+              de synchroniser le profil et les revenus ; les nouvelles factures restent locales.
             </p>
             )}
           </div>
@@ -12261,7 +12263,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   </div>
                   <ul className="pricingAccessList">
                     <li>Historique sécurisé</li>
-                    <li>Synchronisation multi-appareils</li>
+                    <li>Profil et revenus synchronisés • nouvelles factures locales</li>
                     <li>Récupération après refresh</li>
                     <li>Mon espace fiscal personnel</li>
                   </ul>
@@ -14751,13 +14753,14 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               {!isPremiumUser && isGuest ? (
                 <div className="discoveryBanner">
                   <div className="discoveryBannerTitle">
-                    Session temporaire — crée ton compte pour sauvegarder ton suivi.
+                    Session invitée — données dans ce navigateur
                   </div>
                   <div className="discoveryBannerText">
-                    Tes données restent temporaires tant que ton compte n’est pas créé.
+                    Le compte permet de synchroniser le profil et les revenus ;
+                    les nouvelles factures restent dans ce navigateur.
                   </div>
                   <div className="dashboardHelperText" style={{ marginTop: 8 }}>
-                    Crée un compte pour retrouver ton espace plus tard.
+                    Crée un compte pour retrouver ton profil et tes revenus plus tard.
                   </div>
                   <div className="discoveryBannerActions">
                     <button
@@ -15542,7 +15545,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   </div>
                   <div className="journalFilters dashboardSectionActions">
                     <span className="einvoicingBadge">
-                      Facture électronique prête (brouillon Factur-X)
+                      PDF et brouillon XML séparés
                     </span>
                     <button
                       className="btn btnActionUtility btnSmall"
@@ -15563,17 +15566,12 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
                 <div className="einvoicingInfoCard">
                   <div>
-                    <h3>Anticipe la facture électronique</h3>
+                    <h3>Prépare tes documents de facturation</h3>
                     <p>
-                      Microassist t’aide à créer des factures claires et
-                      cohérentes avec tes revenus. Tu peux déjà générer un PDF
-                      et préparer un brouillon Factur-X. La transmission
-                      automatique via une plateforme agréée sera ajoutée plus
-                      tard.
+                      {INVOICE_DOCUMENTS_NOTE}
                     </p>
                     <p className="einvoicingTrustNote">
-                      Important : ce document n’est pas encore transmis
-                      automatiquement via une plateforme agréée.
+                      {PDP_ROADMAP_NOTE}
                     </p>
                   </div>
                   <button
@@ -15630,7 +15628,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                               type="button"
                               onClick={() => openAuthModal("signup")}
                             >
-                              Créer mon compte pour garder cette facture
+                              Créer mon compte
                             </button>
                           </div>
                         )}
@@ -15684,12 +15682,12 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                         complianceScore.status === "conforme"
                           ? {
                               className: "badgeGreen",
-                              label: "✅ Conforme",
+                              label: "✅ Champs contrôlés renseignés",
                             }
                           : complianceScore.status === "bloquant"
                             ? {
                                 className: "badgeYellow",
-                                label: "❌ Bloquant",
+                                label: "❌ Champs à compléter",
                               }
                             : {
                                 className: "badgeYellow",
@@ -15746,14 +15744,17 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                             </div>
                           )}
                           <div>
-                            <strong>Score conformité :</strong>{" "}
+                            <strong>Indicateur de complétude :</strong>{" "}
                             {complianceScore.score}/100
+                          </div>
+                          <div className="muted">
+                            Cet indicateur ne valide pas la conformité fiscale ni Factur-X/PDF/A-3.
                           </div>
                           {complianceScore.alerts.map((alert) => (
                             <div key={alert}>{alert}</div>
                           ))}
                         </div>
-                        <div className="revenueActions">
+                        <div className="revenueActions" style={{ flexWrap: "wrap" }}>
                           <span
                             className={`badge ${
                               getInvoicePaymentStatus(invoice) === "paid"
@@ -15771,9 +15772,9 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                             {complianceBadge.label}
                           </span>
                           <span className="badge badgeGreen">PDF prêt</span>
-                          {invoice.localOnly && (
+                          {origin === "local" && (
                             <span className="badge badgeGray">
-                              Locale • non enregistrée
+                              Enregistrée dans ce navigateur
                             </span>
                           )}
                           {isFacturXDraftInvoice(invoice) && (
@@ -16722,7 +16723,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 invoiceCount: visibleInvoices.length + 1,
               });
               showSuccessToast(
-                "✅ Facture créée. Elle est maintenant disponible dans ton suivi.",
+                "✅ Facture enregistrée dans ce navigateur. Téléchargements PDF et XML déclenchés.",
                 4000,
               );
               setGuestInvoices((prev) => {
@@ -16735,7 +16736,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 title: "Facture créée ✅",
                 body:
                   message ||
-                  "Elle est maintenant disponible dans ton suivi. PDF et XML peuvent être téléchargés depuis la liste.",
+                  "Facture enregistrée dans ce navigateur. Téléchargements du PDF et du brouillon XML déclenchés.",
                 invoice,
                 cta: user ? null : "auth",
               });

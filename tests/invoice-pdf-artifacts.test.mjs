@@ -57,7 +57,9 @@ for (const name of ['short','long','created','list']) {
     }
     const text=allText.join(' ').replace(/\s+/g,' ');
     for(const expected of ['тест','Тестовий клієнт — Київ, ї є ґ і','Élodie François','9,96 €']) assert.ok(text.includes(expected),`missing exact text: ${expected}`);
-    assert.ok(text.includes('Ce document contient un brouillon Factur-X.'));
+    assert.ok(text.includes('PDF et brouillon XML séparés'));
+    assert.ok(text.includes('sans validation de conformité fiscale ni certification Factur-X/PDF/A-3.'));
+    assert.ok(text.includes('La transmission via une plateforme agréée n’est pas disponible dans cette version.'));
     if(name==='long') { assert.ok(document.numPages>1);assert.ok(text.includes('FIN-DESCRIPTION')); }
     else assert.equal(document.numPages,1);
     if (['short','long'].includes(name)) {
