@@ -2764,17 +2764,14 @@ section[id] {
   backdrop-filter: blur(10px);
 }
 
-.dashboardMobileActionSpacer,
-.dashboardMobileActionBar {
+/* The hidden state must also win over the mobile display rule below. */
+.dashboardMobileActionBar,
+.dashboardMobileActionBar[hidden] {
   display: none;
 }
 
 .dashboardMobileActionBar {
-  position: fixed;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-  z-index: 1200;
+  margin-top: 12px;
   padding: 10px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.92);
@@ -4075,10 +4072,6 @@ section[id] {
     right: 12px !important;
     width: auto !important;
     transform: none !important;
-  }
-  .dashboardMobileActionSpacer {
-    display: block;
-    height: 82px;
   }
   .dashboardMobileActionBar {
     display: block;

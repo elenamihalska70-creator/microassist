@@ -11586,22 +11586,23 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     completionCurrent: profileCompletionOwnerRef.current === profileDraftSessionRef.current,
   });
 
-  useEffect(() => {
-    const isAnyModalOpen = Boolean(
-        activeProfileModal ||
-        showCGU ||
-        showPrivacy ||
-        showPricingModal ||
-        showFutureAdvancedModal ||
-        showResetModal ||
-        showCashImpactModal ||
-        showTVADiagnosticModal ||
-        explanationModalType ||
-        showReminderModal ||
-        showAddRevenue ||
-        showInvoiceGenerator,
-    );
+  const isAnyModalOpen = Boolean(
+    activeProfileModal ||
+    showCGU ||
+    showPrivacy ||
+    showPricingModal ||
+    showFutureAdvancedModal ||
+    showResetModal ||
+    showCashImpactModal ||
+    showTVADiagnosticModal ||
+    (showDeclarationConfirmModal && declarationConfirmForm) ||
+    explanationModalType ||
+    showReminderModal ||
+    showAddRevenue ||
+    showInvoiceGenerator,
+  );
 
+  useEffect(() => {
     document.body.style.overflow = isAnyModalOpen ? "hidden" : "";
     document.documentElement.style.overflow = isAnyModalOpen ? "hidden" : "";
 
@@ -11609,20 +11610,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
       document.body.style.overflow = "";
       document.documentElement.style.overflow = "";
     };
-  }, [
-    activeProfileModal,
-    explanationModalType,
-    showAddRevenue,
-    showCGU,
-    showCashImpactModal,
-    showFutureAdvancedModal,
-    showInvoiceGenerator,
-    showPricingModal,
-    showPrivacy,
-    showReminderModal,
-    showResetModal,
-    showTVADiagnosticModal,
-  ]);
+  }, [isAnyModalOpen]);
 
   const legalPage = LEGAL_PAGES[currentPath];
 
@@ -15852,18 +15840,15 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               </div>
 
               {dashboardFloatingAction && (
-                <>
-                  <div className="dashboardMobileActionSpacer" aria-hidden="true" />
-                  <div className="dashboardMobileActionBar">
-                    <button
-                      className="btn btnActionPrimary"
-                      type="button"
-                      onClick={dashboardFloatingAction.onClick}
-                    >
-                      {dashboardFloatingAction.cta}
-                    </button>
-                  </div>
-                </>
+                <div className="dashboardMobileActionBar" hidden={isAnyModalOpen}>
+                  <button
+                    className="btn btnActionPrimary"
+                    type="button"
+                    onClick={dashboardFloatingAction.onClick}
+                  >
+                    {dashboardFloatingAction.cta}
+                  </button>
+                </div>
               )}
             </section>
           ) : null}
