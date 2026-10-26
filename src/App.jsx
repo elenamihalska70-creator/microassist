@@ -16,6 +16,7 @@ import {
 } from "react"; // ✅ Добавляем useCallback
 import "./App.css";
 import "./components/InvoicePresentation.css";
+import "./components/RevenuePresentation.css";
 import CockpitOverview from "./components/dashboard/CockpitOverview.jsx";
 import CockpitAccess, { CockpitNavigation } from "./components/dashboard/CockpitAccess.jsx";
 import { FISCAL_STEPS } from "./config/steps.fiscal";
@@ -14866,6 +14867,9 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   </p>
                 </div>
                 <div className="journalFilters dashboardSectionActions">
+                  <button className="btn btnActionPrimary btnSmall" type="button" onClick={handleOpenRevenuePopup}>
+                    Ajouter un revenu
+                  </button>
                   <button
                     className="btn btnActionUtility btnSmall"
                     type="button"
@@ -14873,6 +14877,97 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   >
                     {dashboardSections.revenues ? "Voir tout" : "Réduire"}
                   </button>
+                  <select
+                    aria-label="Filtrer les revenus par mois"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="monthFilter"
+                  >
+                    <option value="all">Tous les mois</option>
+                    {monthOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {filteredRevenues.length === 0 ? (
+                <div className="emptyRevenueState">
+                  <div className="emptyRevenueIcon">🧾</div>
+                  <div className="emptyRevenueTitle">Ajoute ton premier revenu</div>
+                  <p className="muted">
+                    {selectedMonth === "all"
+                      ? "Plus tu ajoutes de revenus, plus tes estimations deviennent fiables."
+                      : "Aucune entrée pour ce mois."}
+                  </p>
+                </div>
+              ) : dashboardSections.revenues ? (
+                <div
+                  style={{
+                    padding: 16,
+                    borderRadius: 14,
+                    border: "1px solid #e2e8f0",
+                    background: "#ffffff",
+                    color: "#475569",
+                    marginTop: 12,
+                  }}
+                >
+                  Historique replié • {filteredRevenues.length} revenu
+                  {filteredRevenues.length > 1 ? "s" : ""} • Total{" "}
+                  {revenueSectionTotal.toLocaleString("fr-FR")} €
+                </div>
+              ) : (
+                <div className="revenuesList">
+                  {filteredRevenues.map((item) => (
+                    <div key={item.id} className="revenueItem">
+                      <div className="revenueMain">
+                        <div className="revenueAmount">
+                          {Number(item.amount).toLocaleString("fr-FR")} €
+                        </div>
+                        <div className="revenueDate">
+                          {formatRevenueDate(item.date)}
+                        </div>
+                      </div>
+                      <div className="revenueMeta">
+                        {item.revenue_category && (
+                          <div>
+                            <strong>Type :</strong>{" "}
+                            {getRevenueCategoryLabel(item.revenue_category)}
+                          </div>
+                        )}
+                        {item.client && (
+                          <div>
+                            <strong>Client :</strong> {item.client}
+                          </div>
+                        )}
+                        {item.invoice && (
+                          <div>
+                            <strong>Facture :</strong> {item.invoice}
+                          </div>
+                        )}
+                        {item.note && (
+                          <div>
+                            <strong>Note :</strong> {item.note}
+                          </div>
+                        )}
+                      </div>
+                      <div className="revenueActions">
+                        <button
+                          className="btn btnGhost btnSmall btnSubtleDanger"
+                          onClick={() => handleDeleteRevenue(item.id)}
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <section className="revenueExportTools" aria-label="Exports des revenus">
+                <h4>Exporter les revenus</h4>
+                <div className="miniActions">
                   <button
                     className="btn btnActionSecondary btnSmall"
                     type="button"
@@ -14948,113 +15043,14 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                     </span>
                   )}
 
-                  <select
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="monthFilter"
-                  >
-                    <option value="all">Tous les mois</option>
-                    {monthOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
                 </div>
-              </div>
-              <div
-                className="dashboardHelperText"
-              >
-                {exportHelperText}
-              </div>
-              <div className="dashboardHelperText">
-                Plus tu ajoutes de revenus, plus tes estimations deviennent fiables.
-              </div>
-              <div className="dashboardHelperText">
-                Saisie manuelle pour le moment. Connexion automatique (URSSAF/API)
-                prévue dans une prochaine version.
-              </div>
-              {renderBetaMicroFeedbackCard("revenues")}
-
-              {filteredRevenues.length === 0 ? (
-                <div className="emptyRevenueState">
-                  <div className="emptyRevenueIcon">🧾</div>
-                  <div className="emptyRevenueTitle">Ajoute ton premier revenu</div>
-                  <p className="muted">
-                    {selectedMonth === "all"
-                      ? "Plus tu ajoutes de revenus, plus tes estimations deviennent fiables."
-                      : "Aucune entrée pour ce mois."}
-                  </p>
-                  <button
-                    className="btn btnActionPrimary btnSmall"
-                    type="button"
-                    onClick={handleOpenRevenuePopup}
-                  >
-                    Ajouter un revenu
-                  </button>
-                </div>
-              ) : dashboardSections.revenues ? (
-                <div
-                  style={{
-                    padding: 16,
-                    borderRadius: 14,
-                    border: "1px solid #e2e8f0",
-                    background: "#ffffff",
-                    color: "#475569",
-                    marginTop: 12,
-                  }}
-                >
-                  Historique replié • {filteredRevenues.length} revenu
-                  {filteredRevenues.length > 1 ? "s" : ""} • Total{" "}
-                  {revenueSectionTotal.toLocaleString("fr-FR")} €
-                </div>
-              ) : (
-                <div className="revenuesList">
-                  {filteredRevenues.map((item) => (
-                    <div key={item.id} className="revenueItem">
-                      <div className="revenueMain">
-                        <div className="revenueAmount">
-                          {Number(item.amount).toLocaleString("fr-FR")} €
-                        </div>
-                        <div className="revenueDate">
-                          {formatRevenueDate(item.date)}
-                        </div>
-                      </div>
-                      <div className="revenueMeta">
-                        {item.revenue_category && (
-                          <div>
-                            <strong>Type :</strong>{" "}
-                            {getRevenueCategoryLabel(item.revenue_category)}
-                          </div>
-                        )}
-                        {item.client && (
-                          <div>
-                            <strong>Client :</strong> {item.client}
-                          </div>
-                        )}
-                        {item.invoice && (
-                          <div>
-                            <strong>Facture :</strong> {item.invoice}
-                          </div>
-                        )}
-                        {item.note && (
-                          <div>
-                            <strong>Note :</strong> {item.note}
-                          </div>
-                        )}
-                      </div>
-                      <div className="revenueActions">
-                        <button
-                          className="btn btnGhost btnSmall btnSubtleDanger"
-                          onClick={() => handleDeleteRevenue(item.id)}
-                        >
-                          Supprimer
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                <p className="dashboardHelperText">{exportHelperText}</p>
+              </section>
+              <details className="revenueExplanation">
+                <summary>Comprendre le suivi des revenus</summary>
+                <p>Plus tu ajoutes de revenus, plus tes estimations deviennent fiables.</p>
+                <p>Saisie manuelle pour le moment. Connexion automatique (URSSAF/API) prévue dans une prochaine version.</p>
+              </details>
 
               {/* Historique mensuel */}
               {monthlyHistory.length > 0 && (
@@ -15164,6 +15160,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 </div>
               )}
 
+              {renderBetaMicroFeedbackCard("revenues")}
               </div>
 
               {/* ===== MES FACTURES ===== */}

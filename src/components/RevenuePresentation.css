@@ -1,0 +1,24 @@
+/* Task A: only the revenue section is styled here. */
+#revenues-section { min-width: 0; background: #f7f4ee; color: #17362b; border: 1px solid #ded8cb; }
+#revenues-section *, #revenues-section *::before, #revenues-section *::after { box-sizing: border-box; }
+#revenues-section .dashboardSectionTitle { color: #065640; font-family: Georgia, 'Times New Roman', serif; }
+#revenues-section .dashboardSectionActions { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
+#revenues-section .btn { min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+#revenues-section .btnActionPrimary { background: #a95000; color: #fff; border-color: #a95000; }
+#revenues-section .btnActionPrimary:hover { background: #8a4100; border-color: #8a4100; }
+#revenues-section .btn:active { box-shadow: inset 0 0 0 2px currentColor; }
+#revenues-section :is(button,summary,select):focus-visible { outline: 3px solid #065640; outline-offset: 3px; }
+#revenues-section .monthFilter { max-width: 100%; min-width: 0; min-height: 44px; }
+#revenues-section .revenueMain { flex-wrap: wrap; gap: 8px; }
+#revenues-section .revenueDate { white-space: normal; overflow-wrap: anywhere; }
+#revenues-section .revenueMeta { overflow-wrap: anywhere; }
+#revenues-section .revenueItem { background: #fffdf8; border: 1px solid #ded8cb; border-radius: 12px; box-shadow: 0 2px 7px rgb(6 86 64 / 4%); }
+#revenues-section .revenueExportTools { margin-top: 18px; padding: 14px; border: 1px solid #ded8cb; border-radius: 10px; }
+#revenues-section .revenueExportTools h4 { margin: 0 0 10px; color: #065640; font: 700 18px/1.3 Georgia, 'Times New Roman', serif; }
+#revenues-section .revenueExportTools .miniActions { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
+#revenues-section .revenueExportTools span { white-space: normal !important; overflow-wrap: anywhere; max-width: 100%; }
+#revenues-section .revenueExplanation { margin-top: 14px; border-top: 1px solid #ded8cb; padding-top: 10px; }
+#revenues-section .revenueExplanation summary { cursor: pointer; min-height: 44px; padding: 10px 0; color: #065640; font-weight: 600; }
+#revenues-section .revenueExplanation p { line-height: 1.5; overflow-wrap: anywhere; max-width: 75ch; }
+@media (max-width: 520px) { #revenues-section .dashboardSectionActions { width: 100%; } #revenues-section .dashboardSectionActions .btn { flex: 1 1 130px; } #revenues-section .dashboardSectionActions .monthFilter { flex: 1 1 180px; min-width: 0; } }
+@media (prefers-reduced-motion: reduce) { #revenues-section *, #revenues-section *::before, #revenues-section *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
