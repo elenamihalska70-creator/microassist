@@ -15,6 +15,7 @@ import {
   useReducer,
 } from "react"; // ✅ Добавляем useCallback
 import "./App.css";
+import "./components/InvoicePresentation.css";
 import CockpitOverview from "./components/dashboard/CockpitOverview.jsx";
 import CockpitAccess, { CockpitNavigation } from "./components/dashboard/CockpitAccess.jsx";
 import { FISCAL_STEPS } from "./config/steps.fiscal";
@@ -15183,13 +15184,17 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                         : "Aucun impayé"}
                     </p>
                     <p className="dashboardSectionSubtitle">
-                      {PDP_ROADMAP_NOTE}
+                      Nouvelles factures : dans ce navigateur.
                     </p>
                   </div>
                   <div className="journalFilters dashboardSectionActions">
-                    <span className="einvoicingBadge">
-                      PDF et brouillon XML séparés
-                    </span>
+                    <button
+                      className="btn btnActionPrimary btnSmall"
+                      type="button"
+                      onClick={handleOpenInvoiceGenerator}
+                    >
+                      Créer une facture
+                    </button>
                     <button
                       className="btn btnActionUtility btnSmall"
                       type="button"
@@ -15197,33 +15202,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                     >
                       {dashboardSections.invoices ? "Voir tout" : "Réduire"}
                     </button>
-                    <button
-                      className="btn btnActionPrimary btnSmall"
-                      type="button"
-                      onClick={handleOpenInvoiceGenerator}
-                    >
-                      + Nouvelle facture
-                    </button>
                   </div>
-                </div>
-
-                <div className="einvoicingInfoCard">
-                  <div>
-                    <h3>Prépare tes documents de facturation</h3>
-                    <p>
-                      {INVOICE_DOCUMENTS_NOTE}
-                    </p>
-                    <p className="einvoicingTrustNote">
-                      {PDP_ROADMAP_NOTE}
-                    </p>
-                  </div>
-                  <button
-                    className="btn btnActionSecondary btnSmall"
-                    type="button"
-                    onClick={handleOpenInvoiceGenerator}
-                  >
-                  Créer une facture
-                  </button>
                 </div>
 
                 {revenues.length > 0 && visibleInvoices.length === 0 && (
@@ -15247,7 +15226,6 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 )}
 
                 <LocalInvoiceStatus userId={user?.id ?? null} invoices={guestInvoices} onStorageChange={setGuestInvoices} />
-                <LocalInvoiceBackup key={user?.id ?? "guest"} onRestored={setGuestInvoices} />
 
                 {invoiceNotice && (
                   <div className="saveNotice" style={{ marginTop: 16, width: "100%" }}>
@@ -15279,7 +15257,6 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                     )}
                   </div>
                 )}
-                {renderBetaMicroFeedbackCard("invoices")}
 
                 {visibleInvoices.length === 0 ? (
                   <div className="emptyRevenueState emptyRevenueStateCompact">
@@ -15290,13 +15267,6 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                       Une facture rend le suivi plus clair pour tes clients, tes encaissements
                       et la TVA collectée quand elle s’active.
                     </p>
-                    <button
-                      className="btn btnActionPrimary btnSmall"
-                      type="button"
-                      onClick={handleOpenInvoiceGenerator}
-                    >
-                      Créer une facture
-                    </button>
                   </div>
                 ) : dashboardSections.invoices ? (
                   <div
@@ -15376,22 +15346,9 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                               <strong>TVA :</strong> {TVA_EXEMPTION_MENTION}
                             </div>
                           )}
-                          {isFacturXDraftInvoice(invoice) && (
-                            <div>
-                              <strong>Statut :</strong> PDF prêt
-                            </div>
-                          )}
-                          {isFacturXDraftInvoice(invoice) && (
-                            <div>
-                              <strong>Mention :</strong> Brouillon Factur-X
-                            </div>
-                          )}
                           <div>
                             <strong>Indicateur de complétude :</strong>{" "}
                             {complianceScore.score}/100
-                          </div>
-                          <div className="muted">
-                            Cet indicateur ne valide pas la conformité fiscale ni Factur-X/PDF/A-3.
                           </div>
                           {complianceScore.alerts.map((alert) => (
                             <div key={alert}>{alert}</div>
@@ -15452,6 +15409,14 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                     })}
                   </div>
                 )}
+                <LocalInvoiceBackup key={user?.id ?? "guest"} onRestored={setGuestInvoices} />
+                <details className="invoiceExplanation">
+                  <summary>Comprendre les documents et l’indicateur de complétude</summary>
+                  <p>{INVOICE_DOCUMENTS_NOTE}</p>
+                  <p>Cet indicateur ne valide pas la conformité fiscale ni Factur-X/PDF/A-3.</p>
+                  <p>{PDP_ROADMAP_NOTE}</p>
+                </details>
+                {renderBetaMicroFeedbackCard("invoices")}
               </div>
 
               <div

@@ -59,13 +59,18 @@ export default function LocalInvoiceBackup({ onRestored }) {
       }
     } catch (error) { setError(error.message || 'La restauration a échoué.'); }
   }
-  return <section aria-label="Sauvegarde des factures locales" style={{ marginTop: 16 }}>
-    <p>Le fichier contient les informations des clients. Conserve-le dans un endroit sûr. La sauvegarde et la restauration restent sur cet appareil, sans import dans un compte.</p>
-    <p>Pour transférer manuellement tes factures vers un autre navigateur ou appareil, exporte une sauvegarde JSON puis restaure-la à destination.</p>
+  return <section aria-label="Sauvegarde des factures locales" className="invoiceBackupTools">
+    <h4>Sauvegarde et restauration JSON</h4>
     <div className="miniActions" style={{ flexWrap: 'wrap' }}>
       <button type="button" className="btn btnActionSecondary" onClick={exportInvoices}>Sauvegarder les factures de cet appareil</button>
       <button type="button" className="btn btnActionSecondary" onClick={() => { setOpen(true); setMessage(''); setError(''); }}>Restaurer une sauvegarde</button>
     </div>
+    <p>Le fichier contient les informations des clients. Conserve-le dans un endroit sûr.</p>
+    <details className="invoiceExplanation">
+      <summary>Comment transférer mes factures ?</summary>
+      <p>La sauvegarde et la restauration restent sur cet appareil, sans import dans un compte.</p>
+      <p>Pour transférer manuellement tes factures vers un autre navigateur ou appareil, exporte une sauvegarde JSON puis restaure-la à destination.</p>
+    </details>
     {error && <p role="alert">{error}</p>}
     {message && <p role="status">{message}</p>}
     {open && <div role="region" aria-label="Restauration locale" style={{ marginTop: 12, padding: 16, border: '1px solid #64748b', borderRadius: 8 }}>
