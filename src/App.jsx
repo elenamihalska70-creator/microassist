@@ -16,6 +16,7 @@ import {
 } from "react"; // ✅ Добавляем useCallback
 import "./App.css";
 import CockpitOverview from "./components/dashboard/CockpitOverview.jsx";
+import CockpitAccess, { CockpitNavigation } from "./components/dashboard/CockpitAccess.jsx";
 import { FISCAL_STEPS } from "./config/steps.fiscal";
 import { computeObligations } from "./utils/obligations.js";
 import { buildFiscalSummaryInput } from "./application/adapters/index.js";
@@ -13249,97 +13250,41 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
               </CockpitOverview>
 
-              {(hasProfileCore || simpleAssistantProfile) && (
-                <section className="dashboardQuickActions" aria-label="Centre de contrôle">
-                  <div className="dashboardQuickActionsIntro">
-                    <span>Centre de contrôle</span>
-                    <p>Accède rapidement aux actions et sections utiles.</p>
-                  </div>
-                  <div className="dashboardQuickActionsList">
-                    {revenues.length > 0 ? (
-                      <a
-                        className="btn btnActionSecondary btnSmall"
-                        href="https://www.autoentrepreneur.urssaf.fr/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={() =>
-                          trackBetaEvent("urssaf_declare_clicked", {
-                            source: "dashboard_control_center",
-                          })
-                        }
-                      >
-                        Ouvrir mon espace URSSAF
-                      </a>
-                    ) : (
-                      <button
-                        className="btn btnActionSecondary btnSmall"
-                        type="button"
-                        onClick={() => openExplanationModal("urssaf")}
-                      >
-                        Comprendre l’URSSAF
-                      </button>
-                    )}
-                    <button
-                      className="btn btnActionUtility btnSmall"
-                      type="button"
-                      onClick={() => scrollToSection("advisor-share-section")}
-                    >
-                      Partager avec conseiller
-                    </button>
-                    <button
-                      className="btn btnActionUtility btnSmall"
-                      type="button"
-                      onClick={handleEditProfile}
-                    >
-                      Modifier mon profil
-                    </button>
-                    <button
-                      className="btn btnActionUtility btnSmall"
-                      type="button"
-                      onClick={() => scrollToSection("reminders-section")}
-                    >
-                      Mes rappels actifs
-                    </button>
-                  </div>
-                </section>
-              )}
+              <CockpitAccess
+                billing={premiumBannerContent}
+                billingActionLabel={premiumBannerButtonLabel}
+                onBillingAction={handleBillingBannerAction}
+                founder={isFounder && "🎁 Offre fondateur — 3 mois Premium offerts"}
+                discovery={!isPremiumUser && isGuest ? null : !isPremiumUser && isEarlyAccessEndingToday
+                  ? { kind: "ending", onClick: () => openPremiumModal("early_access_end") }
+                  : !isPremiumUser && isEarlyFullAccess
+                    ? { kind: "active", onClick: handleOpenSmartPriorities }
+                    : !isPremiumUser && isPostEarlyAccessTrial
+                      ? { kind: "expired", onClick: () => openPremiumModal("early_access_end") }
+                      : null}
+                waitlistJoined={premiumWaitlistJoined}
+                protection={shouldShowDashboardPremiumValue && !hasPremiumLikeAccess}
+                onProtectionAction={() => openPremiumModal("dashboard_protection")}
+                qa={dashboardLaunchAnchors.find((anchor) => anchor.key === "qa")}
+              />
 
               {(hasProfileCore || simpleAssistantProfile) && (
-                <nav className="dashboardInternalNav" aria-label="Navigation interne">
-                  <span>Aller à :</span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      revenusRef.current?.scrollIntoView({ behavior: "smooth" })
-                    }
-                  >
-                    Revenus
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      facturesRef.current?.scrollIntoView({ behavior: "smooth" })
-                    }
-                  >
-                    Factures
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      analyseRef.current?.scrollIntoView({ behavior: "smooth" })
-                    }
-                  >
-                    Analyse
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      prioritesRef.current?.scrollIntoView({ behavior: "smooth" })
-                    }
-                  >
-                    Priorités
-                  </button>
-                </nav>
+                <CockpitNavigation
+                  sections={[
+                    { key: "revenues", label: "Revenus", targetRef: revenusRef, onClick: () => revenusRef.current?.scrollIntoView({ behavior: "smooth" }) },
+                    { key: "invoices", label: "Factures", targetRef: facturesRef, onClick: () => facturesRef.current?.scrollIntoView({ behavior: "smooth" }) },
+                    { key: "analysis", label: "Analyse", targetRef: analyseRef, onClick: () => analyseRef.current?.scrollIntoView({ behavior: "smooth" }) },
+                    { key: "priorities", label: "Priorités", targetRef: prioritesRef, onClick: () => prioritesRef.current?.scrollIntoView({ behavior: "smooth" }) },
+                  ]}
+                  tools={[
+                    revenues.length > 0
+                      ? { key: "urssaf", label: "Ouvrir mon espace URSSAF", href: "https://www.autoentrepreneur.urssaf.fr/", onClick: () => trackBetaEvent("urssaf_declare_clicked", { source: "dashboard_control_center" }) }
+                      : { key: "urssaf", label: "Comprendre l’URSSAF", onClick: () => openExplanationModal("urssaf") },
+                    { key: "share", label: "Partager avec conseiller", targetId: "advisor-share-section", onClick: () => scrollToSection("advisor-share-section") },
+                    { key: "profile", label: "Modifier mon profil", onClick: handleEditProfile },
+                    { key: "reminders", label: "Mes rappels actifs", targetId: "reminders-section", onClick: () => scrollToSection("reminders-section") },
+                  ]}
+                />
               )}
 
               {!hasDeclarationReminderActive && (
@@ -13417,9 +13362,9 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               </div>
 
               <div className="dashboardLaunchRail">
-                {dashboardLaunchAnchors.length > 0 && (
+                {dashboardLaunchAnchors.some((anchor) => anchor.key !== "qa") && (
                   <div className="dashboardLaunchAnchors">
-                    {dashboardLaunchAnchors.map((anchor) => (
+                    {dashboardLaunchAnchors.filter((anchor) => anchor.key !== "qa").map((anchor) => (
                       <div
                         key={anchor.key}
                         className={`dashboardTrustPill trust-${anchor.tone}`}
@@ -14613,170 +14558,6 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                       </div>
                     </div>
                   )}
-                </div>
-              )}
-
-              {isFounder && (
-                <div
-                  className="dashboardFounderBanner"
-                  style={{
-                    marginBottom: 16,
-                    padding: "12px 14px",
-                    borderRadius: 14,
-                    background: "linear-gradient(180deg, #ecfeff 0%, #f0fdf4 100%)",
-                    border: "1px solid #99f6e4",
-                    color: "#0f766e",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    boxShadow: "0 8px 18px rgba(20, 184, 166, 0.08)",
-                  }}
-                >
-                  🎁 Offre fondateur — 3 mois Premium offerts
-                </div>
-              )}
-              {!isPremiumUser && isGuest ? null : !isPremiumUser && isEarlyAccessEndingToday ? (
-                <div className="discoveryBanner">
-                  <div className="discoveryBannerTitle">
-                    ⏳ Ton mode découverte se termine aujourd’hui
-                  </div>
-                  <div className="discoveryBannerText">
-                    Ensuite, tu garderas l’essentiel. Les SMS et rappels
-                    avancés arriveront plus tard en Premium :
-                  </div>
-                  <ul className="discoveryBannerList">
-                    <li>Smart priorités avancées</li>
-                    <li>signaux intelligents</li>
-                    <li>automatisations avancées</li>
-                  </ul>
-                  <div className="discoveryBannerActions">
-                    <button
-                      className="btn btnActionSecondary btnSmall"
-                      type="button"
-                      onClick={() => openPremiumModal("early_access_end")}
-                    >
-                      Voir les options à venir
-                    </button>
-                  </div>
-                </div>
-              ) : !isPremiumUser && isEarlyFullAccess ? (
-                <div className="discoveryBanner">
-                  <div className="discoveryBannerTitle">
-                    ✨ Mode découverte activé
-                  </div>
-                  <div className="discoveryBannerText">
-                    Pendant cette période découverte, tu vois aussi ce que
-                    Premium ajoute pour t’aider à agir plus tôt.
-                  </div>
-                  <div className="dashboardHelperText" style={{ marginTop: 8 }}>
-                    Découvre tes priorités dès maintenant.
-                  </div>
-                  <div className="discoveryBannerActions">
-                    <button
-                      className="btn btnActionSecondary btnSmall"
-                      type="button"
-                      onClick={handleOpenSmartPriorities}
-                    >
-                      Voir mes priorités
-                    </button>
-                  </div>
-                </div>
-              ) : !isPremiumUser && isPostEarlyAccessTrial ? (
-                <div className="discoveryBanner">
-                  <div className="discoveryBannerTitle">
-                    🔒 Certaines fonctionnalités sont maintenant en Premium
-                  </div>
-                  <div className="discoveryBannerText">
-                    Ton espace reste disponible gratuitement : revenus,
-                    factures, exports et suivi de base.
-                  </div>
-                  <div className="dashboardHelperText" style={{ marginTop: 8 }}>
-                    Les rappels email sont accessibles gratuitement pendant la
-                    phase de test. SMS et rappels avancés bientôt en Premium.
-                  </div>
-                  <div className="discoveryBannerActions">
-                    <button
-                      className="btn btnActionSecondary btnSmall"
-                      type="button"
-                      onClick={() => openPremiumModal("early_access_end")}
-                    >
-                      Découvrir Premium
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-              <div className="sectionHead">
-                <div>
-                  <div
-                    style={{
-                      marginTop: 12,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 12,
-                      flexWrap: "wrap",
-                      padding: "10px 14px",
-                      borderRadius: 14,
-                      background: "#f5f3ff",
-                      border: "1px solid #ddd6fe",
-                      color: "#6d28d9",
-                    }}
-                  >
-                    <div style={{ display: "grid", gap: 2, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800 }}>
-                        {premiumBannerContent.line1}
-                      </div>
-                      <div style={{ fontSize: 12, fontWeight: 600 }}>
-                        {premiumBannerContent.line2}
-                      </div>
-                      <div style={{ fontSize: 12, opacity: 0.9 }}>
-                        {premiumBannerContent.line3}
-                      </div>
-                    </div>
-                    {premiumWaitlistJoined && (
-                      <div style={{ fontSize: 12, fontWeight: 600 }}>
-                        ✔️ Accès prioritaire activé
-                      </div>
-                    )}
-                    <button
-                      className="btn btnActionSecondary btnSmall"
-                      type="button"
-                      onClick={handleBillingBannerAction}
-                    >
-                      {premiumBannerButtonLabel}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {shouldShowDashboardPremiumValue && !hasPremiumLikeAccess && (
-                <div className="premiumValueCard dashboardProtectionCard dashboardOrderProtection">
-                  <div>
-                    <h3>Sécurise ton activité</h3>
-                    <p>Aujourd’hui tu es à jour 👍</p>
-                    <p>Mais sans rappel, tu peux :</p>
-                    <ul>
-                      <li>oublier ta déclaration (≈ 45€ de pénalité)</li>
-                      <li>mal anticiper la TVA</li>
-                      <li>devoir payer d’un coup</li>
-                    </ul>
-                    <p>👉 Microassist garde ces signaux visibles dans ton espace</p>
-                    <ul>
-                      <li>✔ Rappels configurables</li>
-                      <li>✔ Signal TVA visible</li>
-                      <li>✔ Suivi sans oubli</li>
-                    </ul>
-                  </div>
-                  <div className="dashboardPremiumTestActions">
-                    <button
-                      className="btn btnActionSecondary btnSmall"
-                      type="button"
-                      onClick={() => openPremiumModal("dashboard_protection")}
-                    >
-                      Découvrir Premium
-                    </button>
-                    <p className="dashboardPremiumTestNote">
-                      Gratuit pendant la phase de test. Les tarifs seront définis plus tard.
-                    </p>
-                  </div>
                 </div>
               )}
 

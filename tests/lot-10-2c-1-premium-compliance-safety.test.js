@@ -263,8 +263,11 @@ test("INVARIANT 5: explicit, user-clicked Premium opening call sites are unchang
   const code = sourceWithoutComments(APP_SOURCE);
   // A representative sample of existing onClick-triggered openPremiumModal
   // calls (not the auto-opening useEffect) -- these must still exist
-  // verbatim, proving this LOT did not touch explicit user interactions.
+  // The discovery callback is now passed to the compact access surface.
   assert.match(code, /onClick=\{\(\) => openPremiumModal\("smart_priorities_lock"\)\}/);
-  assert.match(code, /onClick=\{\(\) => openPremiumModal\("early_access_end"\)\}/);
+  assert.match(code, /kind: "ending", onClick: \(\) => openPremiumModal\("early_access_end"\)/);
+  assert.match(code, /kind: "expired", onClick: \(\) => openPremiumModal\("early_access_end"\)/);
+  const access = readFileSync(new URL("../src/components/dashboard/CockpitAccess.jsx", import.meta.url), "utf8");
+  assert.match(access, /onClick=\{discovery.onClick\}/);
   assert.match(code, /openPremiumModal\("pricing_page"\)/);
 });

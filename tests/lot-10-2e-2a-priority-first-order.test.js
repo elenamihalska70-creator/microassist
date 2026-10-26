@@ -23,6 +23,8 @@ const APP_SOURCE = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf
 // coincidentally also appears elsewhere in this 16k-line file (e.g. in an
 // unrelated modal much further down) can never produce a false pass/fail
 // here.
+const ACCESS_SOURCE = readFileSync(new URL("../src/components/dashboard/CockpitAccess.jsx", import.meta.url), "utf8");
+
 const DASHBOARD_TOP_WINDOW_CHARS = 100000;
 
 function dashboardBranchSource() {
@@ -40,7 +42,7 @@ function indexOfOrFail(source, marker, label) {
 test("PriorityCard renders before the founder banner", () => {
   const source = dashboardBranchSource();
   const priorityCardIndex = indexOfOrFail(source, "<PriorityCard", "PriorityCard");
-  const founderBannerIndex = indexOfOrFail(source, "dashboardFounderBanner", "founder banner");
+  const founderBannerIndex = indexOfOrFail(source, "<CockpitAccess", "founder banner");
   assert.ok(
     priorityCardIndex < founderBannerIndex,
     "PriorityCard must render before the founder banner",
@@ -50,7 +52,7 @@ test("PriorityCard renders before the founder banner", () => {
 test("PriorityCard renders before the discovery-mode banner stack", () => {
   const source = dashboardBranchSource();
   const priorityCardIndex = indexOfOrFail(source, "<PriorityCard", "PriorityCard");
-  const discoveryBannerIndex = indexOfOrFail(source, '"discoveryBanner"', "discovery banner");
+  const discoveryBannerIndex = indexOfOrFail(source, "<CockpitAccess", "discovery banner");
   assert.ok(
     priorityCardIndex < discoveryBannerIndex,
     "PriorityCard must render before the discovery banner stack",
@@ -62,7 +64,7 @@ test("PriorityCard renders before the inline Premium promotional banner (premium
   const priorityCardIndex = indexOfOrFail(source, "<PriorityCard", "PriorityCard");
   const premiumBannerIndex = indexOfOrFail(
     source,
-    "premiumBannerContent.line1",
+    "billing={premiumBannerContent}",
     "inline Premium banner",
   );
   assert.ok(
@@ -89,20 +91,20 @@ test("founder, trial variants and Premium remain; guest identity is consolidated
   const source = dashboardBranchSource();
   assert.match(source, /Offre fondateur/);
   assert.match(source, /Session invitée/); // guest discovery variant, with scoped storage copy
-  assert.match(source, /Ton mode découverte se termine aujourd’hui/); // early_access_ending variant
-  assert.match(source, /Mode découverte activé/); // isEarlyFullAccess variant
-  assert.match(source, /Certaines fonctionnalités sont maintenant en Premium/); // post_early_access variant
+  assert.match(ACCESS_SOURCE, /Ton mode découverte se termine aujourd’hui/); // early_access_ending variant
+  assert.match(ACCESS_SOURCE, /Mode découverte activé/); // isEarlyFullAccess variant
+  assert.match(ACCESS_SOURCE, /Certaines fonctionnalités sont maintenant en Premium/); // post_early_access variant
   assert.match(source, /premiumBannerButtonLabel/); // inline Premium banner CTA
 });
 
 test("ADDITIVE: none of the moved surfaces' eligibility/gating conditions were changed", () => {
   const source = dashboardBranchSource();
-  assert.match(source, /\{isFounder && \(/);
+  assert.match(source, /founder=\{isFounder &&/);
   assert.match(source, /!isPremiumUser && isGuest \? null/);
   assert.match(source, /onCreateAccount=\{!isPremiumUser && isGuest \? \(\) => openAuthModal\("signup"\)/);
-  assert.match(source, /!isPremiumUser && isEarlyAccessEndingToday \? \(/);
-  assert.match(source, /!isPremiumUser && isEarlyFullAccess \? \(/);
-  assert.match(source, /!isPremiumUser && isPostEarlyAccessTrial \? \(/);
+  assert.match(source, /!isPremiumUser && isEarlyAccessEndingToday\s*\? \{ kind: "ending", onClick: \(\) => openPremiumModal\("early_access_end"\)/);
+  assert.match(source, /!isPremiumUser && isEarlyFullAccess\s*\? \{ kind: "active", onClick: handleOpenSmartPriorities/);
+  assert.match(source, /!isPremiumUser && isPostEarlyAccessTrial\s*\? \{ kind: "expired", onClick: \(\) => openPremiumModal\("early_access_end"\)/);
 });
 
 test("PriorityCard is still gated the same way as before (hasProfileCore || simpleAssistantProfile) -- gating logic unchanged, only position moved", () => {
@@ -113,34 +115,15 @@ test("PriorityCard is still gated the same way as before (hasProfileCore || simp
   assert.notEqual(priorityCardBlockStart, -1);
 });
 
-test("essential fiscal/admin surfaces render before discovery and Premium messaging", () => {
-  const source = dashboardBranchSource();
-  const reserveIndex = indexOfOrFail(source, "À mettre de côté", "essential fiscal snapshot");
-  const markersIndex = indexOfOrFail(source, "FISCAL_MARKERS_COPY.title", "Repères fiscaux");
-  const declarationDossierIndex = indexOfOrFail(
-    source,
-    "declaration-detail-section",
-    "declaration dossier",
-  );
-  const founderBannerIndex = indexOfOrFail(source, "dashboardFounderBanner", "founder banner");
-  const discoveryBannerIndex = indexOfOrFail(source, '"discoveryBanner"', "discovery banner");
-  const premiumBannerIndex = indexOfOrFail(
-    source,
-    "premiumBannerContent.line1",
-    "inline Premium banner",
-  );
-  const protectionIndex = indexOfOrFail(
-    source,
-    "dashboardProtectionCard",
-    "Premium value card",
-  );
-
-  assert.ok(reserveIndex < founderBannerIndex);
-  assert.ok(markersIndex < founderBannerIndex);
-  assert.ok(declarationDossierIndex < founderBannerIndex);
-  assert.ok(declarationDossierIndex < discoveryBannerIndex);
-  assert.ok(declarationDossierIndex < premiumBannerIndex);
-  assert.ok(declarationDossierIndex < protectionIndex);
+test("fiscal summary precedes compact access; fiscal details remain independently accessible", () => {
+ const source = dashboardBranchSource();
+ assert.ok(indexOfOrFail(source, "<CockpitOverview", "overview") < indexOfOrFail(source, "<CockpitAccess", "access"));
+ for (const marker of ["À mettre de côté", "FISCAL_MARKERS_COPY.title", "declaration-detail-section"]) indexOfOrFail(source, marker, marker);
+ assert.match(source, /protection=\{shouldShowDashboardPremiumValue && !hasPremiumLikeAccess\}/);
+ assert.match(source, /onProtectionAction=\{\(\) => openPremiumModal\("dashboard_protection"\)\}/);
+ assert.equal((source.match(/<CockpitAccess/g)||[]).length, 1);
+ assert.equal((source.match(/<CockpitNavigation/g)||[]).length, 1);
+ assert.doesNotMatch(source, /dashboardQuickActions|internalNav/);
 });
 
 test("control center no longer creates a competing declaration CTA", () => {

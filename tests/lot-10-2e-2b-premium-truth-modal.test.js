@@ -53,14 +53,19 @@ test("early access ending and post early access no longer auto-cover the dashboa
   const effect = premiumInlineEffectBlock();
   assert.doesNotMatch(effect, /early_access_ending[\s\S]*openPremiumModal/);
   assert.doesNotMatch(effect, /post_early_access[\s\S]*openPremiumModal/);
-  assert.match(APP_SOURCE, /onClick=\{\(\) => openPremiumModal\("early_access_end"\)\}/);
+  assert.match(APP_SOURCE, /kind: "ending", onClick: \(\) => openPremiumModal\("early_access_end"\)/);
+  assert.match(APP_SOURCE, /kind: "expired", onClick: \(\) => openPremiumModal\("early_access_end"\)/);
+  const access = readFileSync(new URL("../src/components/dashboard/CockpitAccess.jsx", import.meta.url), "utf8");
+  assert.match(access, /onClick=\{discovery.onClick\}/);
 });
 
 test("explicit Premium clicks still open the modal", () => {
   const code = sourceWithoutComments(APP_SOURCE);
   assert.match(code, /openPremiumModal\("pricing_page"\)/);
   assert.match(code, /onClick=\{\(\) => openPremiumModal\("smart_priorities_lock"\)\}/);
-  assert.match(code, /onClick=\{\(\) => openPremiumModal\("dashboard_protection"\)\}/);
+  assert.match(code, /onProtectionAction=\{\(\) => openPremiumModal\("dashboard_protection"\)\}/);
+  const access = readFileSync(new URL("../src/components/dashboard/CockpitAccess.jsx", import.meta.url), "utf8");
+  assert.match(access, /onClick=\{onProtectionAction\}/);
 });
 
 test("disabled declaration reminder claims are absent from active Premium modal benefits", () => {
