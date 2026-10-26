@@ -36,9 +36,11 @@ export default function PriorityCard({
   onConfirmPayment,
   onEditProfile,
   onViewDetail,
+  titleTag = "h2",
 }) {
   if (!viewModel) return null;
 
+  const Title = titleTag;
   const { severity, badgeLabel, icon, title, explanation, dateLabel, showDetailLink } = viewModel;
   const handlers = { onConfirmDeclaration, onConfirmPayment, onEditProfile, isSavingPayment };
   const primary = resolveCta(viewModel.primaryCta, handlers);
@@ -54,9 +56,9 @@ export default function PriorityCard({
         <span className="priorityCardBadge">{badgeLabel}</span>
       </div>
 
-      <h2 id="priorityCardTitle" className="priorityCardTitle">
+      <Title id="priorityCardTitle" className="priorityCardTitle">
         {title}
-      </h2>
+      </Title>
       <p className="priorityCardExplanation">{explanation}</p>
 
       {dateLabel && (

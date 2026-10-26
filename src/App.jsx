@@ -15,6 +15,7 @@ import {
   useReducer,
 } from "react"; // ✅ Добавляем useCallback
 import "./App.css";
+import CockpitOverview from "./components/dashboard/CockpitOverview.jsx";
 import { FISCAL_STEPS } from "./config/steps.fiscal";
 import { computeObligations } from "./utils/obligations.js";
 import { buildFiscalSummaryInput } from "./application/adapters/index.js";
@@ -13200,25 +13201,43 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
           ) : appView === "dashboard" ? (
 
             <section ref={fiscalRef} className="card dashboardCard">
-              {/* LOT 10.2E.2A: page heading kept first for accessibility
-                  context, immediately followed by the canonical
-                  PriorityCard -- the user's actual administrative
-                  obligation now outranks every marketing/discovery/Premium
-                  surface below. JSX ordering only: none of those surfaces'
-                  logic, copy, eligibility, or CSS was changed, only where
-                  they render relative to PriorityCard. */}
-              <div className="sectionHead">
-                <div>
-                  <h2>Mon espace fiscal</h2>
-                  <p className="muted" style={{ marginTop: 6 }}>
-                    Revenus, charges et échéances au même endroit.
-                  </p>
-                </div>
-              </div>
-
+              {/* Canonical administrative priority stays first inside the overview.
+                  All selectors, fiscal facts and action callbacks remain unchanged. */}
+              <CockpitOverview
+                title="Mon espace fiscal"
+                account={connectedAccountLabel || "Session invitée"}
+                storage="Profil et revenus synchronisables avec un compte ; nouvelles factures enregistrées dans ce navigateur."
+                recommendation={dashboardPrimaryAction}
+                revenue={hasRevenueData || cockpitEstimate.isProvisional ? dashboardRevenueDisplay : "—"}
+                reserve={isFiscalProfileComplete && hasAnyDashboardData && !hasLowDataProfile ? dashboardChargesDisplay : "—"}
+                available={isFiscalProfileComplete && hasAnyDashboardData && !hasLowDataProfile ? dashboardAvailableDisplay : "—"}
+                provisional={cockpitEstimate.isProvisional}
+                estimateNote={user && !fiscalProfileLoaded
+                  ? fiscalProfileLoadStatus === "failed"
+                    ? "Les estimations attendent le chargement du profil. Consulte le message d’erreur et réessaie."
+                    : "Chargement du profil fiscal : les estimations ne sont pas encore disponibles."
+                  : !isFiscalProfileComplete
+                  ? "Les informations du profil fiscal sont nécessaires pour estimer la réserve et le disponible. Les revenus enregistrés restent visibles."
+                  : !hasAnyDashboardData || hasLowDataProfile
+                    ? "Ajoute un revenu pour calculer tes estimations. Une valeur non calculée est indiquée par —."
+                    : cockpitEstimate.isProvisional
+                      ? "Estimation provisoire basée sur ton CA estimé. À mettre de côté et disponible sont des estimations, pas un solde bancaire."
+                      : "Revenus enregistrés. À mettre de côté et disponible sont estimés après charges ; ce ne sont pas des soldes bancaires."}
+                missingFields={!user || fiscalProfileLoaded ? [
+                  !dashboardAnswers?.activity_type && "activité principale",
+                  !dashboardAnswers?.declaration_frequency && "fréquence de déclaration",
+                  !hasProfileStartDate && "date de début d’activité",
+                  !hasProfileAcreValue && "situation ACRE",
+                  requiresAcreStartDate && !dashboardAnswers?.acre_start_date && "date de début ACRE",
+                ].filter(Boolean) : []}
+                onEditProfile={handleEditProfile}
+                onAddRevenue={handleOpenRevenuePopup}
+                onCreateInvoice={handleOpenInvoiceGenerator}
+                onCreateAccount={!isPremiumUser && isGuest ? () => openAuthModal("signup") : undefined}
+              >
               {(hasProfileCore || simpleAssistantProfile) && priorityCardViewModel && (
-                <div style={{ marginBottom: 20 }}>
                   <PriorityCard
+                    titleTag="h4"
                     viewModel={priorityCardViewModel}
                     isSavingPayment={isSavingDeclarationPayment}
                     onConfirmDeclaration={handleOpenDeclarationConfirm}
@@ -13226,8 +13245,9 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                     onEditProfile={handleEditProfile}
                     onViewDetail={handleViewDeclarationDetail}
                   />
-                </div>
               )}
+
+              </CockpitOverview>
 
               {(hasProfileCore || simpleAssistantProfile) && (
                 <section className="dashboardQuickActions" aria-label="Centre de contrôle">
@@ -13236,20 +13256,6 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                     <p>Accède rapidement aux actions et sections utiles.</p>
                   </div>
                   <div className="dashboardQuickActionsList">
-                    <button
-                      className="btn btnActionPrimary btnSmall"
-                      type="button"
-                      onClick={handleOpenRevenuePopup}
-                    >
-                      + Ajouter un revenu
-                    </button>
-                    <button
-                      className="btn btnActionUtility btnSmall"
-                      type="button"
-                      onClick={handleOpenInvoiceGenerator}
-                    >
-                      Créer une facture
-                    </button>
                     {revenues.length > 0 ? (
                       <a
                         className="btn btnActionSecondary btnSmall"
@@ -13358,86 +13364,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
               <div className="dashboardSectionZone dashboardSectionZoneCoolNeutral dashboardOrderSituation">
                 <div className="dashboardSectionHeader">
-                  <div className="dashboardSectionHeaderMain">
-                    <h3 className="dashboardSectionTitle">À mettre de côté</h3>
-                    {cockpitEstimate.isProvisional && (
-                      <div className="dashboardSectionSubtitle">
-                        {provisionalCaHelperText}.
-                      </div>
-                    )}
-                    {hasAnyDashboardData ? (
-                      <div className="dashboardSectionSubtitle">
-                        Montant estimé à mettre de côté pour ta prochaine déclaration.
-                      </div>
-                    ) : (
-                      <div className="dashboardSectionSubtitle">
-                        Ajoute ton premier revenu pour obtenir une estimation.
-                      </div>
-                    )}
-                  </div>
+                  <h3 className="dashboardSectionTitle">Détail des revenus</h3>
                 </div>
-                <div className="fiscalDashboard">
-                  <div className="fiscalCard">
-                    <div className="fiscalLabel">
-                      {cockpitEstimate.isProvisional ? "CA estimé" : "Revenus cumulés"}
-                    </div>
-                    <div className="fiscalValue">{dashboardRevenueDisplay}</div>
-                    <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-                      {cockpitEstimate.isProvisional
-                        ? provisionalCaHelperText
-                        : hasRevenueData
-                          ? "Revenus enregistrés"
-                          : dashboardQuietPlaceholder}
-                    </div>
-                  </div>
-
-                  <div className="fiscalCard">
-                    <div className="fiscalLabel">À mettre de côté</div>
-                    {isFiscalProfileComplete && (
-                      <div
-                        className={`dashboardConfidenceBadge confidence-${dashboardConfidence.tone}`}
-                      >
-                        {dashboardConfidence.label}
-                      </div>
-                    )}
-                    <div className="fiscalValue">
-                      {isFiscalProfileComplete
-                        ? dashboardChargesDisplay
-                        : dashboardQuietPlaceholder}
-                    </div>
-                    <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-                      {isFiscalProfileComplete && hasAnyDashboardData
-                        ? cockpitEstimate.isProvisional
-                          ? provisionalCaHelperText
-                          : "Charges estimées"
-                        : isFiscalProfileComplete
-                          ? "À compléter"
-                          : dashboardQuietPlaceholder}
-                    </div>
-                  </div>
-
-                  <div className="fiscalCard">
-                    <div className="fiscalLabel">Disponible</div>
-                    {isFiscalProfileComplete && (
-                      <div
-                        className={`dashboardConfidenceBadge confidence-${dashboardConfidence.tone}`}
-                      >
-                        {dashboardConfidence.label}
-                      </div>
-                    )}
-                    <div className="fiscalValue">
-                      {isFiscalProfileComplete
-                        ? dashboardAvailableDisplay
-                        : dashboardQuietPlaceholder}
-                    </div>
-                    <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-                      {isFiscalProfileComplete
-                        ? "Après estimation des charges"
-                        : dashboardQuietPlaceholder}
-                    </div>
-                  </div>
-                </div>
-
                 <div className="miniStatsGrid">
                   <div className="miniStatCard">
                     <div className="miniStatLabel">Moyenne mensuelle</div>
@@ -13503,25 +13431,6 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   </div>
                 )}
 
-                {dashboardPrimaryAction && !(hasProfileCore || simpleAssistantProfile) && (
-                  <div className="dashboardNextStepCard">
-                    <div className="dashboardNextStepTitle">
-                      {dashboardPrimaryAction.title}
-                    </div>
-                    <p className="dashboardNextStepText">
-                      {dashboardPrimaryAction.text}
-                    </p>
-                    <div className="dashboardNextStepActions">
-                      <button
-                        className="btn btnActionPrimary"
-                        type="button"
-                        onClick={dashboardPrimaryAction.onClick}
-                      >
-                        {dashboardPrimaryAction.cta}
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
 
               <div className="dashboardSignalStack">
@@ -13911,19 +13820,6 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                       ))}
                     </div>
                   )}
-                </div>
-              )}
-
-              {/* 👇 NOUVELLE PODKAZKA - AJOUTER ICI */}
-              {!hasProfileCore && (
-                <div className="dashboardTrustCard dashboardProfileCompletionCard" style={{ marginBottom: 18 }}>
-                  <div className="dashboardRecommendationTitle">
-                    Profil à compléter
-                  </div>
-                  <div className="dashboardRecommendationText">
-                    Complète ton profil pour améliorer les estimations.
-                  </div>
-  
                 </div>
               )}
 
@@ -14738,29 +14634,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   🎁 Offre fondateur — 3 mois Premium offerts
                 </div>
               )}
-              {!isPremiumUser && isGuest ? (
-                <div className="discoveryBanner">
-                  <div className="discoveryBannerTitle">
-                    Session invitée — données dans ce navigateur
-                  </div>
-                  <div className="discoveryBannerText">
-                    Le compte permet de synchroniser le profil et les revenus ;
-                    les nouvelles factures restent dans ce navigateur.
-                  </div>
-                  <div className="dashboardHelperText" style={{ marginTop: 8 }}>
-                    Crée un compte pour retrouver ton profil et tes revenus plus tard.
-                  </div>
-                  <div className="discoveryBannerActions">
-                    <button
-                      className="btn btnActionSecondary btnSmall"
-                      type="button"
-                      onClick={() => openAuthModal("signup")}
-                    >
-                      Créer mon compte
-                    </button>
-                  </div>
-                </div>
-              ) : !isPremiumUser && isEarlyAccessEndingToday ? (
+              {!isPremiumUser && isGuest ? null : !isPremiumUser && isEarlyAccessEndingToday ? (
                 <div className="discoveryBanner">
                   <div className="discoveryBannerTitle">
                     ⏳ Ton mode découverte se termine aujourd’hui

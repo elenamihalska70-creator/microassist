@@ -85,7 +85,7 @@ test("the page heading ('Mon espace fiscal') still renders before PriorityCard, 
   assert.ok(headingIndex < priorityCardIndex, "the page heading must precede PriorityCard");
 });
 
-test("ADDITIVE: none of the moved surfaces were deleted -- founder banner, all 4 discovery-banner variants, and the inline Premium banner are all still present", () => {
+test("founder, trial variants and Premium remain; guest identity is consolidated in the overview", () => {
   const source = dashboardBranchSource();
   assert.match(source, /Offre fondateur/);
   assert.match(source, /Session invitée/); // guest discovery variant, with scoped storage copy
@@ -98,7 +98,8 @@ test("ADDITIVE: none of the moved surfaces were deleted -- founder banner, all 4
 test("ADDITIVE: none of the moved surfaces' eligibility/gating conditions were changed", () => {
   const source = dashboardBranchSource();
   assert.match(source, /\{isFounder && \(/);
-  assert.match(source, /!isPremiumUser && isGuest \? \(/);
+  assert.match(source, /!isPremiumUser && isGuest \? null/);
+  assert.match(source, /onCreateAccount=\{!isPremiumUser && isGuest \? \(\) => openAuthModal\("signup"\)/);
   assert.match(source, /!isPremiumUser && isEarlyAccessEndingToday \? \(/);
   assert.match(source, /!isPremiumUser && isEarlyFullAccess \? \(/);
   assert.match(source, /!isPremiumUser && isPostEarlyAccessTrial \? \(/);
