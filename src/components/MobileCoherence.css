@@ -1,0 +1,11 @@
+/* Task B: only the two defects established by the mobile audit. */
+@media (max-width: 520px) {
+  #revenues-section > .journalHeader > .dashboardSectionActions > .btnActionUtility { order: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is([aria-labelledby="add-revenue-title"], .invoiceGeneratorModal, .dashboardMobileActionBar) .btn {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
+}

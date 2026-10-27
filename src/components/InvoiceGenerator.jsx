@@ -502,7 +502,7 @@ export default function InvoiceGenerator({
       style={{ overflowY: "auto", alignItems: "flex-start" }}
     >
       <div
-        className="modalCard"
+        className="modalCard invoiceGeneratorModal"
         onClick={(e) => e.stopPropagation()}
         style={{
           maxWidth: 560,

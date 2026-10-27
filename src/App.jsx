@@ -17,6 +17,7 @@ import {
 import "./App.css";
 import "./components/InvoicePresentation.css";
 import "./components/RevenuePresentation.css";
+import "./components/MobileCoherence.css";
 import CockpitOverview from "./components/dashboard/CockpitOverview.jsx";
 import CockpitAccess, { CockpitNavigation } from "./components/dashboard/CockpitAccess.jsx";
 import { FISCAL_STEPS } from "./config/steps.fiscal";
