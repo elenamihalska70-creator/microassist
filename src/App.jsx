@@ -2769,7 +2769,7 @@ function MicroassistFooter({
               <span>✓ Aucun paiement demandé</span>
               <span>✓ Données protégées</span>
             </div>
-            <div className="siteFooterMeta">Version bêta • Belfort • France</div>
+            <div className="siteFooterMeta">Version bêta • Besançon • France</div>
           </section>
 
           <section className="siteFooterColumn">
@@ -2806,9 +2806,9 @@ function MicroassistFooter({
             <h3>Éditeur</h3>
             <address>
               <strong>Olena Mykhalska / Digital Lab</strong>
-              <span>Belfort, France</span>
+              <span>Besançon, France</span>
               <a href="mailto:contact@microassist.fr">contact@microassist.fr</a>
-              <span>SIRET : 105 759 286 00013</span>
+              <span>SIRET : 10575928600021</span>
               <span>Statut : entrepreneur individuel</span>
               <span>Hébergement : Supabase + Vercel</span>
             </address>
@@ -2816,7 +2816,7 @@ function MicroassistFooter({
         </div>
 
         <div className="siteFooterBottom">
-          <span>© 2026 Microassist — Prototype SaaS français développé à Belfort</span>
+          <span>© 2026 Microassist — Prototype SaaS français développé à Besançon</span>
         </div>
       </div>
     </footer>
@@ -3219,6 +3219,7 @@ useEffect(() => {
     note: "",
   });
   const [showRevenueDetails, setShowRevenueDetails] = useState(false); // ✅ ДОБАВИТЬ
+  const [revenueAmountError, setRevenueAmountError] = useState("");
 
   const [showChart, setShowChart] = useState(() => {
     try {
@@ -5745,6 +5746,7 @@ useEffect(() => {
 
   // ==================== PREVIEW POUR MODALE AJOUT REVENU ====================
   const revenueAmount = useMemo(() => {
+    if (String(revenueForm.amount).trim() === "") return null;
     return Number(String(revenueForm.amount || "").replace(",", "."));
   }, [revenueForm.amount]);
 
@@ -9176,6 +9178,7 @@ function handleReminderToggle(key) {
   }
 
   function resetRevenueForm() {
+    setRevenueAmountError("");
     setRevenueForm({
       amount: "",
       date: new Date().toISOString().slice(0, 10),
@@ -9747,6 +9750,7 @@ useEffect(() => {
   }
 
   function handleRevenueFieldChange(field, value) {
+    if (field === "amount") setRevenueAmountError("");
     setRevenueForm((prev) => ({
       ...prev,
       [field]: value,
@@ -9878,6 +9882,11 @@ useEffect(() => {
   }
 
   async function handleSaveRevenue() {
+    if (String(revenueForm.amount).trim() === "") {
+      setRevenueAmountError("Merci de saisir un montant.");
+      return;
+    }
+
     const isMixedActivity = isMixedActivityValue(dashboardAnswers.activity_type);
 
     if (!user) {
@@ -15506,6 +15515,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                     min="0"
                     step="0.01"
                     value={revenueForm.amount}
+                    aria-invalid={revenueAmountError ? true : undefined}
+                    aria-describedby={revenueAmountError ? "revenue-amount-error" : undefined}
                     onChange={(e) =>
                       handleRevenueFieldChange("amount", e.target.value)
                     }
@@ -15524,6 +15535,12 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   />
                 </label>
               </div>
+
+              {revenueAmountError && (
+                <p id="revenue-amount-error" role="alert">
+                  {revenueAmountError}
+                </p>
+              )}
 
               {isMixedActivityValue(dashboardAnswers.activity_type) && (
                 <div style={{ marginTop: 12 }}>

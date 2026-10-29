@@ -6,9 +6,9 @@
   margin-bottom: 20px;
   padding: 14px 16px;
   border-radius: 16px;
-  background: linear-gradient(180deg, #f8fafc 0%, #eef6ff 100%);
-  border: 1px solid #dbe4ee;
-  color: #334155;
+  background: linear-gradient(180deg, var(--bg-subtle) 0%, var(--accent-soft) 100%);
+  border: 1px solid var(--border-soft);
+  color: var(--text-muted);
   line-height: 1.5;
 }
 
@@ -27,19 +27,19 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .expertDashboard__header h2,
 .expertDetailHeader h2 {
   margin: 0;
   font-size: 28px;
-  color: #0f172a;
+  color: var(--text-main);
 }
 
 .expertDashboard__subtitle {
   margin: 8px 0 0;
-  color: #475569;
+  color: var(--text-muted);
 }
 
 .expertKpis {
@@ -67,7 +67,7 @@
 .expertSearchLabel {
   font-size: 13px;
   font-weight: 700;
-  color: #475569;
+  color: var(--text-muted);
 }
 
 .expertSearchInput {
@@ -75,9 +75,9 @@
   min-height: 40px;
   padding: 10px 14px;
   border-radius: 12px;
-  border: 1px solid #dbe4ee;
-  background: #fff;
-  color: #0f172a;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-card);
+  color: var(--text-main);
   font-size: 14px;
   outline: none;
   transition:
@@ -87,9 +87,9 @@
 }
 
 .expertSearchInput:focus {
-  border-color: #7dd3fc;
-  box-shadow: 0 0 0 4px rgba(125, 211, 252, 0.18);
-  background: #f8fdff;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 4px rgba(12, 122, 91, 0.18);
+  background: var(--bg-subtle);
 }
 
 .expertFilterList {
@@ -100,9 +100,9 @@
 }
 
 .expertFilterButton {
-  border: 1px solid #dbe4ee;
-  background: #fff;
-  color: #334155;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-card);
+  color: var(--text-muted);
   border-radius: 999px;
   padding: 8px 12px;
   font-size: 13px;
@@ -116,41 +116,41 @@
 }
 
 .expertFilterButton:hover {
-  border-color: #cbd5e1;
-  background: #f8fafc;
+  border-color: var(--border-mid);
+  background: var(--bg-subtle);
 }
 
 .expertFilterButton--active {
-  background: #e0f2fe;
-  border-color: #7dd3fc;
-  color: #0f172a;
-  box-shadow: 0 8px 18px rgba(14, 165, 233, 0.12);
+  background: var(--accent-soft);
+  border-color: var(--focus);
+  color: var(--text-main);
+  box-shadow: 0 8px 18px rgba(6, 86, 64, 0.12);
 }
 
 .expertFilterCount {
   font-size: 13px;
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 600;
 }
 
 .expertKpiCard {
   padding: 16px;
   border-radius: 16px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-card);
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
 }
 
 .expertKpiCard span {
   display: block;
   font-size: 13px;
-  color: #64748b;
+  color: var(--text-muted);
   margin-bottom: 8px;
 }
 
 .expertKpiCard strong {
   font-size: 28px;
-  color: #0f172a;
+  color: var(--text-main);
 }
 
 .expertDashboard__grid {
@@ -162,9 +162,9 @@
 .expertEmptyState {
   padding: 18px;
   border-radius: 16px;
-  border: 1px dashed #cbd5e1;
-  background: #fff;
-  color: #64748b;
+  border: 1px dashed var(--border-mid);
+  background: var(--bg-card);
+  color: var(--text-muted);
 }
 
 .expertModalOverlay {
@@ -181,8 +181,8 @@
 .expertModalCard {
   width: min(560px, 100%);
   border-radius: 18px;
-  border: 1px solid #dbe4ee;
-  background: #fff;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-card);
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
   padding: 20px;
 }
@@ -198,12 +198,12 @@
 .expertModalHeader h3 {
   margin: 0;
   font-size: 1.2rem;
-  color: #0f172a;
+  color: var(--text-main);
 }
 
 .expertModalSubtitle {
   margin: 6px 0 0;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.95rem;
 }
 
@@ -216,17 +216,17 @@
 .expertModalField label {
   font-size: 13px;
   font-weight: 700;
-  color: #475569;
+  color: var(--text-muted);
 }
 
 .expertModalSelect,
 .expertModalInput,
 .expertModalTextarea {
   width: 100%;
-  border: 1px solid #dbe4ee;
+  border: 1px solid var(--border-soft);
   border-radius: 12px;
-  background: #fff;
-  color: #0f172a;
+  background: var(--bg-card);
+  color: var(--text-main);
   font-size: 14px;
   padding: 12px 14px;
   outline: none;
@@ -239,9 +239,9 @@
 .expertModalInput:focus,
 .expertModalSelect:focus,
 .expertModalTextarea:focus {
-  border-color: #7dd3fc;
-  box-shadow: 0 0 0 4px rgba(125, 211, 252, 0.18);
-  background: #f8fdff;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 4px rgba(12, 122, 91, 0.18);
+  background: var(--bg-subtle);
 }
 
 .expertModalTextarea {
@@ -300,8 +300,8 @@
 .expertCard {
   padding: 18px;
   border-radius: 16px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-card);
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
 }
 
@@ -316,12 +316,12 @@
 .expertCard__top h3 {
   margin: 0;
   font-size: 18px;
-  color: #0f172a;
+  color: var(--text-main);
 }
 
 .expertCard__top p {
   margin: 4px 0 0;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .expertCard__body {
@@ -333,13 +333,13 @@
 .expertInfoBlock span {
   display: block;
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-muted);
   margin-bottom: 4px;
 }
 
 .expertCard__body strong,
 .expertInfoBlock strong {
-  color: #0f172a;
+  color: var(--text-main);
 }
 
 .expertCard__actions {
@@ -390,8 +390,8 @@
 .expertDetailCard {
   padding: 22px;
   border-radius: 18px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-card);
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
 }
 
@@ -414,8 +414,8 @@
 .expertPanelBlock {
   padding: 14px;
   border-radius: 14px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-soft);
 }
 
 .expertPanelBlock + .expertPanelBlock {
@@ -425,7 +425,7 @@
 .expertPanelBlock h3 {
   margin: 0 0 10px;
   font-size: 16px;
-  color: #0f172a;
+  color: var(--text-main);
 }
 
 .expertPanelHeader {
@@ -443,19 +443,19 @@
 
 .expertPanelNote {
   margin: 4px 0 0;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 13px;
 }
 
 .expertPanelBlock p {
   margin: 0;
-  color: #334155;
+  color: var(--text-muted);
 }
 
 .expertPriorityList {
   margin: 0;
   padding-left: 18px;
-  color: #334155;
+  color: var(--text-muted);
 }
 
 .expertPriorityList li + li {
@@ -473,9 +473,9 @@
 .expertNotesList li {
   padding: 10px 12px;
   border-radius: 12px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  color: #334155;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  color: var(--text-muted);
   line-height: 1.5;
 }
 
@@ -495,8 +495,8 @@
   flex-wrap: wrap;
   padding: 12px;
   border-radius: 12px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
 }
 
 .expertInvoiceItem > div {
@@ -512,19 +512,19 @@
 }
 
 .expertInvoiceDate {
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 13px;
   font-weight: 700;
 }
 
 .expertInvoiceMeta {
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 12px;
   line-height: 1.35;
 }
 
 .expertInvoiceItem strong {
-  color: #0f172a;
+  color: var(--text-main);
   font-size: 17px;
 }
 
@@ -538,9 +538,9 @@
 .expertStatusPill {
   width: fit-content;
   border-radius: 999px;
-  border: 1px solid #dbe4ee;
-  background: #f8fafc;
-  color: #475569;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
   padding: 4px 8px;
   font-size: 11px;
   font-weight: 700;
@@ -560,7 +560,7 @@
 
 .expertHistoryEmpty {
   margin: 0;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
@@ -577,14 +577,14 @@
   gap: 8px;
   flex-wrap: wrap;
   font-size: 14px;
-  color: #334155;
+  color: var(--text-muted);
 }
 
 .expertHistoryDate {
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-main);
 }
 
 .expertHistoryText {
-  color: #475569;
+  color: var(--text-muted);
 }
