@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/legal/privacy", "destination": "/index.html" },
+    { "source": "/legal/terms", "destination": "/index.html" },
+    { "source": "/legal/cookies", "destination": "/index.html" },
+    { "source": "/legal/mentions", "destination": "/index.html" },
+    { "source": "/legal/accessibility", "destination": "/index.html" },
+    { "source": "/legal/security", "destination": "/index.html" }
+  ]
+}
