@@ -2670,7 +2670,7 @@ const LEGAL_PAGES = {
     sections: [
       {
         title: "Éditeur",
-        text: "Olena Mykhalska / Digital Lab, Belfort, France. Email : contact@microassist.fr. SIREN : 105 759 286. SIRET : 105 759 286 00013. Statut : entrepreneur individuel.",
+        text: "Olena Mykhalska / Digital Lab, Besançon, France. Email : contact@microassist.fr. SIREN : 105 759 286. SIRET : 105 759 286 00021. Statut : entrepreneur individuel.",
       },
       {
         title: "Hébergement",
@@ -2678,7 +2678,7 @@ const LEGAL_PAGES = {
       },
       {
         title: "Prototype",
-        text: "Microassist est actuellement un prototype SaaS en test, développé à Belfort pour accompagner les micro-entrepreneurs.",
+        text: "Microassist est actuellement un prototype SaaS en test, conçu pour accompagner les micro-entrepreneurs.",
       },
     ],
   },
