@@ -10628,14 +10628,7 @@ function openPremiumModal(source = "unknown") {
 }
 
 const saveOfferInterest = useCallback(
-  async ({
-    email,
-    userId,
-    offerType,
-    source,
-    phone = null,
-    smsConsent = false,
-  }) => {
+  async ({ email, offerType, source }) => {
     const normalizedEmail = String(email || "").trim().toLowerCase();
 
     if (!normalizedEmail || !offerType) {
@@ -10649,30 +10642,16 @@ const saveOfferInterest = useCallback(
       return { data: null, error: SUPABASE_UNAVAILABLE_ERROR };
     }
 
-    const normalizedPhone = String(phone || "").trim() || null;
-    const normalizedSmsConsent = Boolean(smsConsent);
-    const payload = {
-      email: normalizedEmail,
-      user_id: userId || null,
-      offer_type: offerType,
-      source: normalizePremiumTriggerType(source),
-      status: "new",
-      phone: normalizedPhone,
-      phone_verified: false,
-      sms_consent: normalizedSmsConsent,
-      sms_consent_at: normalizedSmsConsent ? new Date().toISOString() : null,
-      updated_at: new Date().toISOString(),
-    };
+    // The table is not readable from the browser: the RPC links the row to the
+    // signed-in owner server-side and only returns a status.
+    const { data, error } = await supabase.rpc("save_offer_interest", {
+      p_email: normalizedEmail,
+      p_offer_type: offerType,
+      p_source: normalizePremiumTriggerType(source),
+    });
 
-    const { data, error } = await supabase
-      .from("offer_interest")
-      .upsert(payload, {
-        onConflict: "email,offer_type",
-      })
-      .select("id, email, offer_type, source, status")
-      .maybeSingle();
-
-    return { data, error };
+    const status = Array.isArray(data) ? data[0]?.status : data?.status;
+    return { data: status ? { status } : null, error };
   },
   [],
 );
@@ -10715,21 +10694,16 @@ const joinPremiumWaitlist = useCallback(
         error: offerInterestError,
       } = await saveOfferInterest({
         email: normalizedEmail,
-        userId: user?.id ?? null,
         offerType,
         source: triggerType,
       });
 
       if (offerInterestError) {
         console.error("Offer interest save error:", offerInterestError.message);
-        if (offerType === "future_advanced") {
-          showSaveNotice(
-            "Merci 🙌 Nous te tiendrons informé(e) dès que cette offre sera disponible.",
-            5000,
-          );
-        } else {
-          showSaveNotice("Impossible de rejoindre la liste Premium.", 4000);
-        }
+        showSaveNotice(
+          "Ton inscription n’a pas pu être enregistrée. Réessaie dans quelques instants.",
+          5000,
+        );
         trackEvent("premium_waitlist_submit", {
           source: trackingSource,
           success: false,
