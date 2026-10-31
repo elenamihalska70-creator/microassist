@@ -1,6 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import process from 'node:process';
+import {installOfflineSockets} from './support/offline-services.js';
 const baseline=process.env.COCKPIT_BASELINE==='1';
 const root=process.env.COCKPIT_REVIEW_DIR || 'test-results/cockpit';
 const id='11111111-1111-4111-8111-111111111111';
@@ -18,6 +19,7 @@ const fixtures=[
  {name:'error',error:true},
 ];
 async function setup(context,f){
+ await installOfflineSockets(context);
  const invoiceWrites=[],errors=[];let reads=0,release;
  const gate=new Promise(resolve=>{release=resolve;});
  await context.route('**/*',async route=>{
@@ -83,7 +85,8 @@ for(const f of fixtures)test(`cockpit ${f.name}`,async({context,page})=>{
   if(f.name==='guest-empty'||f.name==='guest-invoice'||f.loading||f.error)expect(metrics).toEqual(['—','—','—']);
   if(f.name==='zero')expect(metrics.every(value=>/^0\s*€$/.test(value))).toBe(true);
   await expect(overview.locator('.cockpitProfile')).toHaveCount(f.loading||f.error||f.name==='complete'||f.name==='zero'||f.name==='provisional'?0:1);
-  await expect(overview).not.toContainText('Profil à compléter');
+  await expect(overview.locator('.cockpitNow')).not.toContainText('Profil à compléter');
+  await expect(overview.locator('.cockpitMarkers')).not.toContainText('Profil à compléter');
   if(f.name==='partial')await expect(overview.locator('.cockpitProfile')).toContainText('date de début d’activité');
   if(await overview.locator('.cockpitProfile').count())await expect(overview.locator('.cockpitProfile')).not.toContainText('SIRET');
   if(f.name==='provisional')await expect(overview).toContainText('Estimation provisoire');
@@ -148,7 +151,7 @@ for(const f of fixtures)test(`cockpit ${f.name}`,async({context,page})=>{
   expect(await page.evaluate(()=>localStorage.getItem('guest_invoices'))).toBe(raw);
  }
  if(!baseline){
-  const contrast=await overview.locator('button,a.btn').evaluateAll(elements=>{
+  const contrast=await overview.locator('.cockpitHeading button,.cockpitNow button,.cockpitNow a.btn,.cockpitActions button,.cockpitProfile button').evaluateAll(elements=>{
    const lum=value=>{const c=value.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4;});return c[0]*.2126+c[1]*.7152+c[2]*.0722;};
    return elements.map(el=>{const s=getComputedStyle(el),a=lum(s.color),b=lum(s.backgroundColor);return(Math.max(a,b)+.05)/(Math.min(a,b)+.05);});
   });

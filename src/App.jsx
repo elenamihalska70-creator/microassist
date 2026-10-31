@@ -18,6 +18,8 @@ import "./App.css";
 import "./components/InvoicePresentation.css";
 import "./components/RevenuePresentation.css";
 import "./components/MobileCoherence.css";
+import BrandMark from "./components/BrandMark.jsx";
+import RevenueHistory from "./components/dashboard/RevenueHistory.jsx";
 import CockpitOverview from "./components/dashboard/CockpitOverview.jsx";
 import CockpitAccess, { CockpitNavigation } from "./components/dashboard/CockpitAccess.jsx";
 import { FISCAL_STEPS } from "./config/steps.fiscal";
@@ -2759,7 +2761,7 @@ function MicroassistFooter({
       <div className="siteFooterInner">
         <div className="siteFooterGrid">
           <section className="siteFooterColumn siteFooterBrand">
-            <h2>Microassist</h2>
+            <h2><BrandMark /></h2>
             <p>
               Assistant fiscal simple pour micro-entrepreneurs. Charges, TVA,
               factures, rappels et suivi fiscal au même endroit.
@@ -2829,7 +2831,7 @@ function LegalPage({ page, path }) {
       <header className="topbar">
         <div className="topbarLeft">
           <a className="brand legalBrandLink" href="/">
-            Microassist
+            <BrandMark />
           </a>
           <div className="topbarMeta">
             <div className="greetingBadge">Informations légales</div>
@@ -13214,55 +13216,12 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
           ) : appView === "dashboard" ? (
 
             <section ref={fiscalRef} className="card dashboardCard">
-              {/* Canonical administrative priority stays first inside the overview.
-                  All selectors, fiscal facts and action callbacks remain unchanged. */}
-              <CockpitOverview
+<CockpitOverview
                 title="Mon espace fiscal"
-                account={connectedAccountLabel || "Session invitée"}
-                storage="Profil et revenus synchronisables avec un compte ; nouvelles factures enregistrées dans ce navigateur."
-                recommendation={dashboardPrimaryAction}
-                revenue={hasRevenueData || cockpitEstimate.isProvisional ? dashboardRevenueDisplay : "—"}
-                reserve={isFiscalProfileComplete && hasAnyDashboardData && !hasLowDataProfile ? dashboardChargesDisplay : "—"}
-                available={isFiscalProfileComplete && hasAnyDashboardData && !hasLowDataProfile ? dashboardAvailableDisplay : "—"}
-                provisional={cockpitEstimate.isProvisional}
-                estimateNote={user && !fiscalProfileLoaded
-                  ? fiscalProfileLoadStatus === "failed"
-                    ? "Les estimations attendent le chargement du profil. Consulte le message d’erreur et réessaie."
-                    : "Chargement du profil fiscal : les estimations ne sont pas encore disponibles."
-                  : !isFiscalProfileComplete
-                  ? "Les informations du profil fiscal sont nécessaires pour estimer la réserve et le disponible. Les revenus enregistrés restent visibles."
-                  : !hasAnyDashboardData || hasLowDataProfile
-                    ? "Ajoute un revenu pour calculer tes estimations. Une valeur non calculée est indiquée par —."
-                    : cockpitEstimate.isProvisional
-                      ? "Estimation provisoire basée sur ton CA estimé. À mettre de côté et disponible sont des estimations, pas un solde bancaire."
-                      : "Revenus enregistrés. À mettre de côté et disponible sont estimés après charges ; ce ne sont pas des soldes bancaires."}
-                missingFields={!user || fiscalProfileLoaded ? [
-                  !dashboardAnswers?.activity_type && "activité principale",
-                  !dashboardAnswers?.declaration_frequency && "fréquence de déclaration",
-                  !hasProfileStartDate && "date de début d’activité",
-                  !hasProfileAcreValue && "situation ACRE",
-                  requiresAcreStartDate && !dashboardAnswers?.acre_start_date && "date de début ACRE",
-                ].filter(Boolean) : []}
-                onEditProfile={handleEditProfile}
-                onAddRevenue={handleOpenRevenuePopup}
-                onCreateInvoice={handleOpenInvoiceGenerator}
-                onCreateAccount={!isPremiumUser && isGuest ? () => openAuthModal("signup") : undefined}
-              >
-              {(hasProfileCore || simpleAssistantProfile) && priorityCardViewModel && (
-                  <PriorityCard
-                    titleTag="h4"
-                    viewModel={priorityCardViewModel}
-                    isSavingPayment={isSavingDeclarationPayment}
-                    onConfirmDeclaration={handleOpenDeclarationConfirm}
-                    onConfirmPayment={handleConfirmDeclarationPayment}
-                    onEditProfile={handleEditProfile}
-                    onViewDetail={handleViewDeclarationDetail}
-                  />
-              )}
-
-              </CockpitOverview>
-
-              <CockpitAccess
+                reserveValue={isFiscalProfileComplete && hasAnyDashboardData && !hasLowDataProfile ? (cockpitEstimate.isProvisional ? cockpitEstimate.charges : fiscalSummaryVisibleSlice.finalContributionAmount) : null}
+                availableValue={isFiscalProfileComplete && hasAnyDashboardData && !hasLowDataProfile ? (cockpitEstimate.hasEstimate ? cockpitEstimate.available : availableAmount) : null}
+                workspace={<>
+<CockpitAccess
                 billing={premiumBannerContent}
                 billingActionLabel={premiumBannerButtonLabel}
                 onBillingAction={handleBillingBannerAction}
@@ -13280,7 +13239,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 qa={dashboardLaunchAnchors.find((anchor) => anchor.key === "qa")}
               />
 
-              {(hasProfileCore || simpleAssistantProfile) && (
+{(hasProfileCore || simpleAssistantProfile) && (
                 <CockpitNavigation
                   sections={[
                     { key: "revenues", label: "Revenus", targetRef: revenusRef, onClick: () => revenusRef.current?.scrollIntoView({ behavior: "smooth" }) },
@@ -13299,7 +13258,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 />
               )}
 
-              {!hasDeclarationReminderActive && (
+{!hasDeclarationReminderActive && (
                 <div className="dashboardDeclarationReminderCard dashboardOrderReminder">
                   <div>
                     <div className="dashboardRecommendationTitle">
@@ -13319,61 +13278,627 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 </div>
               )}
 
-              <div className="dashboardSectionZone dashboardSectionZoneCoolNeutral dashboardOrderSituation">
-                <div className="dashboardSectionHeader">
-                  <h3 className="dashboardSectionTitle">Détail des revenus</h3>
-                </div>
-                <div className="miniStatsGrid">
-                  <div className="miniStatCard">
-                    <div className="miniStatLabel">Moyenne mensuelle</div>
-                    <div className="miniStatValue">
-                      {hasRevenueData
-                        ? getDisplayValue(revenueStats.monthlyAverage, "money")
-                        : dashboardQuietPlaceholder}
-                    </div>
-                  </div>
-                  <div className="miniStatCard">
-                    <div className="miniStatLabel">Dernier revenu</div>
-                    <div className="miniStatValue">
-                      {hasRevenueData
-                        ? getDisplayValue(revenueStats.lastRevenue, "money")
-                        : dashboardQuietPlaceholder}
-                    </div>
-                  </div>
-                  <div className="miniStatCard">
-                    <div className="miniStatLabel">Entrées</div>
-                    <div className="miniStatValue">
-                      {hasRevenueData ? revenueStats.count : dashboardQuietPlaceholder}
-                    </div>
-                  </div>
-                </div>
+<RevenueHistory history={monthlyHistory} series={revenueChartData} maximum={maxRevenueValue} collapsed={dashboardSections.chart} showChart={showChart} onToggle={() => toggleDashboardSection("chart")} onHide={hideChart} chartRef={chartRef} />
 
-                {mixedRevenueBreakdown && (
-                  <div
+<div
+                id="revenues-section"
+                ref={revenusRef}
+                className="dashboardSectionZone dashboardSectionZoneCoolNeutral dashboardOrderRevenues"
+              >
+              {/* Journal des revenus */}
+              <div className="journalHeader dashboardSectionHeader">
+                <div className="dashboardSectionHeaderMain">
+                  <h3 className="dashboardSectionTitle">
+                    Mes revenus ({filteredRevenues.length})
+                  </h3>
+                  <p className="dashboardSectionSubtitle">
+                    {filteredRevenues.length > 0
+                      ? `Total : ${getDisplayValue(revenueSectionTotal, "money")}`
+                      : "Ajoute ton premier revenu"}
+                  </p>
+                </div>
+                <div className="journalFilters dashboardSectionActions">
+                  <button className="btn btnActionPrimary btnSmall" type="button" onClick={handleOpenRevenuePopup}>
+                    Ajouter un revenu
+                  </button>
+                  <button
+                    className="btn btnActionUtility btnSmall"
+                    type="button"
+                    onClick={() => toggleDashboardSection("revenues")}
+                  >
+                    {dashboardSections.revenues ? "Voir tout" : "Réduire"}
+                  </button>
+                  <select
+                    aria-label="Filtrer les revenus par mois"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="monthFilter"
+                  >
+                    <option value="all">Tous les mois</option>
+                    {monthOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {filteredRevenues.length === 0 ? (
+                <div className="emptyRevenueState">
+                  <div className="emptyRevenueIcon">🧾</div>
+                  <div className="emptyRevenueTitle">Ajoute ton premier revenu</div>
+                  <p className="muted">
+                    {selectedMonth === "all"
+                      ? "Plus tu ajoutes de revenus, plus tes estimations deviennent fiables."
+                      : "Aucune entrée pour ce mois."}
+                  </p>
+                </div>
+              ) : dashboardSections.revenues ? (
+                <div
+                  style={{
+                    padding: 16,
+                    borderRadius: 14,
+                    border: "1px solid #e2e8f0",
+                    background: "#ffffff",
+                    color: "#475569",
+                    marginTop: 12,
+                  }}
+                >
+                  Historique replié • {filteredRevenues.length} revenu
+                  {filteredRevenues.length > 1 ? "s" : ""} • Total{" "}
+                  {revenueSectionTotal.toLocaleString("fr-FR")} €
+                </div>
+              ) : (
+                <div className="revenuesList">
+                  {filteredRevenues.map((item) => (
+                    <div key={item.id} className="revenueItem">
+                      <div className="revenueMain">
+                        <div className="revenueAmount">
+                          {Number(item.amount).toLocaleString("fr-FR")} €
+                        </div>
+                        <div className="revenueDate">
+                          {formatRevenueDate(item.date)}
+                        </div>
+                      </div>
+                      <div className="revenueMeta">
+                        {item.revenue_category && (
+                          <div>
+                            <strong>Type :</strong>{" "}
+                            {getRevenueCategoryLabel(item.revenue_category)}
+                          </div>
+                        )}
+                        {item.client && (
+                          <div>
+                            <strong>Client :</strong> {item.client}
+                          </div>
+                        )}
+                        {item.invoice && (
+                          <div>
+                            <strong>Facture :</strong> {item.invoice}
+                          </div>
+                        )}
+                        {item.note && (
+                          <div>
+                            <strong>Note :</strong> {item.note}
+                          </div>
+                        )}
+                      </div>
+                      <div className="revenueActions">
+                        <button
+                          className="btn btnGhost btnSmall btnSubtleDanger"
+                          onClick={() => handleDeleteRevenue(item.id)}
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <section className="revenueExportTools" aria-label="Exports des revenus">
+                <h4>Exporter les revenus</h4>
+                <div className="miniActions">
+                  <button
+                    className="btn btnActionSecondary btnSmall"
+                    type="button"
+                    onClick={handleExportCSV}
+                    disabled={
+                      filteredRevenues.length === 0 ||
+                      isExportingCsv ||
+                      isExportLimitReached
+                    }
+                    title="Exporter les revenus affichés"
                     style={{
-                      display: "grid",
-                      gap: 10,
-                      gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                      marginTop: 16,
+                      opacity:
+                        filteredRevenues.length === 0 ||
+                        isExportingCsv ||
+                        isExportLimitReached
+                          ? 0.5
+                          : 1,
+                      cursor:
+                        filteredRevenues.length === 0 ||
+                        isExportingCsv ||
+                        isExportLimitReached
+                          ? "not-allowed"
+                          : "pointer",
                     }}
                   >
-                    <div className="miniStatCard">
-                      <div className="miniStatLabel">Revenus commerce (BIC)</div>
-                      <div className="miniStatValue">
-                        {mixedRevenueBreakdown.venteTotal.toLocaleString("fr-FR")} €
-                      </div>
-                    </div>
-                    <div className="miniStatCard">
-                      <div className="miniStatLabel">Revenus services (BNC / prestations)</div>
-                      <div className="miniStatValue">
-                        {mixedRevenueBreakdown.serviceTotal.toLocaleString("fr-FR")} €
-                      </div>
-                    </div>
-                  </div>
-                )}
+                    {isExportingCsv ? "Export CSV..." : "Export CSV"}
+                  </button>
+
+                  <button
+                    className="btn btnActionSecondary btnSmall"
+                    type="button"
+                    onClick={handleExportPDFWithLimit}
+                    disabled={
+                      revenues.length === 0 ||
+                      isExportingPdf ||
+                      isExportLimitReached
+                    }
+                    style={{
+                      opacity:
+                        revenues.length === 0 ||
+                        isExportingPdf ||
+                        isExportLimitReached
+                          ? 0.5
+                          : 1,
+                      cursor:
+                        revenues.length === 0 ||
+                        isExportingPdf ||
+                        isExportLimitReached
+                          ? "not-allowed"
+                          : "pointer",
+                    }}
+                  >
+                    {isExportingPdf ? "Export PDF..." : "📄 Export PDF"}
+                  </button>
+
+                  {premiumExportBadge && (
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        padding: "0.35rem 0.7rem",
+                        borderRadius: 999,
+                        background: "rgba(255, 244, 214, 0.8)",
+                        border: "1px solid rgba(217, 168, 41, 0.22)",
+                        color: "#7c5a10",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        letterSpacing: "0.01em",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {premiumExportBadge}
+                    </span>
+                  )}
+
+                </div>
+                <p className="dashboardHelperText">{exportHelperText}</p>
+              </section>
+              <details className="revenueExplanation">
+                <summary>Comprendre le suivi des revenus</summary>
+                <p>Plus tu ajoutes de revenus, plus tes estimations deviennent fiables.</p>
+                <p>Saisie manuelle pour le moment. Connexion automatique (URSSAF/API) prévue dans une prochaine version.</p>
+              </details>
+
+              {renderBetaMicroFeedbackCard("revenues")}
               </div>
 
-              <div className="dashboardLaunchRail">
+<div
+                id="invoices-section"
+                ref={facturesRef}
+                className="dashboardSectionZone dashboardSectionZoneSoftNeutral dashboardOrderInvoices"
+                style={{ marginTop: 24 }}
+              >
+                <div className="journalHeader dashboardSectionHeader">
+                  <div className="dashboardSectionHeaderMain">
+                    <h3 className="dashboardSectionTitle">
+                      Mes factures ({invoiceSectionSummary.count})
+                    </h3>
+                    <p className="dashboardSectionSubtitle">
+                      {invoiceSectionSummary.unpaidCount > 0
+                        ? `${invoiceSectionSummary.unpaidCount} impayée${invoiceSectionSummary.unpaidCount > 1 ? "s" : ""}`
+                        : "Aucun impayé"}
+                    </p>
+                    <p className="dashboardSectionSubtitle">
+                      Nouvelles factures : dans ce navigateur.
+                    </p>
+                  </div>
+                  <div className="journalFilters dashboardSectionActions">
+                    <button
+                      className="btn btnActionPrimary btnSmall"
+                      type="button"
+                      onClick={handleOpenInvoiceGenerator}
+                    >
+                      Créer une facture
+                    </button>
+                    <button
+                      className="btn btnActionUtility btnSmall"
+                      type="button"
+                      onClick={() => toggleDashboardSection("invoices")}
+                    >
+                      {dashboardSections.invoices ? "Voir tout" : "Réduire"}
+                    </button>
+                  </div>
+                </div>
+
+                {revenues.length > 0 && visibleInvoices.length === 0 && (
+                  <div className="einvoicingInfoCard" style={{ marginTop: 12 }}>
+                    <div>
+                      <h3>⚠️ Revenu sans facture liée</h3>
+                      <p>
+                        Tu as des revenus enregistrés, mais aucune facture liée.
+                        Créer une facture permet de mieux justifier ton chiffre
+                        d’affaires.
+                      </p>
+                    </div>
+                    <button
+                      className="btn btnActionSecondary btnSmall"
+                      type="button"
+                      onClick={handleOpenInvoiceFromLatestRevenue}
+                    >
+                      Créer une facture depuis un revenu
+                    </button>
+                  </div>
+                )}
+
+                <LocalInvoiceStatus userId={user?.id ?? null} invoices={guestInvoices} onStorageChange={setGuestInvoices} />
+
+                {invoiceNotice && (
+                  <div className="saveNotice" style={{ marginTop: 16, width: "100%" }}>
+                    {typeof invoiceNotice === "string" ? (
+                      <>✅ {invoiceNotice}</>
+                    ) : (
+                      <div style={{ display: "grid", gap: 8 }}>
+                        <div style={{ fontWeight: 700 }}>{invoiceNotice.title}</div>
+                        <div>{invoiceNotice.body}</div>
+                        {invoiceNotice.invoice && (
+                          <div>
+                            <InvoicePdfDownloadButton invoice={invoiceNotice.invoice} userEmail={user?.email || ""}>
+                              Télécharger la facture
+                            </InvoicePdfDownloadButton>
+                          </div>
+                        )}
+                        {invoiceNotice.cta === "auth" && (
+                          <div>
+                            <button
+                              className="btn btnActionSecondary btnSmall"
+                              type="button"
+                              onClick={() => openAuthModal("signup")}
+                            >
+                              Créer mon compte
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {visibleInvoices.length === 0 ? (
+                  <div className="emptyRevenueState emptyRevenueStateCompact">
+                    <div className="emptyRevenueIcon">🧾</div>
+                    <div className="emptyRevenueStatus">Suivi factures à démarrer</div>
+                    <div className="emptyRevenueTitle">Aucune facture enregistrée</div>
+                    <p className="muted">
+                      Une facture rend le suivi plus clair pour tes clients, tes encaissements
+                      et la TVA collectée quand elle s’active.
+                    </p>
+                  </div>
+                ) : dashboardSections.invoices ? (
+                  <div
+                    style={{
+                      padding: 16,
+                      borderRadius: 14,
+                      border: "1px solid #e2e8f0",
+                      background: "#ffffff",
+                      color: "#475569",
+                      marginTop: 12,
+                    }}
+                  >
+                    Historique replié • {invoiceSectionSummary.count} facture
+                    {invoiceSectionSummary.count > 1 ? "s" : ""}
+                    {invoiceSectionSummary.unpaidCount > 0 &&
+                      ` • ${invoiceSectionSummary.unpaidCount} impayée${invoiceSectionSummary.unpaidCount > 1 ? "s" : ""}`}
+                  </div>
+                ) : (
+                  <div className="revenuesList">
+                    {invoiceDisplayItems.map(({ invoice, origin }) => {
+                      const complianceScore = getInvoiceComplianceScore(
+                        invoice,
+                        userProfile,
+                      );
+                      const complianceBadge =
+                        complianceScore.status === "conforme"
+                          ? {
+                              className: "badgeGreen",
+                              label: "✅ Champs contrôlés renseignés",
+                            }
+                          : complianceScore.status === "bloquant"
+                            ? {
+                                className: "badgeYellow",
+                                label: "❌ Champs à compléter",
+                              }
+                            : {
+                                className: "badgeYellow",
+                                label: "⚠️ À compléter",
+                              };
+
+                      return (
+                      <div key={`${origin}:${invoice.id}`} className="revenueItem">
+                        <div className="revenueMain">
+                          <div className="revenueAmount">
+                            {getInvoiceDisplayAmountLabel(invoice)}
+                          </div>
+                          <div className="revenueDate">
+                            N° {getInvoiceDisplayNumber(invoice)}
+                          </div>
+                        </div>
+                        <div className="revenueMeta">
+                          {invoice.client_name && (
+                            <div>
+                              <strong>Client :</strong> {invoice.client_name}
+                            </div>
+                          )}
+                          {invoice.description && (
+                            <div>
+                              <strong>Prestation :</strong>{" "}
+                              {invoice.description}
+                            </div>
+                          )}
+                          {invoice.invoice_date && (
+                            <div>
+                              <strong>Date :</strong>{" "}
+                              {new Date(
+                                `${getInvoiceDisplayDate(invoice)}T00:00:00`,
+                              ).toLocaleDateString("fr-FR", {
+                                day: "2-digit",
+                                month: "long",
+                                year: "numeric",
+                              })}
+                            </div>
+                          )}
+                          {getInvoiceTotals(invoice).isVatExempt && (
+                            <div>
+                              <strong>TVA :</strong> {TVA_EXEMPTION_MENTION}
+                            </div>
+                          )}
+                          <div>
+                            <strong>Indicateur de complétude :</strong>{" "}
+                            {complianceScore.score}/100
+                          </div>
+                          {complianceScore.alerts.map((alert) => (
+                            <div key={alert}>{alert}</div>
+                          ))}
+                        </div>
+                        <div className="revenueActions" style={{ flexWrap: "wrap" }}>
+                          <span
+                            className={`badge ${
+                              getInvoicePaymentStatus(invoice) === "paid"
+                                ? "badgeGreen"
+                                : "badgeYellow"
+                            }`}
+                          >
+                            {getInvoicePaymentStatus(invoice) === "paid"
+                              ? "Payée"
+                              : "En attente"}
+                          </span>
+                          <span
+                            className={`badge ${complianceBadge.className}`}
+                          >
+                            {complianceBadge.label}
+                          </span>
+                          <span className="badge badgeGreen">PDF prêt</span>
+                          {origin === "local" && (
+                            <span className="badge badgeGray">
+                              Enregistrée dans ce navigateur
+                            </span>
+                          )}
+                          {isFacturXDraftInvoice(invoice) && (
+                            <span className="badge badgeGray">
+                              Brouillon Factur-X
+                            </span>
+                          )}
+                          <InvoicePdfDownloadButton invoice={invoice} userEmail={user?.email || ""}>
+                            PDF
+                          </InvoicePdfDownloadButton>
+                          {getInvoicePaymentStatus(invoice) !== "paid" && (
+                            <button
+                              className="btn btnActionSecondary btnSmall"
+                              type="button"
+                              onClick={() => handleMarkInvoicePaid(invoice, origin)}
+                            >
+                              Marquer comme payée
+                            </button>
+                          )}
+                          {isFacturXDraftInvoice(invoice) && (
+                            <button
+                              className="btn btnActionSecondary btnSmall"
+                              type="button"
+                              onClick={() => downloadInvoiceXmlDraft(invoice)}
+                            >
+                              XML
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <LocalInvoiceBackup key={user?.id ?? "guest"} onRestored={setGuestInvoices} />
+                <details className="invoiceExplanation">
+                  <summary>Comprendre les documents et l’indicateur de complétude</summary>
+                  <p>{INVOICE_DOCUMENTS_NOTE}</p>
+                  <p>Cet indicateur ne valide pas la conformité fiscale ni Factur-X/PDF/A-3.</p>
+                  <p>{PDP_ROADMAP_NOTE}</p>
+                </details>
+                {renderBetaMicroFeedbackCard("invoices")}
+              </div>
+
+<div
+                id="advisor-share-section"
+                className="dashboardSectionZone dashboardSectionZoneCoolNeutral dashboardAdvisorShareCard dashboardOrderAdvisorShare"
+              >
+                <div className="dashboardSectionHeader">
+                  <div className="dashboardSectionHeaderMain">
+                    <h3 className="dashboardSectionTitle">
+                      Partager mon suivi avec un conseiller
+                    </h3>
+                    <p className="dashboardSectionSubtitle">
+                      Envoie un résumé clair de ta situation à une personne qui peut t’aider.
+                    </p>
+                  </div>
+                  <div className="dashboardSectionActions">
+                    <button
+                      className="btn btnActionSecondary btnSmall"
+                      type="button"
+                      onClick={handleCopyExpertShareLink}
+                    >
+                      Copier le lien de partage
+                    </button>
+                  </div>
+                </div>
+                <div className="dashboardHelperText">
+                  Aucune donnée sensible n’est partagée dans cette version de
+                  démonstration.
+                </div>
+              </div>
+
+<span id="reminders-section" className="dashboardSectionAnchor" />
+
+{!dashboardRemindersDismissed && activeReminderItems.length > 0 && (
+                <div
+                  className="dashboardSectionZone dashboardSectionZoneLavender"
+                  style={{
+                    marginBottom: 18,
+                  }}
+                  >
+                    <div className="dashboardSectionHeader">
+                      <div className="dashboardSectionHeaderMain">
+                        <h3 className="dashboardSectionTitle">
+                          Mes rappels actifs
+                        </h3>
+                        <div className="dashboardSectionSubtitle">
+                          {activeReminderItems.length} rappel
+                          {activeReminderItems.length > 1 ? "s" : ""}
+                        </div>
+                      </div>
+                      <div className="dashboardSectionActions">
+                        <button
+                          className="btn btnActionSecondary btnSmall"
+                          type="button"
+                          onClick={() => openReminderManager("active_reminders_block")}
+                        >
+                          Gérer mes rappels
+                        </button>
+                        <button
+                          className="btn btnActionUtility btnSmall"
+                          type="button"
+                          onClick={() => toggleDashboardSection("reminders")}
+                        >
+                          {dashboardSections.reminders ? "Voir tout" : "Réduire"}
+                        </button>
+                        <button
+                          className="iconBtn"
+                          type="button"
+                          aria-label="Masquer les rappels actifs"
+                          onClick={() => {
+                            setDashboardRemindersDismissed(true);
+                            try {
+                              localStorage.setItem(
+                                DASHBOARD_REMINDERS_DISMISSED_KEY,
+                                "1",
+                              );
+                            } catch {
+                              // Ignore localStorage failures in dashboard UI state.
+                            }
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+
+                  {!dashboardSections.reminders && (
+                    <div
+                      style={{
+                        display: "grid",
+                        gap: 8,
+                        marginTop: 12,
+                      }}
+                    >
+                      {activeReminderItems.map((item) => (
+                        <div
+                          key={item.key}
+                          style={{
+                            padding: "12px 14px",
+                            borderRadius: 12,
+                            background: "#ffffff",
+                            border: "1px solid #e5ddf6",
+                            boxShadow: "0 6px 18px rgba(109, 40, 217, 0.05)",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: 12,
+                              alignItems: "flex-start",
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            <div style={{ color: "#334155", fontSize: 14, flex: 1 }}>
+                              <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                                {item.urgent ? "⚠️ " : "🔔 "}
+                                {item.title}
+                              </div>
+                              <div style={{ marginTop: 4 }}>{item.text}</div>
+                            </div>
+
+                            {item.actions?.length > 0 && (
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: 8,
+                                  flexWrap: "wrap",
+                                }}
+                              >
+                                {item.actions.map((action) =>
+                                  action.kind === "link" ? (
+                                    <a
+                                      key={action.label}
+                                      href={action.href}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={`btn ${action.label === "Déclarer" ? "btnActionSecondary" : "btnActionUtility"} btnSmall`}
+                                    >
+                                      {action.label}
+                                    </a>
+                                  ) : (
+                                    <button
+                                      key={action.label}
+                                      className={`btn ${action.label === "Voir le diagnostic" || action.label === "Comprendre" ? "btnActionSecondary" : "btnActionUtility"} btnSmall`}
+                                      type="button"
+                                      onClick={action.onClick}
+                                    >
+                                      {action.label}
+                                    </button>
+                                  ),
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+<div className="dashboardLaunchRail">
                 {dashboardLaunchAnchors.some((anchor) => anchor.key !== "qa") && (
                   <div className="dashboardLaunchAnchors">
                     {dashboardLaunchAnchors.filter((anchor) => anchor.key !== "qa").map((anchor) => (
@@ -13390,7 +13915,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
               </div>
 
-              <div className="dashboardSignalStack">
+<div className="dashboardSignalStack">
               {dashboardMilestone && (
                 <div className="dashboardMilestoneBanner">
                   <div
@@ -13649,138 +14174,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               {renderBetaMicroFeedbackCard("top")}
               </div>
 
-              <span id="reminders-section" className="dashboardSectionAnchor" />
-
-              {!dashboardRemindersDismissed && activeReminderItems.length > 0 && (
-                <div
-                  className="dashboardSectionZone dashboardSectionZoneLavender"
-                  style={{
-                    marginBottom: 18,
-                  }}
-                  >
-                    <div className="dashboardSectionHeader">
-                      <div className="dashboardSectionHeaderMain">
-                        <h3 className="dashboardSectionTitle">
-                          Mes rappels actifs
-                        </h3>
-                        <div className="dashboardSectionSubtitle">
-                          {activeReminderItems.length} rappel
-                          {activeReminderItems.length > 1 ? "s" : ""}
-                        </div>
-                      </div>
-                      <div className="dashboardSectionActions">
-                        <button
-                          className="btn btnActionSecondary btnSmall"
-                          type="button"
-                          onClick={() => openReminderManager("active_reminders_block")}
-                        >
-                          Gérer mes rappels
-                        </button>
-                        <button
-                          className="btn btnActionUtility btnSmall"
-                          type="button"
-                          onClick={() => toggleDashboardSection("reminders")}
-                        >
-                          {dashboardSections.reminders ? "Voir tout" : "Réduire"}
-                        </button>
-                        <button
-                          className="iconBtn"
-                          type="button"
-                          aria-label="Masquer les rappels actifs"
-                          onClick={() => {
-                            setDashboardRemindersDismissed(true);
-                            try {
-                              localStorage.setItem(
-                                DASHBOARD_REMINDERS_DISMISSED_KEY,
-                                "1",
-                              );
-                            } catch {
-                              // Ignore localStorage failures in dashboard UI state.
-                            }
-                          }}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-
-                  {!dashboardSections.reminders && (
-                    <div
-                      style={{
-                        display: "grid",
-                        gap: 8,
-                        marginTop: 12,
-                      }}
-                    >
-                      {activeReminderItems.map((item) => (
-                        <div
-                          key={item.key}
-                          style={{
-                            padding: "12px 14px",
-                            borderRadius: 12,
-                            background: "#ffffff",
-                            border: "1px solid #e5ddf6",
-                            boxShadow: "0 6px 18px rgba(109, 40, 217, 0.05)",
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              gap: 12,
-                              alignItems: "flex-start",
-                              flexWrap: "wrap",
-                            }}
-                          >
-                            <div style={{ color: "#334155", fontSize: 14, flex: 1 }}>
-                              <div style={{ fontWeight: 700, color: "#0f172a" }}>
-                                {item.urgent ? "⚠️ " : "🔔 "}
-                                {item.title}
-                              </div>
-                              <div style={{ marginTop: 4 }}>{item.text}</div>
-                            </div>
-
-                            {item.actions?.length > 0 && (
-                              <div
-                                style={{
-                                  display: "flex",
-                                  gap: 8,
-                                  flexWrap: "wrap",
-                                }}
-                              >
-                                {item.actions.map((action) =>
-                                  action.kind === "link" ? (
-                                    <a
-                                      key={action.label}
-                                      href={action.href}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className={`btn ${action.label === "Déclarer" ? "btnActionSecondary" : "btnActionUtility"} btnSmall`}
-                                    >
-                                      {action.label}
-                                    </a>
-                                  ) : (
-                                    <button
-                                      key={action.label}
-                                      className={`btn ${action.label === "Voir le diagnostic" || action.label === "Comprendre" ? "btnActionSecondary" : "btnActionUtility"} btnSmall`}
-                                      type="button"
-                                      onClick={action.onClick}
-                                    >
-                                      {action.label}
-                                    </button>
-                                  ),
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div
+<div
                 ref={(node) => {
                   smartPrioritiesRef.current = node;
                   prioritesRef.current = node;
@@ -13929,7 +14323,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               </div>
               </div>
 
-              {fiscalCoachingCard && (
+{fiscalCoachingCard && (
                 <div className="fiscalCoachCard">
                   <div className="fiscalCoachTitle">{DAILY_FISCAL_TIP_COPY.title}</div>
                   <div
@@ -13955,7 +14349,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 </div>
               )}
 
-              {fiscalRecommendationCard && (
+{fiscalRecommendationCard && (
                 <div className="fiscalRecommendationCard">
                   <div className="fiscalRecommendationText">
                     {fiscalRecommendationCard}
@@ -13963,457 +14357,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 </div>
               )}
 
-              {showCashImpactModal && (
-                <div
-                  className="modalOverlay"
-                  onClick={() => setShowCashImpactModal(false)}
-                >
-                  <div
-                    className="modalCard"
-                    style={{ maxWidth: "520px" }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="sectionHead">
-                      <h3>📊 Impact sur ta trésorerie</h3>
-                      <button
-                        className="iconBtn"
-                        onClick={() => setShowCashImpactModal(false)}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <div style={{ marginTop: 20, display: "grid", gap: 12 }}>
-                      <div
-                        style={{
-                          background: "#f8fafc",
-                          padding: 16,
-                          borderRadius: 12,
-                          border: "1px solid #e2e8f0",
-                        }}
-                      >
-                        <div style={{ fontWeight: 700, color: "#0f172a" }}>
-                          Réserve recommandée
-                        </div>
-                        <p style={{ marginTop: 8, fontSize: 14, color: "#334155" }}>
-                          {typeof computed?.treasuryRecommended === "number"
-                            ? `${computed.treasuryRecommended.toLocaleString("fr-FR")} € à garder de côté au minimum.`
-                            : hasAnyDashboardData
-                              ? `${dashboardChargesDisplay} de charges estimées à sécuriser.`
-                              : "Ajoute un revenu pour afficher ce repère."}
-                        </p>
-                      </div>
-
-                      <div
-                        style={{
-                          background: "#ffffff",
-                          padding: 16,
-                          borderRadius: 12,
-                          border: "1px solid #e2e8f0",
-                        }}
-                      >
-                        <div style={{ fontWeight: 700, color: "#0f172a" }}>
-                          Risque TVA
-                        </div>
-                        <p style={{ marginTop: 8, fontSize: 14, color: "#334155" }}>
-                          {normalizedTvaStatusLabel || "TVA à confirmer"}
-                        </p>
-                        <p style={{ marginTop: 6, fontSize: 13, color: "#475569" }}>
-                          {computed?.tvaHint ||
-                            "Le seuil TVA dépend de ton activité et de ton chiffre d’affaires cumulé."}
-                        </p>
-                      </div>
-
-                      <div
-                        style={{
-                          display: "grid",
-                          gap: 12,
-                          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                        }}
-                      >
-                        <div
-                          style={{
-                            background: "#ffffff",
-                            padding: 16,
-                            borderRadius: 12,
-                            border: "1px solid #e2e8f0",
-                          }}
-                        >
-                          <div style={{ fontSize: 13, color: "#64748b" }}>
-                            Charges estimées
-                          </div>
-                          <div style={{ marginTop: 6, fontWeight: 700, color: "#0f172a" }}>
-                            {dashboardChargesDisplay}
-                          </div>
-                        </div>
-                        <div
-                          style={{
-                            background: "#ffffff",
-                            padding: 16,
-                            borderRadius: 12,
-                            border: "1px solid #e2e8f0",
-                          }}
-                        >
-                          <div style={{ fontSize: 13, color: "#64748b" }}>
-                            Disponible ajusté
-                          </div>
-                          <div style={{ marginTop: 6, fontWeight: 700, color: "#0f172a" }}>
-                            {hasAnyDashboardData
-                              ? getDisplayValue(
-                                  Math.max(
-                                    0,
-                                    availableAmount -
-                                      Math.max(
-                                        estimatedCharges,
-                                        Number(computed?.treasuryRecommended || 0),
-                                      ),
-                                  ),
-                                  "money",
-                                )
-                              : dashboardQuietPlaceholder}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 12,
-                          flexWrap: "wrap",
-                          justifyContent: "flex-end",
-                        }}
-                      >
-                        <button
-                          className="btn btnActionSecondary"
-                          type="button"
-                          onClick={() => {
-                            setShowCashImpactModal(false);
-                            setShowTVADiagnosticModal(true);
-                          }}
-                        >
-                          Vérifier la TVA
-                        </button>
-                        <button
-                          className="btn btnPrimary"
-                          type="button"
-                          onClick={() => setShowCashImpactModal(false)}
-                        >
-                          Fermer
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {showTVADiagnosticModal && (
-                <div
-                  className="modalOverlay"
-                  onClick={() => setShowTVADiagnosticModal(false)}
-                >
-                  <div
-                    className="modalCard"
-                    style={{ maxWidth: "520px" }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="sectionHead">
-                      <h3>📌 Diagnostic TVA</h3>
-                      <button
-                        className="iconBtn"
-                        onClick={() => setShowTVADiagnosticModal(false)}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <div style={{ marginTop: 20, display: "grid", gap: 12 }}>
-                      <div
-                        style={{
-                          background: "#f8fafc",
-                          padding: 16,
-                          borderRadius: 12,
-                          border: "1px solid #e2e8f0",
-                        }}
-                      >
-                        <div style={{ fontWeight: 700, color: "#0f172a" }}>
-                          Situation actuelle
-                        </div>
-                        <p style={{ marginTop: 8, fontSize: 14, color: "#334155" }}>
-                          {normalizedTvaStatusLabel || "TVA à confirmer"}
-                        </p>
-                        <p style={{ marginTop: 6, fontSize: 13, color: "#475569" }}>
-                          {computed?.tvaHint ||
-                            "Le seuil TVA mérite une vérification avec ton activité actuelle."}
-                        </p>
-                      </div>
-
-                      <div
-                        style={{
-                          background: "#ffffff",
-                          padding: 16,
-                          borderRadius: 12,
-                          border: "1px solid #e2e8f0",
-                        }}
-                      >
-                        <div style={{ fontWeight: 700, color: "#0f172a" }}>
-                          Projection
-                        </div>
-                        <p style={{ marginTop: 8, fontSize: 14, color: "#334155" }}>
-                          {computed?.annualRevenue !== undefined
-                            ? `Projection annuelle : ${getDisplayValue(
-                                computed.annualRevenue,
-                                "money",
-                              )}`
-                            : hasRevenueData
-                              ? `CA enregistré : ${getDisplayValue(
-                                  currentMonthTotal,
-                                  "money",
-                                )}`
-                              : "Ajoute ton premier revenu"}
-                        </p>
-                      </div>
-
-                      <div
-                        style={{
-                          background:
-                            computed?.tvaStatus === "exceeded"
-                              ? "#fff7ed"
-                              : "#f8fafc",
-                          padding: 16,
-                          borderRadius: 12,
-                          border:
-                            computed?.tvaStatus === "exceeded"
-                              ? "1px solid #fdba74"
-                              : "1px solid #e2e8f0",
-                        }}
-                      >
-                        <div style={{ fontWeight: 700, color: "#0f172a" }}>
-                          {computed?.tvaStatus === "exceeded"
-                            ? "Action à lancer"
-                            : computed?.tvaStatus === "soon"
-                              ? "Point de vigilance"
-                              : "Rythme actuel"}
-                        </div>
-                        <p style={{ marginTop: 8, fontSize: 14, color: "#334155" }}>
-                          {computed?.tvaStatus === "exceeded"
-                            ? "Prépare maintenant l’activation de la TVA, la facturation adaptée et l’organisation déclarative."
-                            : computed?.tvaStatus === "soon"
-                              ? "Surveille ton seuil de près et garde ta facturation prête si l’activité continue d’accélérer."
-                              : "Aucune action immédiate, garde simplement un œil sur ton chiffre d’affaires cumulé."}
-                        </p>
-                      </div>
-
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 12,
-                          flexWrap: "wrap",
-                          justifyContent: "flex-end",
-                        }}
-                      >
-                        <button
-                          className="btn btnActionSecondary"
-                          type="button"
-                          onClick={() => {
-                            setShowTVADiagnosticModal(false);
-                            openExplanationModal("tva");
-                          }}
-                        >
-                          Comprendre la TVA
-                        </button>
-                        <button
-                          className="btn btnPrimary"
-                          type="button"
-                          onClick={() => setShowTVADiagnosticModal(false)}
-                        >
-                          J’ai compris
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Confirmation de déclaration -- LOT 10.2D */}
-              {showDeclarationConfirmModal && declarationConfirmForm && (
-                <div
-                  className="modalOverlay"
-                  onClick={handleCloseDeclarationConfirm}
-                >
-                  <div
-                    className="modalCard"
-                    style={{ maxWidth: "480px" }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="sectionHead">
-                      <h3>J’ai fait ma déclaration</h3>
-                      <button
-                        className="iconBtn"
-                        type="button"
-                        onClick={handleCloseDeclarationConfirm}
-                      >
-                        ✕
-                      </button>
-                    </div>
-
-                    <div style={{ marginTop: 16, display: "grid", gap: 14 }}>
-                      <label style={{ display: "grid", gap: 6, fontSize: 13 }}>
-                        Date de déclaration
-                        <input
-                          type="date"
-                          className="formInput"
-                          value={declarationConfirmForm.declaredAt}
-                          onChange={(e) =>
-                            setDeclarationConfirmForm((prev) => ({
-                              ...prev,
-                              declaredAt: e.target.value,
-                            }))
-                          }
-                        />
-                      </label>
-
-                      <label style={{ display: "grid", gap: 6, fontSize: 13 }}>
-                        Chiffre d’affaires déclaré
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="formInput"
-                          value={declarationConfirmForm.declaredRevenue}
-                          onChange={(e) =>
-                            setDeclarationConfirmForm((prev) => ({
-                              ...prev,
-                              declaredRevenue: e.target.value,
-                            }))
-                          }
-                        />
-                        {declarationConfirmForm.calculatedRevenuePreview != null && (
-                          <span style={{ fontSize: 12, color: "#64748b" }}>
-                            Calculé par Microassist :{" "}
-                            {getDisplayValue(
-                              declarationConfirmForm.calculatedRevenuePreview,
-                              "money",
-                            )}{" "}
-                            (modifiable)
-                          </span>
-                        )}
-                      </label>
-
-                      <label style={{ display: "grid", gap: 6, fontSize: 13 }}>
-                        Cotisations réelles (optionnel)
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="formInput"
-                          placeholder={
-                            declarationConfirmForm.estimatedContributionsPreview != null
-                              ? `Estimation Microassist : ${declarationConfirmForm.estimatedContributionsPreview}`
-                              : "Non estimé"
-                          }
-                          value={declarationConfirmForm.actualContributions}
-                          onChange={(e) =>
-                            setDeclarationConfirmForm((prev) => ({
-                              ...prev,
-                              actualContributions: e.target.value,
-                            }))
-                          }
-                        />
-                      </label>
-
-                      <label style={{ display: "grid", gap: 6, fontSize: 13 }}>
-                        Notes (optionnel)
-                        <textarea
-                          className="formInput"
-                          rows={2}
-                          value={declarationConfirmForm.notes}
-                          onChange={(e) =>
-                            setDeclarationConfirmForm((prev) => ({
-                              ...prev,
-                              notes: e.target.value,
-                            }))
-                          }
-                        />
-                      </label>
-
-                      {declarationConfirmError && (
-                        <div style={{ color: "#b91c1c", fontSize: 13 }}>
-                          {declarationConfirmError}
-                        </div>
-                      )}
-
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 12,
-                          flexWrap: "wrap",
-                          justifyContent: "flex-end",
-                        }}
-                      >
-                        <button
-                          className="btn btnActionSecondary"
-                          type="button"
-                          onClick={handleCloseDeclarationConfirm}
-                          disabled={isSavingDeclarationConfirmation}
-                        >
-                          Annuler
-                        </button>
-                        <button
-                          className="btn btnPrimary"
-                          type="button"
-                          onClick={handleSubmitDeclarationConfirm}
-                          disabled={isSavingDeclarationConfirmation}
-                        >
-                          {isSavingDeclarationConfirmation ? "Enregistrement..." : "Confirmer"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Repères fiscaux */}
-              <div className="fiscalTimeline">
-                <div className="dashboardSectionHeader">
-                  <div className="dashboardSectionHeaderMain">
-                    <h3 className="dashboardSectionTitle">{FISCAL_MARKERS_COPY.title}</h3>
-                  </div>
-                </div>
-                <div className="timelineList">
-                  {fiscalTimeline.map((item) => {
-                    const content = (
-                      <>
-                        <div className="timelineTop">
-                          <span className="timelineIcon">{item.icon}</span>
-                          <span className="timelineLabel">{item.label}</span>
-                        </div>
-                        <div className="timelineValue">{item.value}</div>
-                        <div className="timelineHint">{item.hint}</div>
-                        {item.action && (
-                          <div className="timelineAction">
-                            {item.action.label}
-                          </div>
-                        )}
-                      </>
-                    );
-
-                    return item.action ? (
-                      <button
-                        key={item.key}
-                        className="timelineItem timelineItemActionable"
-                        type="button"
-                        onClick={item.action.onClick}
-                      >
-                        {content}
-                      </button>
-                    ) : (
-                      <div key={item.key} className="timelineItem">
-                        {content}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Ma déclaration -- LOT 10.2D minimal declaration dossier flow.
-                  id targeted by PriorityCard's "Voir le détail" (LOT 10.2E.1). */}
-              {currentDeclarationView && (
+{currentDeclarationView && (
                 <div
                   id="declaration-detail-section"
                   className="dashboardSectionZone"
@@ -14573,8 +14517,171 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 </div>
               )}
 
-              {/* Analyse financière */}
-              {isFiscalProfileComplete && computed.monthlyExpenses !== undefined && (
+{user && computed?.cfeAlert?.show && (
+                <div
+                  className="cfeWarning"
+                  style={{
+                    marginTop: 16,
+                    marginBottom: 16,
+                    padding: "12px 16px",
+                    background: "#fff5f0",
+                    borderLeft: "4px solid #f97316",
+                    borderRadius: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      gap: 12,
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <strong>
+                        ⚠️ Attention CFE {new Date().getFullYear()}
+                      </strong>
+                      <p style={{ margin: "4px 0 0", fontSize: 13 }}>
+                        {computed?.cfeAlert?.message}
+                        {computed?.businessYear === 2 &&
+                          " (2ème année d'activité)"}
+                        {!computed?.businessYear &&
+                          computed?.cfeAlert?.estimatedAmount === null && (
+                            <span
+                              style={{
+                                display: "block",
+                                fontSize: 12,
+                                marginTop: 4,
+                              }}
+                            >
+                              💡 Renseigne ta date de début d'activité dans ton
+                              profil pour une estimation précise.
+                            </span>
+                          )}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openExplanationModal("cfe")}
+                      className="btn btnGhost btnSmall"
+                      style={{ fontSize: 12, padding: "4px 12px" }}
+                    >
+                      📖 En savoir plus
+                    </button>
+                  </div>
+                </div>
+              )}
+
+<div className="dashboardFooterLinks">
+                <a
+                  href={FEEDBACK_FORM_URL}
+                  className="dashboardProblemLink"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  🐛 Signaler un problème
+                </a>
+              </div>
+                </>}
+                insights={<>
+<div className="dashboardSectionZone dashboardSectionZoneCoolNeutral dashboardOrderSituation">
+                <div className="dashboardSectionHeader">
+                  <h3 className="dashboardSectionTitle">Détail des revenus</h3>
+                </div>
+                <div className="miniStatsGrid">
+                  <div className="miniStatCard">
+                    <div className="miniStatLabel">Moyenne mensuelle</div>
+                    <div className="miniStatValue">
+                      {hasRevenueData
+                        ? getDisplayValue(revenueStats.monthlyAverage, "money")
+                        : dashboardQuietPlaceholder}
+                    </div>
+                  </div>
+                  <div className="miniStatCard">
+                    <div className="miniStatLabel">Dernier revenu</div>
+                    <div className="miniStatValue">
+                      {hasRevenueData
+                        ? getDisplayValue(revenueStats.lastRevenue, "money")
+                        : dashboardQuietPlaceholder}
+                    </div>
+                  </div>
+                  <div className="miniStatCard">
+                    <div className="miniStatLabel">Entrées</div>
+                    <div className="miniStatValue">
+                      {hasRevenueData ? revenueStats.count : dashboardQuietPlaceholder}
+                    </div>
+                  </div>
+                </div>
+
+                {mixedRevenueBreakdown && (
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: 10,
+                      gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                      marginTop: 16,
+                    }}
+                  >
+                    <div className="miniStatCard">
+                      <div className="miniStatLabel">Revenus commerce (BIC)</div>
+                      <div className="miniStatValue">
+                        {mixedRevenueBreakdown.venteTotal.toLocaleString("fr-FR")} €
+                      </div>
+                    </div>
+                    <div className="miniStatCard">
+                      <div className="miniStatLabel">Revenus services (BNC / prestations)</div>
+                      <div className="miniStatValue">
+                        {mixedRevenueBreakdown.serviceTotal.toLocaleString("fr-FR")} €
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+<div className="fiscalTimeline">
+                <div className="dashboardSectionHeader">
+                  <div className="dashboardSectionHeaderMain">
+                    <h3 className="dashboardSectionTitle">{FISCAL_MARKERS_COPY.title}</h3>
+                  </div>
+                </div>
+                <div className="timelineList">
+                  {fiscalTimeline.map((item) => {
+                    const content = (
+                      <>
+                        <div className="timelineTop">
+                          <span className="timelineIcon">{item.icon}</span>
+                          <span className="timelineLabel">{item.label}</span>
+                        </div>
+                        <div className="timelineValue">{item.value}</div>
+                        <div className="timelineHint">{item.hint}</div>
+                        {item.action && (
+                          <div className="timelineAction">
+                            {item.action.label}
+                          </div>
+                        )}
+                      </>
+                    );
+
+                    return item.action ? (
+                      <button
+                        key={item.key}
+                        className="timelineItem timelineItemActionable"
+                        type="button"
+                        onClick={item.action.onClick}
+                      >
+                        {content}
+                      </button>
+                    ) : (
+                      <div key={item.key} className="timelineItem">
+                        {content}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+{isFiscalProfileComplete && computed.monthlyExpenses !== undefined && (
                 <div
                   id="analysis-section"
                   ref={analyseRef}
@@ -14674,7 +14781,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 </div>
               )}
 
-              <div id="score-section" className="fiscalScoreCard dashboardOrderScore">
+<div id="score-section" className="fiscalScoreCard dashboardOrderScore">
                 <div className="fiscalScoreHeader">
                   <h3>{SCORE_COPY.title}</h3>
                   <div
@@ -14700,8 +14807,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 </div>
               </div>
 
-              {/* Добавьте после fiscalDashboard */}
-              {isFiscalProfileComplete && fiscalSummaryVisibleSlice.revenueTotal > 0 && (
+{isFiscalProfileComplete && fiscalSummaryVisibleSlice.revenueTotal > 0 && (
                 <div
                   className="progressIndicators"
                 >
@@ -14746,9 +14852,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 </div>
               )}
 
-              {/* ACRE Expiration Warning */}
-              {/* Santé financière */}
-              {isFiscalProfileComplete && computed.financialHealth && computed.financialHealthMessage && (
+{isFiscalProfileComplete && computed.financialHealth && computed.financialHealthMessage && (
                 <div
                   className={`financialHealthBox health-${computed.financialHealth}`}
                   style={{
@@ -14802,671 +14906,452 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   )}
                 </div>
               )}
+                </>}
+                account={connectedAccountLabel || "Session invitée"}
+                storage="Profil et revenus synchronisables avec un compte ; nouvelles factures enregistrées dans ce navigateur."
+                recommendation={dashboardPrimaryAction}
+                revenue={hasRevenueData || cockpitEstimate.isProvisional ? dashboardRevenueDisplay : "—"}
+                reserve={isFiscalProfileComplete && hasAnyDashboardData && !hasLowDataProfile ? dashboardChargesDisplay : "—"}
+                available={isFiscalProfileComplete && hasAnyDashboardData && !hasLowDataProfile ? dashboardAvailableDisplay : "—"}
+                provisional={cockpitEstimate.isProvisional}
+                estimateNote={user && !fiscalProfileLoaded
+                  ? fiscalProfileLoadStatus === "failed"
+                    ? "Les estimations attendent le chargement du profil. Consulte le message d’erreur et réessaie."
+                    : "Chargement du profil fiscal : les estimations ne sont pas encore disponibles."
+                  : !isFiscalProfileComplete
+                  ? "Les informations du profil fiscal sont nécessaires pour estimer la réserve et le disponible. Les revenus enregistrés restent visibles."
+                  : !hasAnyDashboardData || hasLowDataProfile
+                    ? "Ajoute un revenu pour calculer tes estimations. Une valeur non calculée est indiquée par —."
+                    : cockpitEstimate.isProvisional
+                      ? "Estimation provisoire basée sur ton CA estimé. À mettre de côté et disponible sont des estimations, pas un solde bancaire."
+                      : "Revenus enregistrés. À mettre de côté et disponible sont estimés après charges ; ce ne sont pas des soldes bancaires."}
+                missingFields={!user || fiscalProfileLoaded ? [
+                  !dashboardAnswers?.activity_type && "activité principale",
+                  !dashboardAnswers?.declaration_frequency && "fréquence de déclaration",
+                  !hasProfileStartDate && "date de début d’activité",
+                  !hasProfileAcreValue && "situation ACRE",
+                  requiresAcreStartDate && !dashboardAnswers?.acre_start_date && "date de début ACRE",
+                ].filter(Boolean) : []}
+                onEditProfile={handleEditProfile}
+                onAddRevenue={handleOpenRevenuePopup}
+                onCreateInvoice={handleOpenInvoiceGenerator}
+                onCreateAccount={!isPremiumUser && isGuest ? () => openAuthModal("signup") : undefined}
+              >
+              {(hasProfileCore || simpleAssistantProfile) && priorityCardViewModel && (
+                  <PriorityCard
+                    titleTag="h4"
+                    viewModel={priorityCardViewModel}
+                    isSavingPayment={isSavingDeclarationPayment}
+                    onConfirmDeclaration={handleOpenDeclarationConfirm}
+                    onConfirmPayment={handleConfirmDeclarationPayment}
+                    onEditProfile={handleEditProfile}
+                    onViewDetail={handleViewDeclarationDetail}
+                  />
+              )}
 
-              {/* Alerte CFE avec date de début d'activité */}
-              {user && computed?.cfeAlert?.show && (
+              </CockpitOverview>
+{showCashImpactModal && (
                 <div
-                  className="cfeWarning"
-                  style={{
-                    marginTop: 16,
-                    marginBottom: 16,
-                    padding: "12px 16px",
-                    background: "#fff5f0",
-                    borderLeft: "4px solid #f97316",
-                    borderRadius: 8,
-                  }}
+                  className="modalOverlay"
+                  onClick={() => setShowCashImpactModal(false)}
                 >
                   <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                      gap: 12,
-                    }}
+                    className="modalCard"
+                    style={{ maxWidth: "520px" }}
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <div style={{ flex: 1 }}>
-                      <strong>
-                        ⚠️ Attention CFE {new Date().getFullYear()}
-                      </strong>
-                      <p style={{ margin: "4px 0 0", fontSize: 13 }}>
-                        {computed?.cfeAlert?.message}
-                        {computed?.businessYear === 2 &&
-                          " (2ème année d'activité)"}
-                        {!computed?.businessYear &&
-                          computed?.cfeAlert?.estimatedAmount === null && (
-                            <span
-                              style={{
-                                display: "block",
-                                fontSize: 12,
-                                marginTop: 4,
-                              }}
-                            >
-                              💡 Renseigne ta date de début d'activité dans ton
-                              profil pour une estimation précise.
-                            </span>
-                          )}
-                      </p>
+                    <div className="sectionHead">
+                      <h3>📊 Impact sur ta trésorerie</h3>
+                      <button
+                        className="iconBtn"
+                        onClick={() => setShowCashImpactModal(false)}
+                      >
+                        ✕
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => openExplanationModal("cfe")}
-                      className="btn btnGhost btnSmall"
-                      style={{ fontSize: 12, padding: "4px 12px" }}
-                    >
-                      📖 En savoir plus
-                    </button>
-                  </div>
-                </div>
-              )}
-              <div
-                id="revenues-section"
-                ref={revenusRef}
-                className="dashboardSectionZone dashboardSectionZoneCoolNeutral dashboardOrderRevenues"
-              >
-              {/* Journal des revenus */}
-              <div className="journalHeader dashboardSectionHeader">
-                <div className="dashboardSectionHeaderMain">
-                  <h3 className="dashboardSectionTitle">
-                    Mes revenus ({filteredRevenues.length})
-                  </h3>
-                  <p className="dashboardSectionSubtitle">
-                    {filteredRevenues.length > 0
-                      ? `Total : ${getDisplayValue(revenueSectionTotal, "money")}`
-                      : "Ajoute ton premier revenu"}
-                  </p>
-                </div>
-                <div className="journalFilters dashboardSectionActions">
-                  <button className="btn btnActionPrimary btnSmall" type="button" onClick={handleOpenRevenuePopup}>
-                    Ajouter un revenu
-                  </button>
-                  <button
-                    className="btn btnActionUtility btnSmall"
-                    type="button"
-                    onClick={() => toggleDashboardSection("revenues")}
-                  >
-                    {dashboardSections.revenues ? "Voir tout" : "Réduire"}
-                  </button>
-                  <select
-                    aria-label="Filtrer les revenus par mois"
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="monthFilter"
-                  >
-                    <option value="all">Tous les mois</option>
-                    {monthOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              {filteredRevenues.length === 0 ? (
-                <div className="emptyRevenueState">
-                  <div className="emptyRevenueIcon">🧾</div>
-                  <div className="emptyRevenueTitle">Ajoute ton premier revenu</div>
-                  <p className="muted">
-                    {selectedMonth === "all"
-                      ? "Plus tu ajoutes de revenus, plus tes estimations deviennent fiables."
-                      : "Aucune entrée pour ce mois."}
-                  </p>
-                </div>
-              ) : dashboardSections.revenues ? (
-                <div
-                  style={{
-                    padding: 16,
-                    borderRadius: 14,
-                    border: "1px solid #e2e8f0",
-                    background: "#ffffff",
-                    color: "#475569",
-                    marginTop: 12,
-                  }}
-                >
-                  Historique replié • {filteredRevenues.length} revenu
-                  {filteredRevenues.length > 1 ? "s" : ""} • Total{" "}
-                  {revenueSectionTotal.toLocaleString("fr-FR")} €
-                </div>
-              ) : (
-                <div className="revenuesList">
-                  {filteredRevenues.map((item) => (
-                    <div key={item.id} className="revenueItem">
-                      <div className="revenueMain">
-                        <div className="revenueAmount">
-                          {Number(item.amount).toLocaleString("fr-FR")} €
+                    <div style={{ marginTop: 20, display: "grid", gap: 12 }}>
+                      <div
+                        style={{
+                          background: "#f8fafc",
+                          padding: 16,
+                          borderRadius: 12,
+                          border: "1px solid #e2e8f0",
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                          Réserve recommandée
                         </div>
-                        <div className="revenueDate">
-                          {formatRevenueDate(item.date)}
+                        <p style={{ marginTop: 8, fontSize: 14, color: "#334155" }}>
+                          {typeof computed?.treasuryRecommended === "number"
+                            ? `${computed.treasuryRecommended.toLocaleString("fr-FR")} € à garder de côté au minimum.`
+                            : hasAnyDashboardData
+                              ? `${dashboardChargesDisplay} de charges estimées à sécuriser.`
+                              : "Ajoute un revenu pour afficher ce repère."}
+                        </p>
+                      </div>
+
+                      <div
+                        style={{
+                          background: "#ffffff",
+                          padding: 16,
+                          borderRadius: 12,
+                          border: "1px solid #e2e8f0",
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                          Risque TVA
                         </div>
+                        <p style={{ marginTop: 8, fontSize: 14, color: "#334155" }}>
+                          {normalizedTvaStatusLabel || "TVA à confirmer"}
+                        </p>
+                        <p style={{ marginTop: 6, fontSize: 13, color: "#475569" }}>
+                          {computed?.tvaHint ||
+                            "Le seuil TVA dépend de ton activité et de ton chiffre d’affaires cumulé."}
+                        </p>
                       </div>
-                      <div className="revenueMeta">
-                        {item.revenue_category && (
-                          <div>
-                            <strong>Type :</strong>{" "}
-                            {getRevenueCategoryLabel(item.revenue_category)}
-                          </div>
-                        )}
-                        {item.client && (
-                          <div>
-                            <strong>Client :</strong> {item.client}
-                          </div>
-                        )}
-                        {item.invoice && (
-                          <div>
-                            <strong>Facture :</strong> {item.invoice}
-                          </div>
-                        )}
-                        {item.note && (
-                          <div>
-                            <strong>Note :</strong> {item.note}
-                          </div>
-                        )}
-                      </div>
-                      <div className="revenueActions">
-                        <button
-                          className="btn btnGhost btnSmall btnSubtleDanger"
-                          onClick={() => handleDeleteRevenue(item.id)}
+
+                      <div
+                        style={{
+                          display: "grid",
+                          gap: 12,
+                          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                        }}
+                      >
+                        <div
+                          style={{
+                            background: "#ffffff",
+                            padding: 16,
+                            borderRadius: 12,
+                            border: "1px solid #e2e8f0",
+                          }}
                         >
-                          Supprimer
+                          <div style={{ fontSize: 13, color: "#64748b" }}>
+                            Charges estimées
+                          </div>
+                          <div style={{ marginTop: 6, fontWeight: 700, color: "#0f172a" }}>
+                            {dashboardChargesDisplay}
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            background: "#ffffff",
+                            padding: 16,
+                            borderRadius: 12,
+                            border: "1px solid #e2e8f0",
+                          }}
+                        >
+                          <div style={{ fontSize: 13, color: "#64748b" }}>
+                            Disponible ajusté
+                          </div>
+                          <div style={{ marginTop: 6, fontWeight: 700, color: "#0f172a" }}>
+                            {hasAnyDashboardData
+                              ? getDisplayValue(
+                                  Math.max(
+                                    0,
+                                    availableAmount -
+                                      Math.max(
+                                        estimatedCharges,
+                                        Number(computed?.treasuryRecommended || 0),
+                                      ),
+                                  ),
+                                  "money",
+                                )
+                              : dashboardQuietPlaceholder}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 12,
+                          flexWrap: "wrap",
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <button
+                          className="btn btnActionSecondary"
+                          type="button"
+                          onClick={() => {
+                            setShowCashImpactModal(false);
+                            setShowTVADiagnosticModal(true);
+                          }}
+                        >
+                          Vérifier la TVA
+                        </button>
+                        <button
+                          className="btn btnPrimary"
+                          type="button"
+                          onClick={() => setShowCashImpactModal(false)}
+                        >
+                          Fermer
                         </button>
                       </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
               )}
-
-              <section className="revenueExportTools" aria-label="Exports des revenus">
-                <h4>Exporter les revenus</h4>
-                <div className="miniActions">
-                  <button
-                    className="btn btnActionSecondary btnSmall"
-                    type="button"
-                    onClick={handleExportCSV}
-                    disabled={
-                      filteredRevenues.length === 0 ||
-                      isExportingCsv ||
-                      isExportLimitReached
-                    }
-                    title="Exporter les revenus affichés"
-                    style={{
-                      opacity:
-                        filteredRevenues.length === 0 ||
-                        isExportingCsv ||
-                        isExportLimitReached
-                          ? 0.5
-                          : 1,
-                      cursor:
-                        filteredRevenues.length === 0 ||
-                        isExportingCsv ||
-                        isExportLimitReached
-                          ? "not-allowed"
-                          : "pointer",
-                    }}
+{showTVADiagnosticModal && (
+                <div
+                  className="modalOverlay"
+                  onClick={() => setShowTVADiagnosticModal(false)}
+                >
+                  <div
+                    className="modalCard"
+                    style={{ maxWidth: "520px" }}
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    {isExportingCsv ? "Export CSV..." : "Export CSV"}
-                  </button>
-
-                  <button
-                    className="btn btnActionSecondary btnSmall"
-                    type="button"
-                    onClick={handleExportPDFWithLimit}
-                    disabled={
-                      revenues.length === 0 ||
-                      isExportingPdf ||
-                      isExportLimitReached
-                    }
-                    style={{
-                      opacity:
-                        revenues.length === 0 ||
-                        isExportingPdf ||
-                        isExportLimitReached
-                          ? 0.5
-                          : 1,
-                      cursor:
-                        revenues.length === 0 ||
-                        isExportingPdf ||
-                        isExportLimitReached
-                          ? "not-allowed"
-                          : "pointer",
-                    }}
-                  >
-                    {isExportingPdf ? "Export PDF..." : "📄 Export PDF"}
-                  </button>
-
-                  {premiumExportBadge && (
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        padding: "0.35rem 0.7rem",
-                        borderRadius: 999,
-                        background: "rgba(255, 244, 214, 0.8)",
-                        border: "1px solid rgba(217, 168, 41, 0.22)",
-                        color: "#7c5a10",
-                        fontSize: 12,
-                        fontWeight: 700,
-                        letterSpacing: "0.01em",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {premiumExportBadge}
-                    </span>
-                  )}
-
-                </div>
-                <p className="dashboardHelperText">{exportHelperText}</p>
-              </section>
-              <details className="revenueExplanation">
-                <summary>Comprendre le suivi des revenus</summary>
-                <p>Plus tu ajoutes de revenus, plus tes estimations deviennent fiables.</p>
-                <p>Saisie manuelle pour le moment. Connexion automatique (URSSAF/API) prévue dans une prochaine version.</p>
-              </details>
-
-              {/* Historique mensuel */}
-              {monthlyHistory.length > 0 && (
-                <div className="monthlyHistory">
-                  <div className="journalHeader dashboardSectionHeader">
-                    <div className="dashboardSectionHeaderMain">
-                      <h3 className="dashboardSectionTitle">Historique mensuel</h3>
-                      <p className="dashboardSectionSubtitle">
-                        {monthlyHistory.length} mois suivis
-                      </p>
-                    </div>
-                    <div className="journalFilters dashboardSectionActions">
+                    <div className="sectionHead">
+                      <h3>📌 Diagnostic TVA</h3>
                       <button
-                        className="btn btnActionUtility btnSmall"
-                        type="button"
-                        onClick={() => toggleDashboardSection("chart")}
+                        className="iconBtn"
+                        onClick={() => setShowTVADiagnosticModal(false)}
                       >
-                        {dashboardSections.chart ? "Voir tout" : "Réduire"}
+                        ✕
                       </button>
                     </div>
-                  </div>
-
-                  {!dashboardSections.chart && (
-                    <>
-                      {showChart && revenueChartData.length > 0 && (
-                        <div ref={chartRef} className="revenueChartCard">
-                          <div className="chartHeader">
-                            <div>
-                              <h3>Évolution</h3>
-                              <span className="muted">6 derniers mois</span>
-                            </div>
-                            <button
-                              className="iconBtn"
-                              onClick={hideChart}
-                              aria-label="Masquer le graphique"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                          <div className="revenueChart">
-                            {revenueChartData.map((item) => {
-                              const date = new Date(item.year, item.month);
-                              const label = date.toLocaleDateString("fr-FR", {
-                                month: "short",
-                              });
-                              const height = Math.max(
-                                12,
-                                (item.total / maxRevenueValue) * 140,
-                              );
-                              return (
-                                <div
-                                  key={`${item.year}-${item.month}`}
-                                  className="chartCol"
-                                >
-                                  <div
-                                    className="chartBar"
-                                    style={{ height: `${height}px` }}
-                                    title={`${item.total.toLocaleString("fr-FR")} €`}
-                                  />
-                                  <div className="chartValue">
-                                    {item.total.toLocaleString("fr-FR")} €
-                                  </div>
-                                  <div className="chartLabel">{label}</div>
-                                </div>
-                              );
-                            })}
-                          </div>
+                    <div style={{ marginTop: 20, display: "grid", gap: 12 }}>
+                      <div
+                        style={{
+                          background: "#f8fafc",
+                          padding: 16,
+                          borderRadius: 12,
+                          border: "1px solid #e2e8f0",
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                          Situation actuelle
                         </div>
-                      )}
-                      <div className="historyList">
-                        {monthlyHistory.map((m) => {
-                          const date = new Date(m.year, m.month);
-                          const label = date.toLocaleDateString("fr-FR", {
-                            month: "long",
-                            year: "numeric",
-                          });
-                          return (
-                            <div
-                              key={`${m.year}-${m.month}`}
-                              className="historyItem"
-                            >
-                              <span className="historyMonth">{label}</span>
-                              <strong className="historyTotal">
-                                {m.total.toLocaleString("fr-FR")} €
-                              </strong>
-                            </div>
-                          );
-                        })}
+                        <p style={{ marginTop: 8, fontSize: 14, color: "#334155" }}>
+                          {normalizedTvaStatusLabel || "TVA à confirmer"}
+                        </p>
+                        <p style={{ marginTop: 6, fontSize: 13, color: "#475569" }}>
+                          {computed?.tvaHint ||
+                            "Le seuil TVA mérite une vérification avec ton activité actuelle."}
+                        </p>
                       </div>
-                    </>
-                  )}
 
-                  {dashboardSections.chart && (
-                    <div
-                      style={{
-                        padding: 16,
-                        borderRadius: 14,
-                        border: "1px solid #e2e8f0",
-                        background: "#ffffff",
-                        color: "#475569",
-                        marginTop: 12,
-                      }}
-                    >
-                      Le graphique et l’historique mensuel sont repliés.
+                      <div
+                        style={{
+                          background: "#ffffff",
+                          padding: 16,
+                          borderRadius: 12,
+                          border: "1px solid #e2e8f0",
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                          Projection
+                        </div>
+                        <p style={{ marginTop: 8, fontSize: 14, color: "#334155" }}>
+                          {computed?.annualRevenue !== undefined
+                            ? `Projection annuelle : ${getDisplayValue(
+                                computed.annualRevenue,
+                                "money",
+                              )}`
+                            : hasRevenueData
+                              ? `CA enregistré : ${getDisplayValue(
+                                  currentMonthTotal,
+                                  "money",
+                                )}`
+                              : "Ajoute ton premier revenu"}
+                        </p>
+                      </div>
+
+                      <div
+                        style={{
+                          background:
+                            computed?.tvaStatus === "exceeded"
+                              ? "#fff7ed"
+                              : "#f8fafc",
+                          padding: 16,
+                          borderRadius: 12,
+                          border:
+                            computed?.tvaStatus === "exceeded"
+                              ? "1px solid #fdba74"
+                              : "1px solid #e2e8f0",
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                          {computed?.tvaStatus === "exceeded"
+                            ? "Action à lancer"
+                            : computed?.tvaStatus === "soon"
+                              ? "Point de vigilance"
+                              : "Rythme actuel"}
+                        </div>
+                        <p style={{ marginTop: 8, fontSize: 14, color: "#334155" }}>
+                          {computed?.tvaStatus === "exceeded"
+                            ? "Prépare maintenant l’activation de la TVA, la facturation adaptée et l’organisation déclarative."
+                            : computed?.tvaStatus === "soon"
+                              ? "Surveille ton seuil de près et garde ta facturation prête si l’activité continue d’accélérer."
+                              : "Aucune action immédiate, garde simplement un œil sur ton chiffre d’affaires cumulé."}
+                        </p>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 12,
+                          flexWrap: "wrap",
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <button
+                          className="btn btnActionSecondary"
+                          type="button"
+                          onClick={() => {
+                            setShowTVADiagnosticModal(false);
+                            openExplanationModal("tva");
+                          }}
+                        >
+                          Comprendre la TVA
+                        </button>
+                        <button
+                          className="btn btnPrimary"
+                          type="button"
+                          onClick={() => setShowTVADiagnosticModal(false)}
+                        >
+                          J’ai compris
+                        </button>
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
-
-              {renderBetaMicroFeedbackCard("revenues")}
-              </div>
-
-              {/* ===== MES FACTURES ===== */}
-              <div
-                id="invoices-section"
-                ref={facturesRef}
-                className="dashboardSectionZone dashboardSectionZoneSoftNeutral dashboardOrderInvoices"
-                style={{ marginTop: 24 }}
-              >
-                <div className="journalHeader dashboardSectionHeader">
-                  <div className="dashboardSectionHeaderMain">
-                    <h3 className="dashboardSectionTitle">
-                      Mes factures ({invoiceSectionSummary.count})
-                    </h3>
-                    <p className="dashboardSectionSubtitle">
-                      {invoiceSectionSummary.unpaidCount > 0
-                        ? `${invoiceSectionSummary.unpaidCount} impayée${invoiceSectionSummary.unpaidCount > 1 ? "s" : ""}`
-                        : "Aucun impayé"}
-                    </p>
-                    <p className="dashboardSectionSubtitle">
-                      Nouvelles factures : dans ce navigateur.
-                    </p>
-                  </div>
-                  <div className="journalFilters dashboardSectionActions">
-                    <button
-                      className="btn btnActionPrimary btnSmall"
-                      type="button"
-                      onClick={handleOpenInvoiceGenerator}
-                    >
-                      Créer une facture
-                    </button>
-                    <button
-                      className="btn btnActionUtility btnSmall"
-                      type="button"
-                      onClick={() => toggleDashboardSection("invoices")}
-                    >
-                      {dashboardSections.invoices ? "Voir tout" : "Réduire"}
-                    </button>
-                  </div>
-                </div>
-
-                {revenues.length > 0 && visibleInvoices.length === 0 && (
-                  <div className="einvoicingInfoCard" style={{ marginTop: 12 }}>
-                    <div>
-                      <h3>⚠️ Revenu sans facture liée</h3>
-                      <p>
-                        Tu as des revenus enregistrés, mais aucune facture liée.
-                        Créer une facture permet de mieux justifier ton chiffre
-                        d’affaires.
-                      </p>
-                    </div>
-                    <button
-                      className="btn btnActionSecondary btnSmall"
-                      type="button"
-                      onClick={handleOpenInvoiceFromLatestRevenue}
-                    >
-                      Créer une facture depuis un revenu
-                    </button>
-                  </div>
-                )}
-
-                <LocalInvoiceStatus userId={user?.id ?? null} invoices={guestInvoices} onStorageChange={setGuestInvoices} />
-
-                {invoiceNotice && (
-                  <div className="saveNotice" style={{ marginTop: 16, width: "100%" }}>
-                    {typeof invoiceNotice === "string" ? (
-                      <>✅ {invoiceNotice}</>
-                    ) : (
-                      <div style={{ display: "grid", gap: 8 }}>
-                        <div style={{ fontWeight: 700 }}>{invoiceNotice.title}</div>
-                        <div>{invoiceNotice.body}</div>
-                        {invoiceNotice.invoice && (
-                          <div>
-                            <InvoicePdfDownloadButton invoice={invoiceNotice.invoice} userEmail={user?.email || ""}>
-                              Télécharger la facture
-                            </InvoicePdfDownloadButton>
-                          </div>
-                        )}
-                        {invoiceNotice.cta === "auth" && (
-                          <div>
-                            <button
-                              className="btn btnActionSecondary btnSmall"
-                              type="button"
-                              onClick={() => openAuthModal("signup")}
-                            >
-                              Créer mon compte
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {visibleInvoices.length === 0 ? (
-                  <div className="emptyRevenueState emptyRevenueStateCompact">
-                    <div className="emptyRevenueIcon">🧾</div>
-                    <div className="emptyRevenueStatus">Suivi factures à démarrer</div>
-                    <div className="emptyRevenueTitle">Aucune facture enregistrée</div>
-                    <p className="muted">
-                      Une facture rend le suivi plus clair pour tes clients, tes encaissements
-                      et la TVA collectée quand elle s’active.
-                    </p>
-                  </div>
-                ) : dashboardSections.invoices ? (
-                  <div
-                    style={{
-                      padding: 16,
-                      borderRadius: 14,
-                      border: "1px solid #e2e8f0",
-                      background: "#ffffff",
-                      color: "#475569",
-                      marginTop: 12,
-                    }}
-                  >
-                    Historique replié • {invoiceSectionSummary.count} facture
-                    {invoiceSectionSummary.count > 1 ? "s" : ""}
-                    {invoiceSectionSummary.unpaidCount > 0 &&
-                      ` • ${invoiceSectionSummary.unpaidCount} impayée${invoiceSectionSummary.unpaidCount > 1 ? "s" : ""}`}
-                  </div>
-                ) : (
-                  <div className="revenuesList">
-                    {invoiceDisplayItems.map(({ invoice, origin }) => {
-                      const complianceScore = getInvoiceComplianceScore(
-                        invoice,
-                        userProfile,
-                      );
-                      const complianceBadge =
-                        complianceScore.status === "conforme"
-                          ? {
-                              className: "badgeGreen",
-                              label: "✅ Champs contrôlés renseignés",
-                            }
-                          : complianceScore.status === "bloquant"
-                            ? {
-                                className: "badgeYellow",
-                                label: "❌ Champs à compléter",
-                              }
-                            : {
-                                className: "badgeYellow",
-                                label: "⚠️ À compléter",
-                              };
-
-                      return (
-                      <div key={`${origin}:${invoice.id}`} className="revenueItem">
-                        <div className="revenueMain">
-                          <div className="revenueAmount">
-                            {getInvoiceDisplayAmountLabel(invoice)}
-                          </div>
-                          <div className="revenueDate">
-                            N° {getInvoiceDisplayNumber(invoice)}
-                          </div>
-                        </div>
-                        <div className="revenueMeta">
-                          {invoice.client_name && (
-                            <div>
-                              <strong>Client :</strong> {invoice.client_name}
-                            </div>
-                          )}
-                          {invoice.description && (
-                            <div>
-                              <strong>Prestation :</strong>{" "}
-                              {invoice.description}
-                            </div>
-                          )}
-                          {invoice.invoice_date && (
-                            <div>
-                              <strong>Date :</strong>{" "}
-                              {new Date(
-                                `${getInvoiceDisplayDate(invoice)}T00:00:00`,
-                              ).toLocaleDateString("fr-FR", {
-                                day: "2-digit",
-                                month: "long",
-                                year: "numeric",
-                              })}
-                            </div>
-                          )}
-                          {getInvoiceTotals(invoice).isVatExempt && (
-                            <div>
-                              <strong>TVA :</strong> {TVA_EXEMPTION_MENTION}
-                            </div>
-                          )}
-                          <div>
-                            <strong>Indicateur de complétude :</strong>{" "}
-                            {complianceScore.score}/100
-                          </div>
-                          {complianceScore.alerts.map((alert) => (
-                            <div key={alert}>{alert}</div>
-                          ))}
-                        </div>
-                        <div className="revenueActions" style={{ flexWrap: "wrap" }}>
-                          <span
-                            className={`badge ${
-                              getInvoicePaymentStatus(invoice) === "paid"
-                                ? "badgeGreen"
-                                : "badgeYellow"
-                            }`}
-                          >
-                            {getInvoicePaymentStatus(invoice) === "paid"
-                              ? "Payée"
-                              : "En attente"}
-                          </span>
-                          <span
-                            className={`badge ${complianceBadge.className}`}
-                          >
-                            {complianceBadge.label}
-                          </span>
-                          <span className="badge badgeGreen">PDF prêt</span>
-                          {origin === "local" && (
-                            <span className="badge badgeGray">
-                              Enregistrée dans ce navigateur
-                            </span>
-                          )}
-                          {isFacturXDraftInvoice(invoice) && (
-                            <span className="badge badgeGray">
-                              Brouillon Factur-X
-                            </span>
-                          )}
-                          <InvoicePdfDownloadButton invoice={invoice} userEmail={user?.email || ""}>
-                            PDF
-                          </InvoicePdfDownloadButton>
-                          {getInvoicePaymentStatus(invoice) !== "paid" && (
-                            <button
-                              className="btn btnActionSecondary btnSmall"
-                              type="button"
-                              onClick={() => handleMarkInvoicePaid(invoice, origin)}
-                            >
-                              Marquer comme payée
-                            </button>
-                          )}
-                          {isFacturXDraftInvoice(invoice) && (
-                            <button
-                              className="btn btnActionSecondary btnSmall"
-                              type="button"
-                              onClick={() => downloadInvoiceXmlDraft(invoice)}
-                            >
-                              XML
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      );
-                    })}
-                  </div>
-                )}
-                <LocalInvoiceBackup key={user?.id ?? "guest"} onRestored={setGuestInvoices} />
-                <details className="invoiceExplanation">
-                  <summary>Comprendre les documents et l’indicateur de complétude</summary>
-                  <p>{INVOICE_DOCUMENTS_NOTE}</p>
-                  <p>Cet indicateur ne valide pas la conformité fiscale ni Factur-X/PDF/A-3.</p>
-                  <p>{PDP_ROADMAP_NOTE}</p>
-                </details>
-                {renderBetaMicroFeedbackCard("invoices")}
-              </div>
-
-              <div
-                id="advisor-share-section"
-                className="dashboardSectionZone dashboardSectionZoneCoolNeutral dashboardAdvisorShareCard dashboardOrderAdvisorShare"
-              >
-                <div className="dashboardSectionHeader">
-                  <div className="dashboardSectionHeaderMain">
-                    <h3 className="dashboardSectionTitle">
-                      Partager mon suivi avec un conseiller
-                    </h3>
-                    <p className="dashboardSectionSubtitle">
-                      Envoie un résumé clair de ta situation à une personne qui peut t’aider.
-                    </p>
-                  </div>
-                  <div className="dashboardSectionActions">
-                    <button
-                      className="btn btnActionSecondary btnSmall"
-                      type="button"
-                      onClick={handleCopyExpertShareLink}
-                    >
-                      Copier le lien de partage
-                    </button>
-                  </div>
-                </div>
-                <div className="dashboardHelperText">
-                  Aucune donnée sensible n’est partagée dans cette version de
-                  démonstration.
-                </div>
-              </div>
-
-              <div className="dashboardFooterLinks">
-                <a
-                  href={FEEDBACK_FORM_URL}
-                  className="dashboardProblemLink"
-                  target="_blank"
-                  rel="noreferrer"
+{showDeclarationConfirmModal && declarationConfirmForm && (
+                <div
+                  className="modalOverlay"
+                  onClick={handleCloseDeclarationConfirm}
                 >
-                  🐛 Signaler un problème
-                </a>
-              </div>
+                  <div
+                    className="modalCard"
+                    style={{ maxWidth: "480px" }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="sectionHead">
+                      <h3>J’ai fait ma déclaration</h3>
+                      <button
+                        className="iconBtn"
+                        type="button"
+                        onClick={handleCloseDeclarationConfirm}
+                      >
+                        ✕
+                      </button>
+                    </div>
 
-              {dashboardFloatingAction && (
+                    <div style={{ marginTop: 16, display: "grid", gap: 14 }}>
+                      <label style={{ display: "grid", gap: 6, fontSize: 13 }}>
+                        Date de déclaration
+                        <input
+                          type="date"
+                          className="formInput"
+                          value={declarationConfirmForm.declaredAt}
+                          onChange={(e) =>
+                            setDeclarationConfirmForm((prev) => ({
+                              ...prev,
+                              declaredAt: e.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+
+                      <label style={{ display: "grid", gap: 6, fontSize: 13 }}>
+                        Chiffre d’affaires déclaré
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="formInput"
+                          value={declarationConfirmForm.declaredRevenue}
+                          onChange={(e) =>
+                            setDeclarationConfirmForm((prev) => ({
+                              ...prev,
+                              declaredRevenue: e.target.value,
+                            }))
+                          }
+                        />
+                        {declarationConfirmForm.calculatedRevenuePreview != null && (
+                          <span style={{ fontSize: 12, color: "#64748b" }}>
+                            Calculé par Microassist :{" "}
+                            {getDisplayValue(
+                              declarationConfirmForm.calculatedRevenuePreview,
+                              "money",
+                            )}{" "}
+                            (modifiable)
+                          </span>
+                        )}
+                      </label>
+
+                      <label style={{ display: "grid", gap: 6, fontSize: 13 }}>
+                        Cotisations réelles (optionnel)
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="formInput"
+                          placeholder={
+                            declarationConfirmForm.estimatedContributionsPreview != null
+                              ? `Estimation Microassist : ${declarationConfirmForm.estimatedContributionsPreview}`
+                              : "Non estimé"
+                          }
+                          value={declarationConfirmForm.actualContributions}
+                          onChange={(e) =>
+                            setDeclarationConfirmForm((prev) => ({
+                              ...prev,
+                              actualContributions: e.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+
+                      <label style={{ display: "grid", gap: 6, fontSize: 13 }}>
+                        Notes (optionnel)
+                        <textarea
+                          className="formInput"
+                          rows={2}
+                          value={declarationConfirmForm.notes}
+                          onChange={(e) =>
+                            setDeclarationConfirmForm((prev) => ({
+                              ...prev,
+                              notes: e.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+
+                      {declarationConfirmError && (
+                        <div style={{ color: "#b91c1c", fontSize: 13 }}>
+                          {declarationConfirmError}
+                        </div>
+                      )}
+
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 12,
+                          flexWrap: "wrap",
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <button
+                          className="btn btnActionSecondary"
+                          type="button"
+                          onClick={handleCloseDeclarationConfirm}
+                          disabled={isSavingDeclarationConfirmation}
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          className="btn btnPrimary"
+                          type="button"
+                          onClick={handleSubmitDeclarationConfirm}
+                          disabled={isSavingDeclarationConfirmation}
+                        >
+                          {isSavingDeclarationConfirmation ? "Enregistrement..." : "Confirmer"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+{dashboardFloatingAction && (
                 <div className="dashboardMobileActionBar" hidden={isAnyModalOpen}>
                   <button
                     className="btn btnActionPrimary"
@@ -15477,7 +15362,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   </button>
                 </div>
               )}
-            </section>
+</section>
           ) : null}
 
           </>

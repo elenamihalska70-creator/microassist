@@ -1,3 +1,5 @@
+import BrandMark from '../components/BrandMark.jsx';
+
 export default function MainNavigation({
   activeSection,
   connectedAccountLabel,
@@ -28,7 +30,7 @@ export default function MainNavigation({
         <span className="appStatusBadge">{viewLabel}</span>
       </div>
       <div className="topbarLeft">
-        <div className="brand">Entrepreneurs Assistant</div>
+        <div className="brand"><BrandMark /></div>
         <div className="topbarMeta">
           <div className="greetingBadge">{topbarGreetingLabel}</div>
           {profileLine && <div className="profileMini">{profileLine}</div>}

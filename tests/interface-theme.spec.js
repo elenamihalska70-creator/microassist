@@ -39,7 +39,7 @@ for (const fixture of fixtures) test(`shared theme ${fixture.name}`, async ({con
       await expect(footer.locator('address')).toContainText('SIRET : 10575928600021');
       await expect(footer).not.toContainText('Belfort');
       for (const heading of await footer.locator('h2, h3').all()) {
-        expect(await heading.evaluate(e => getComputedStyle(e).color)).toBe('rgb(255, 253, 248)');
+        expect(await heading.evaluate(e => getComputedStyle(e).color)).toBe('rgb(64, 219, 162)');
       }
       expect(await footer.evaluate(e => getComputedStyle(e).backgroundColor)).toBe('rgb(0, 81, 61)');
       expect(await page.locator('.page').evaluate(e => getComputedStyle(e).backgroundColor)).toBe('rgb(247, 244, 238)');

@@ -1,10 +1,10 @@
 .dashboardCard > .cockpitOverview { order: -140; }
 .cockpitOverview {
-  --cockpit-cream: #f7f4ee;
-  --cockpit-green: #065640;
-  --cockpit-orange: #a95000;
+  --cockpit-cream: var(--bg-page);
+  --cockpit-green: var(--brand-green);
+  --cockpit-orange: var(--brand-orange);
   background: var(--cockpit-cream);
-  color: #17362b;
+  color: var(--text-main);
   border: 1px solid #ded8cb;
   border-radius: 12px;
   padding: clamp(16px, 3vw, 28px);
@@ -15,27 +15,27 @@
 }
 .cockpitOverview *, .cockpitOverview *::before, .cockpitOverview *::after { box-sizing: border-box; }
 .cockpitOverview h2, .cockpitOverview h3 { font-family: Georgia, 'Times New Roman', serif; color: var(--cockpit-green); }
-.cockpitOverview h2 { font-size: clamp(25px, 3vw, 34px); margin: 0 0 8px; line-height: 1.15; }
+.cockpitOverview h2 { color: var(--text-main); font-size: clamp(25px, 3vw, 34px); margin: 0 0 8px; line-height: 1.15; }
 .cockpitOverview h3 { font-size: 22px; margin: 0 0 14px; line-height: 1.25; }
 .cockpitOverview h4 { font-size: 18px; margin: 0 0 8px; }
 .cockpitIdentity { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .cockpitOverview .cockpitAccountAction { padding: 7px 10px; font-size: 13px; }
 .cockpitOverview p { margin: 8px 0; line-height: 1.55; overflow-wrap: anywhere; }
-.cockpitOverview .cockpitStorage, .cockpitOverview .cockpitEstimateNote { font-size: 14px; color: #46564c; }
+.cockpitOverview .cockpitStorage, .cockpitOverview .cockpitEstimateNote { font-size: 14px; color: var(--text-muted); }
 .cockpitNow, .cockpitMarkers, .cockpitProfile { border-top: 1px solid #ded8cb; margin-top: 20px; padding-top: 20px; }
 .cockpitOverview .priorityCard { margin: 0; box-shadow: none; }
-.cockpitOverview .priorityCardTitle { font-size: 24px; }
+.cockpitOverview .priorityCardTitle { color: var(--text-main); font-size: 24px; }
 .cockpitMarkers dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 0; }
 .cockpitMarkers dl > div { min-width: 0; }
-.cockpitMarkers dt { font-size: 14px; color: #46564c; }
+.cockpitMarkers dt { font-size: 14px; color: var(--brand-deep); }
 .cockpitMarkers dd { margin: 8px 0 0; font-size: clamp(24px, 3vw, 32px); font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-.cockpitOverview button, .cockpitOverview a.btn { min-height: 44px; border: 1px solid var(--cockpit-green); border-radius: 7px; background: #fffdf8; color: var(--cockpit-green); padding: 11px 16px; font: 600 15px/1.4 system-ui, Arial, sans-serif; cursor: pointer; white-space: normal; overflow-wrap: anywhere; max-width: 100%; transition: background-color 120ms, box-shadow 120ms; }
-.cockpitOverview .cockpitPrimary, .cockpitOverview .btnActionPrimary, .cockpitOverview a.btnActionPrimary { background: var(--cockpit-orange); color: #fff; border-color: var(--cockpit-orange); box-shadow: 0 2px 4px #17362b12; }
-.cockpitOverview button:hover, .cockpitOverview a.btn:hover { background: #e9eee7; }
-.cockpitOverview .cockpitPrimary:hover, .cockpitOverview .btnActionPrimary:hover, .cockpitOverview a.btnActionPrimary:hover { background: #8f4200; }
-.cockpitOverview button:active, .cockpitOverview a.btn:active { box-shadow: inset 0 0 0 2px currentColor; }
-.cockpitOverview button:focus-visible, .cockpitOverview a:focus-visible { outline: 3px solid #065640; outline-offset: 3px; }
-.cockpitOverview button:disabled { cursor: wait; opacity: .65; }
+.cockpitOverview :is(.cockpitHeading, .cockpitNow, .cockpitActions, .cockpitProfile) button, .cockpitOverview .cockpitNow a.btn { min-height: 44px; border: 1px solid var(--cockpit-green); border-radius: 7px; background: #fffdf8; color: var(--cockpit-green); padding: 11px 16px; font: 600 15px/1.4 system-ui, Arial, sans-serif; cursor: pointer; white-space: normal; overflow-wrap: anywhere; max-width: 100%; transition: background-color 120ms, box-shadow 120ms; }
+.cockpitOverview .cockpitPrimary, .cockpitOverview .btnActionPrimary, .cockpitOverview .cockpitNow a.btnActionPrimary { background: var(--cockpit-orange); color: #fff; border-color: var(--cockpit-orange); box-shadow: 0 2px 4px #17362b12; }
+.cockpitOverview :is(.cockpitHeading, .cockpitNow, .cockpitActions, .cockpitProfile) button:hover, .cockpitOverview .cockpitNow a.btn:hover { background: #e9eee7; }
+.cockpitOverview .cockpitPrimary:hover, .cockpitOverview .btnActionPrimary:hover, .cockpitOverview .cockpitNow a.btnActionPrimary:hover { background: #8f4200; }
+.cockpitOverview :is(.cockpitHeading, .cockpitNow, .cockpitActions, .cockpitProfile) button:active, .cockpitOverview .cockpitNow a.btn:active { box-shadow: inset 0 0 0 2px currentColor; }
+.cockpitOverview :is(.cockpitHeading, .cockpitNow, .cockpitActions, .cockpitProfile) button:focus-visible, .cockpitOverview a:focus-visible { outline: 3px solid #065640; outline-offset: 3px; }
+.cockpitOverview :is(.cockpitHeading, .cockpitNow, .cockpitActions, .cockpitProfile) button:disabled { cursor: wait; opacity: .65; }
 .cockpitActions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
 @media (max-width: 600px) {
   .cockpitMarkers dl { grid-template-columns: 1fr; gap: 16px; }
@@ -45,4 +45,49 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .cockpitOverview *, .cockpitOverview *::before, .cockpitOverview *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
+
+/* Quick actions lead the DOM on mobile; desktop keeps work left and results right. */
+.cockpitComposition { display: grid; gap: 28px; margin-top: 24px; }
+.cockpitResults, .cockpitWorkspace, .cockpitInsights { min-width: 0; }
+.cockpitWorkspace { display: flex; flex-direction: column; gap: 18px; }
+.cockpitWorkspace > *, .cockpitResults > *, .cockpitInsights > * { min-width: 0; margin: 0; }
+.cockpitResults { display: flex; flex-direction: column; gap: 18px; }
+.cockpitInsights { display: grid; gap: 18px; align-self: start; }
+.cockpitNow, .cockpitMarkers, .cockpitProfile { padding: 20px; border: 1px solid #ded8cb; border-radius: 12px; background: #fffdf8; margin: 0; }
+.cockpitMarkers dl { grid-template-columns: 1fr; gap: 18px; }
+.cockpitMarkers dl > div { display: block; }
+.cockpitMarkers dd { margin-top: 5px; font-size: 28px; }
+.cockpitAllocation { height: 6px; background: #e3eee5; border-radius: 4px; margin-top: 10px; overflow: hidden; }
+.cockpitAllocation > span { display: block; height: 100%; background: #065640; }
+.cockpitAllocation.isAvailable > span { background: #16805b; }
+.cockpitActions { margin: 0; }
+.cockpitOverview :is(.miniStatLabel, .fiscalLabel, figcaption.dashboardSectionTitle) { color: var(--brand-deep); }
+.cockpitWorkspace :is(.cockpitAccess, .cockpitNavigation) { color: var(--text-main); }
+.cockpitWorkspace .cockpitNavigation p { color: var(--text-muted); }
+.cockpitInsights .miniStatsGrid, .cockpitInsights .fiscalGrid, .cockpitInsights .fiscalTimelineGrid { grid-template-columns: 1fr; }
+.cockpitInsights .fiscalValue, .cockpitInsights .miniStatValue { overflow-wrap: anywhere; }
+.revenueHistory { margin: 0; min-width: 0; padding: 20px; border: 1px solid #ded8cb; border-radius: 12px; background: #fffdf8; }
+.revenueHistory .revenueChartCard { padding: 0; box-shadow: none; border: 0; margin: 18px 0; }
+.revenueChartViewport { max-width: 100%; overflow-x: auto; }
+.revenueChartViewport:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.revenueHistory .revenueChart { min-height: 190px; gap: 10px; align-items: end; padding-block: 8px; }
+.revenueHistory .chartCol { min-width: 96px; flex: 1 0 96px; }
+.revenueHistory .chartValue { max-width: 100%; color: var(--text-main); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.revenueHistory .chartBar { min-height: 0; border-radius: 5px 5px 0 0; background: #16805b; }
+.revenueHistory .chartLabel { font-size: 11px; }
+.revenueHistoryText summary { cursor: pointer; color: var(--brand-emerald); min-height: 32px; }
+.revenueHistory .historyList { margin: 8px 0 0; }
+.revenueHistory .historyTotal { margin: 0; }
+@media (min-width: 1100px) {
+  .container:has(.dashboardCard) { max-width: 1280px; }
+  .cockpitComposition { grid-template-columns: minmax(0, 1fr) 340px; grid-template-rows: max-content min-content 1fr; align-items: start; }
+  .cockpitActions { grid-column: 1; grid-row: 1; }
+  .cockpitResults { grid-column: 2; grid-row: 1 / span 2; }
+  .cockpitWorkspace { grid-column: 1; grid-row: 2 / span 2; }
+  .cockpitInsights { grid-column: 2; grid-row: 3; }
+}
+@media (max-width: 520px) {
+  .dashboardCard > .cockpitOverview { padding: 14px; }
+  .cockpitNow, .cockpitMarkers, .cockpitProfile, .revenueHistory { padding: 14px; }
 }

@@ -1,6 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import process from 'node:process';
+import {installOfflineSockets} from './support/offline-services.js';
 const baseline=process.env.ACCESS_NAV_BASELINE==='1';
 const root=process.env.ACCESS_NAV_REVIEW_DIR || 'test-results/access-navigation';
 const id='11111111-1111-4111-8111-111111111111';
@@ -19,6 +20,7 @@ const fixtures=[
  {name:'qa-premium',guest:true,draft:true,qa:true},
 ];
 async function setup(context,f){
+ await installOfflineSockets(context);
  const writes=[],errors=[];
  const user={id,email:'synthetic@example.test',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{},identities:[]};
  await context.route('**/*',async route=>{
