@@ -1,3 +1,4 @@
+import ModalFocusBoundary from "./profile/ModalFocusBoundary";
 import { useLayoutEffect, useRef, useState } from "react";
 import jsPDF from "jspdf";
 import { loadInvoicePdfFonts } from "../utils/invoicePdfFonts.js";
@@ -503,6 +504,9 @@ export default function InvoiceGenerator({
     >
       <div
         className="modalCard invoiceGeneratorModal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="invoice-generator-title"
         onClick={(e) => e.stopPropagation()}
         style={{
           maxWidth: 560,
@@ -514,7 +518,7 @@ export default function InvoiceGenerator({
         }}
       >
         <div className="sectionHead">
-          <h3>🧾 Créer une facture</h3>
+          <h3 id="invoice-generator-title">🧾 Créer une facture</h3>
           <button className="iconBtn" onClick={closeGenerator} type="button">
             ✕
           </button>
@@ -723,6 +727,7 @@ export default function InvoiceGenerator({
       </div>
 
       {showMissingSiretWarning && (
+        <ModalFocusBoundary>
         <div
           className="modalOverlay"
           onClick={(event) => {
@@ -780,6 +785,7 @@ export default function InvoiceGenerator({
             </div>
           </div>
         </div>
+        </ModalFocusBoundary>
       )}
     </div>
   );

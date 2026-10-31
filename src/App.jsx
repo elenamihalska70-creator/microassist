@@ -3075,6 +3075,22 @@ useEffect(() => {
   }, [appView, goToDashboard]);
   // Состояния для доходов
   const [showAddRevenue, setShowAddRevenue] = useState(false);
+  const businessModalFocusRef = useRef(null);
+  const businessFocusScopeRef = useRef(null);
+  function captureBusinessModalFocus() {
+    businessModalFocusRef.current = {
+      trigger: document.activeElement,
+      fallbackSelector: ".cockpitActions button",
+      scope: businessFocusScopeRef.current,
+    };
+  }
+  function canRestoreBusinessFocus(owner) {
+    const current = businessFocusScopeRef.current;
+    const previous = owner?.scope;
+    return Boolean(current && previous && current.identity === previous.identity && !current.modalOpen &&
+      current.view === previous.view && current.section === previous.section &&
+      current.path === previous.path && current.userId === previous.userId);
+  }
   const [revenues, setRevenues] = useState([]);
   // LOT 10.2D: declaration dossier -- durable, user-confirmed declaration
   // history (public.declaration_dossiers). Owner-scoped by RLS; fetched
@@ -9199,6 +9215,7 @@ function handleOpenRevenuePopup() {
   }
 
   trackBetaEvent("add_revenue_clicked", { source: "open_revenue_form" });
+  captureBusinessModalFocus();
   setShowAddRevenue(true);
 }
 
@@ -9219,6 +9236,7 @@ function handleOpenInvoiceGenerator() {
   // Keep every invoice entry point behind the same premium gate.
   trackBetaEvent("invoice_modal_opened", { source: "invoice_entry_point" });
   setInvoiceInitialValues(null);
+  captureBusinessModalFocus();
   setShowInvoiceGenerator(true);
 }
 
@@ -9247,6 +9265,7 @@ function handleOpenInvoiceFromLatestRevenue() {
     invoice_date: revenueDate,
     due_date: addInvoiceDueDate(revenueDate, 30),
   });
+  captureBusinessModalFocus();
   setShowInvoiceGenerator(true);
 }
 
@@ -11617,6 +11636,19 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     showAddRevenue ||
     showInvoiceGenerator,
   );
+
+  useLayoutEffect(() => {
+    const previous = businessFocusScopeRef.current;
+    const sameScope = previous && previous.view === appView &&
+      previous.section === navigationLocation.section && previous.path === currentPath &&
+      previous.userId === (user?.id ?? null);
+    businessFocusScopeRef.current = {
+      view: appView, section: navigationLocation.section, path: currentPath,
+      userId: user?.id ?? null, modalOpen: isAnyModalOpen,
+      identity: sameScope ? previous.identity : {},
+    };
+  }, [appView, navigationLocation.section, currentPath, user?.id, isAnyModalOpen]);
+  useLayoutEffect(() => () => { businessFocusScopeRef.current = null; }, []);
 
   useEffect(() => {
     document.body.style.overflow = isAnyModalOpen ? "hidden" : "";
@@ -15370,6 +15402,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
         </main>
 
         {showAddRevenue && (
+          <ModalFocusBoundary returnFocusRef={businessModalFocusRef} canRestoreFocus={canRestoreBusinessFocus}>
           <div className="modalOverlay" onClick={handleCloseRevenuePopup}>
             <div
               className="modalCard"
@@ -15546,6 +15579,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               </div>
             </div>
           </div>
+          </ModalFocusBoundary>
         )}
 
         <MicroassistFooter
@@ -16182,6 +16216,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
         />
       </AppShell>
       {showInvoiceGenerator && (
+        <ModalFocusBoundary returnFocusRef={businessModalFocusRef} canRestoreFocus={canRestoreBusinessFocus}>
         <InvoiceGenerator
           user={user}
           fiscalProfile={fiscalProfile}
@@ -16249,6 +16284,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
             setTimeout(() => setInvoiceNotice(null), savedToSupabase ? 2500 : 5000);
           }}
         />
+        </ModalFocusBoundary>
       )}
 
       {showReminderModal && (
