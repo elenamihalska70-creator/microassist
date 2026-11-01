@@ -12513,16 +12513,16 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                     padding: 18,
                     borderRadius: 18,
                     background:
-                      "linear-gradient(135deg, rgba(239, 246, 255, 0.95), rgba(250, 245, 255, 0.95))",
-                    border: "1px solid rgba(196, 181, 253, 0.4)",
-                    boxShadow: "0 14px 34px rgba(148, 163, 184, 0.12)",
+                      "linear-gradient(135deg, var(--bg-subtle), var(--bg-card))",
+                    border: "1px solid var(--border-soft)",
+                    boxShadow: "0 14px 34px rgb(var(--shadow-rgb) / 0.12)",
                   }}
                 >
                   <div
                     style={{
                       fontSize: 16,
                       fontWeight: 800,
-                      color: "#312e81",
+                      color: "var(--brand-green)",
                     }}
                   >
                     🎯 Super, ton premier revenu est enregistré.
@@ -12532,7 +12532,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                     style={{
                       marginTop: 10,
                       marginBottom: 0,
-                      color: "#4338ca",
+                      color: "var(--brand-green)",
                       maxWidth: 760,
                     }}
                   >
@@ -13344,9 +13344,9 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   style={{
                     padding: 16,
                     borderRadius: 14,
-                    border: "1px solid #e2e8f0",
-                    background: "#ffffff",
-                    color: "#475569",
+                    border: "1px solid var(--border-soft)",
+                    background: "var(--bg-card)",
+                    color: "var(--text-muted)",
                     marginTop: 12,
                   }}
                 >
@@ -13598,9 +13598,9 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                     style={{
                       padding: 16,
                       borderRadius: 14,
-                      border: "1px solid #e2e8f0",
-                      background: "#ffffff",
-                      color: "#475569",
+                      border: "1px solid var(--border-soft)",
+                      background: "var(--bg-card)",
+                      color: "var(--text-muted)",
                       marginTop: 12,
                     }}
                   >
@@ -13842,9 +13842,9 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                           style={{
                             padding: "12px 14px",
                             borderRadius: 12,
-                            background: "#ffffff",
-                            border: "1px solid #e5ddf6",
-                            boxShadow: "0 6px 18px rgba(109, 40, 217, 0.05)",
+                            background: "var(--bg-card)",
+                            border: "1px solid var(--border-soft)",
+                            boxShadow: "0 6px 18px rgb(var(--shadow-rgb) / 0.05)",
                           }}
                         >
                           <div
@@ -13856,8 +13856,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                               flexWrap: "wrap",
                             }}
                           >
-                            <div style={{ color: "#334155", fontSize: 14, flex: 1 }}>
-                              <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                            <div style={{ color: "var(--text-main)", fontSize: 14, flex: 1 }}>
+                              <div style={{ fontWeight: 700, color: "var(--text-main)" }}>
                                 {item.urgent ? "⚠️ " : "🔔 "}
                                 {item.title}
                               </div>
@@ -14978,16 +14978,16 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                     <div style={{ marginTop: 20, display: "grid", gap: 12 }}>
                       <div
                         style={{
-                          background: "#f8fafc",
+                          background: "var(--bg-subtle)",
                           padding: 16,
                           borderRadius: 12,
-                          border: "1px solid #e2e8f0",
+                          border: "1px solid var(--border-soft)",
                         }}
                       >
-                        <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                        <div style={{ fontWeight: 700, color: "var(--text-main)" }}>
                           Réserve recommandée
                         </div>
-                        <p style={{ marginTop: 8, fontSize: 14, color: "#334155" }}>
+                        <p style={{ marginTop: 8, fontSize: 14, color: "var(--text-main)" }}>
                           {typeof computed?.treasuryRecommended === "number"
                             ? `${computed.treasuryRecommended.toLocaleString("fr-FR")} € à garder de côté au minimum.`
                             : hasAnyDashboardData
@@ -14998,19 +14998,19 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
                       <div
                         style={{
-                          background: "#ffffff",
+                          background: "var(--bg-card)",
                           padding: 16,
                           borderRadius: 12,
-                          border: "1px solid #e2e8f0",
+                          border: "1px solid var(--border-soft)",
                         }}
                       >
-                        <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                        <div style={{ fontWeight: 700, color: "var(--text-main)" }}>
                           Risque TVA
                         </div>
-                        <p style={{ marginTop: 8, fontSize: 14, color: "#334155" }}>
+                        <p style={{ marginTop: 8, fontSize: 14, color: "var(--text-main)" }}>
                           {normalizedTvaStatusLabel || "TVA à confirmer"}
                         </p>
-                        <p style={{ marginTop: 6, fontSize: 13, color: "#475569" }}>
+                        <p style={{ marginTop: 6, fontSize: 13, color: "var(--text-muted)" }}>
                           {computed?.tvaHint ||
                             "Le seuil TVA dépend de ton activité et de ton chiffre d’affaires cumulé."}
                         </p>
@@ -15025,31 +15025,31 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                       >
                         <div
                           style={{
-                            background: "#ffffff",
+                            background: "var(--bg-card)",
                             padding: 16,
                             borderRadius: 12,
-                            border: "1px solid #e2e8f0",
+                            border: "1px solid var(--border-soft)",
                           }}
                         >
-                          <div style={{ fontSize: 13, color: "#64748b" }}>
+                          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
                             Charges estimées
                           </div>
-                          <div style={{ marginTop: 6, fontWeight: 700, color: "#0f172a" }}>
+                          <div style={{ marginTop: 6, fontWeight: 700, color: "var(--text-main)" }}>
                             {dashboardChargesDisplay}
                           </div>
                         </div>
                         <div
                           style={{
-                            background: "#ffffff",
+                            background: "var(--bg-card)",
                             padding: 16,
                             borderRadius: 12,
-                            border: "1px solid #e2e8f0",
+                            border: "1px solid var(--border-soft)",
                           }}
                         >
-                          <div style={{ fontSize: 13, color: "#64748b" }}>
+                          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
                             Disponible ajusté
                           </div>
-                          <div style={{ marginTop: 6, fontWeight: 700, color: "#0f172a" }}>
+                          <div style={{ marginTop: 6, fontWeight: 700, color: "var(--text-main)" }}>
                             {hasAnyDashboardData
                               ? getDisplayValue(
                                   Math.max(
@@ -15119,19 +15119,19 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                     <div style={{ marginTop: 20, display: "grid", gap: 12 }}>
                       <div
                         style={{
-                          background: "#f8fafc",
+                          background: "var(--bg-subtle)",
                           padding: 16,
                           borderRadius: 12,
-                          border: "1px solid #e2e8f0",
+                          border: "1px solid var(--border-soft)",
                         }}
                       >
-                        <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                        <div style={{ fontWeight: 700, color: "var(--text-main)" }}>
                           Situation actuelle
                         </div>
-                        <p style={{ marginTop: 8, fontSize: 14, color: "#334155" }}>
+                        <p style={{ marginTop: 8, fontSize: 14, color: "var(--text-main)" }}>
                           {normalizedTvaStatusLabel || "TVA à confirmer"}
                         </p>
-                        <p style={{ marginTop: 6, fontSize: 13, color: "#475569" }}>
+                        <p style={{ marginTop: 6, fontSize: 13, color: "var(--text-muted)" }}>
                           {computed?.tvaHint ||
                             "Le seuil TVA mérite une vérification avec ton activité actuelle."}
                         </p>
@@ -15139,16 +15139,16 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
                       <div
                         style={{
-                          background: "#ffffff",
+                          background: "var(--bg-card)",
                           padding: 16,
                           borderRadius: 12,
-                          border: "1px solid #e2e8f0",
+                          border: "1px solid var(--border-soft)",
                         }}
                       >
-                        <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                        <div style={{ fontWeight: 700, color: "var(--text-main)" }}>
                           Projection
                         </div>
-                        <p style={{ marginTop: 8, fontSize: 14, color: "#334155" }}>
+                        <p style={{ marginTop: 8, fontSize: 14, color: "var(--text-main)" }}>
                           {computed?.annualRevenue !== undefined
                             ? `Projection annuelle : ${getDisplayValue(
                                 computed.annualRevenue,
@@ -15168,23 +15168,23 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                           background:
                             computed?.tvaStatus === "exceeded"
                               ? "#fff7ed"
-                              : "#f8fafc",
+                              : "var(--bg-subtle)",
                           padding: 16,
                           borderRadius: 12,
                           border:
                             computed?.tvaStatus === "exceeded"
                               ? "1px solid #fdba74"
-                              : "1px solid #e2e8f0",
+                              : "1px solid var(--border-soft)",
                         }}
                       >
-                        <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                        <div style={{ fontWeight: 700, color: "var(--text-main)" }}>
                           {computed?.tvaStatus === "exceeded"
                             ? "Action à lancer"
                             : computed?.tvaStatus === "soon"
                               ? "Point de vigilance"
                               : "Rythme actuel"}
                         </div>
-                        <p style={{ marginTop: 8, fontSize: 14, color: "#334155" }}>
+                        <p style={{ marginTop: 8, fontSize: 14, color: "var(--text-main)" }}>
                           {computed?.tvaStatus === "exceeded"
                             ? "Prépare maintenant l’activation de la TVA, la facturation adaptée et l’organisation déclarative."
                             : computed?.tvaStatus === "soon"
@@ -15275,7 +15275,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                           }
                         />
                         {declarationConfirmForm.calculatedRevenuePreview != null && (
-                          <span style={{ fontSize: 12, color: "#64748b" }}>
+                          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
                             Calculé par Microassist :{" "}
                             {getDisplayValue(
                               declarationConfirmForm.calculatedRevenuePreview,
@@ -15749,16 +15749,16 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
               <div style={{ display: "grid", gap: 14, marginTop: 18 }}>
                 <div
                   style={{
-                    border: "1px solid #dbeafe",
-                    background: "#f8fbff",
+                    border: "1px solid var(--border-soft)",
+                    background: "var(--bg-subtle)",
                     borderRadius: 16,
                     padding: 16,
                   }}
                 >
-                  <div style={{ fontWeight: 800, color: "#0f172a" }}>
+                  <div style={{ fontWeight: 800, color: "var(--text-main)" }}>
                     Recommencer le profil fiscal
                   </div>
-                  <p style={{ marginTop: 8, marginBottom: 12, color: "#334155", lineHeight: 1.6 }}>
+                  <p style={{ marginTop: 8, marginBottom: 12, color: "var(--text-main)", lineHeight: 1.6 }}>
                     Réinitialise seulement le profil fiscal et les étapes de l’assistant.
                     Tes revenus, factures et rappels restent disponibles.
                   </p>
@@ -15804,8 +15804,8 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                   marginTop: 16,
                   padding: 12,
                   borderRadius: 12,
-                  background: "#f8fafc",
-                  color: "#475569",
+                  background: "var(--bg-subtle)",
+                  color: "var(--text-muted)",
                   fontSize: 13,
                   lineHeight: 1.6,
                 }}
@@ -15883,7 +15883,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
   <div style={{ display: "grid", gap: 8, marginBottom: 20 }}>
     <label
       htmlFor="premium-waitlist-email"
-      style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}
+      style={{ fontSize: 13, fontWeight: 700, color: "var(--text-main)" }}
     >
       Ton email
     </label>
@@ -15906,7 +15906,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
         borderRadius: 12,
         border: premiumWaitlistError
           ? "1px solid #fca5a5"
-          : "1px solid #d1d5db",
+          : "1px solid var(--border-control)",
         fontSize: 14,
       }}
     />
@@ -15919,7 +15919,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
   <div
     style={{
-      background: "#f5f3ff",
+      background: "var(--bg-subtle)",
       padding: 16,
       borderRadius: 12,
       marginBottom: 20,
@@ -15966,7 +15966,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
     style={{
       flexBasis: "100%",
       fontSize: 12,
-      color: "#475569",
+      color: "var(--text-muted)",
       textAlign: "center",
       margin: "-2px 0 0",
       lineHeight: 1.5,
@@ -15991,7 +15991,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
   <p
     style={{
       fontSize: 12,
-      color: "#475569",
+      color: "var(--text-muted)",
       textAlign: "center",
       marginTop: 10,
       marginBottom: 0,
@@ -16004,7 +16004,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
   <p
     style={{
       fontSize: 11,
-      color: "#9ca3af",
+      color: "var(--text-muted)",
       textAlign: "center",
       marginTop: 14,
       marginBottom: 0,
@@ -16046,12 +16046,12 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 <div
                   style={{
                     background:
-                      "linear-gradient(135deg, rgba(14,165,233,0.12), rgba(99,102,241,0.08))",
+                      "linear-gradient(135deg, var(--bg-subtle), var(--bg-card))",
                     padding: 18,
                     borderRadius: 12,
                     marginTop: 16,
                     marginBottom: 20,
-                    border: "1px solid rgba(14,165,233,0.18)",
+                    border: "1px solid var(--border-soft)",
                   }}
                 >
                   <div
@@ -16068,7 +16068,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 <div style={{ display: "grid", gap: 8, marginBottom: 20 }}>
                   <label
                     htmlFor="future-advanced-email"
-                    style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}
+                    style={{ fontSize: 13, fontWeight: 700, color: "var(--text-main)" }}
                   >
                     Ton email
                   </label>
@@ -16091,11 +16091,11 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                       borderRadius: 12,
                       border: premiumWaitlistError
                         ? "1px solid #fca5a5"
-                        : "1px solid #d1d5db",
+                        : "1px solid var(--border-control)",
                       fontSize: 14,
                     }}
                   />
-                  <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
                     Laisse ton email pour être prévenu(e) dès que ces fonctionnalités
                     seront disponibles.
                   </div>
@@ -16108,7 +16108,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
 
                 <div
                   style={{
-                    background: "#eff6ff",
+                    background: "var(--bg-subtle)",
                     padding: 16,
                     borderRadius: 12,
                     marginBottom: 20,
@@ -16170,7 +16170,7 @@ const handlePremiumWaitlistCTA = useCallback(async (sourceOverride) => {
                 <p
                   style={{
                     fontSize: 12,
-                    color: "#475569",
+                    color: "var(--text-muted)",
                     textAlign: "center",
                     marginTop: 10,
                     marginBottom: 0,

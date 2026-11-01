@@ -29,7 +29,7 @@ export default function LocalInvoiceStatus({ userId, invoices, onStorageChange }
   }, [userId, invoices, onStorageChange]);
   return (
     <div role="status" aria-live="polite" aria-atomic="true" data-testid="local-invoice-status"
-      style={status === "empty" ? undefined : { marginTop: 16, padding: 16, border: "1px solid #64748b", borderRadius: 8, background: "#f1f5f9", color: "#1e293b" }}>
+      style={status === "empty" ? undefined : { marginTop: 16, padding: 16, border: "1px solid var(--border-control)", borderRadius: 8, background: "var(--bg-subtle)", color: "var(--text-main)" }}>
       {LOCAL_INVOICE_MESSAGES[status] || ""}
     </div>
   );

@@ -1,11 +1,11 @@
 /* ===== RESET & BASE ===== */
 :root {
   --bg-page: #f7f4ee;
-  --bg-subtle: #fbfaf6;
+  --bg-subtle: #f0ece3;
   --bg-card: #fffdf8;
-  --text-main: #17120d;
+  --text-main: #211c17;
   --text-muted: #625a50;
-  --border-soft: #ded8cb;
+  --border-soft: #d8d1c4;
   --border-mid: #b8b09f;
   --brand-green: #065640;
   --brand-deep: #00513d;
@@ -16,11 +16,13 @@
   --brand-orange: #a95000;
   --brand-orange-hover: #8a4100;
   --accent: var(--brand-green);
-  --accent-soft: #edf4ef;
+  --accent-soft: #e8efe7;
   --focus: #0c7a5b;
   --radius-control: 8px;
   --radius-card: 12px;
   --shadow-card: 0 8px 24px rgb(50 42 30 / 7%);
+  --border-control: #82786b;
+  --shadow-rgb: 33 28 23;
 }
 
 .page {
@@ -83,12 +85,12 @@
   min-height: 34px;
   padding: 7px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--border-soft);
   background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-subtle) 100%);
   color: var(--text-main);
   font-size: 13px;
   font-weight: 700;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 6px 16px rgb(var(--shadow-rgb) / 0.05);
   white-space: nowrap;
 }
 
@@ -140,7 +142,7 @@
   color: var(--text-muted);
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--border-soft);
   background: rgba(255, 255, 255, 0.88);
   white-space: nowrap;
   max-width: 220px;
@@ -203,7 +205,7 @@ section[id] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-control);
   border-radius: 999px;
   background: var(--bg-card);
   color: var(--text-muted);
@@ -258,7 +260,7 @@ section[id] {
 .simpleChoiceButton {
   min-height: 44px;
   border-radius: 12px;
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-control);
   background: var(--bg-card);
   color: var(--text-muted);
   font-weight: 800;
@@ -312,7 +314,7 @@ section[id] {
   border-radius: 16px;
   border: 1px solid var(--border-soft);
   background: var(--bg-card);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 10px 24px rgb(var(--shadow-rgb) / 0.05);
 }
 
 .simpleNextActionCard {
@@ -383,8 +385,8 @@ section[id] {
   width: fit-content;
   padding: 6px 10px;
   border-radius: 999px;
-  background: #eef2ff;
-  color: #3730a3;
+  background: var(--bg-subtle);
+  color: var(--brand-green);
   font-size: 12px;
   font-weight: 800;
 }
@@ -404,7 +406,7 @@ section[id] {
   min-width: 28px;
   height: 28px;
   border-radius: 999px;
-  background: #f1f5f9;
+  background: var(--bg-subtle);
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 800;
@@ -520,7 +522,7 @@ section[id] {
   border-radius: 20px;
   border: 1px solid #cfe8d8;
   background: linear-gradient(180deg, #f6fbf8 0%, var(--bg-card) 100%);
-  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 14px 32px rgb(var(--shadow-rgb) / 0.05);
 }
 
 .dashboardHeroAction--success {
@@ -723,7 +725,7 @@ section[id] {
   border: 1px solid #cfe8d8;
   border-radius: 18px;
   background: linear-gradient(180deg, #f8fcfa 0%, var(--bg-card) 100%);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.035);
+  box-shadow: 0 10px 24px rgb(var(--shadow-rgb) / 0.035);
 }
 
 .dashboardQuickActionsIntro {
@@ -766,7 +768,7 @@ section[id] {
   border: 1px solid rgba(207, 232, 216, 0.9);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.035);
+  box-shadow: 0 8px 18px rgb(var(--shadow-rgb) / 0.035);
   backdrop-filter: blur(10px);
   color: var(--text-muted);
   font-size: 12px;
@@ -835,7 +837,7 @@ section[id] {
   border: 1px solid #cfe8d8;
   border-radius: 16px;
   background: linear-gradient(180deg, #f8fcfa 0%, var(--bg-card) 100%);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.035);
+  box-shadow: 0 10px 24px rgb(var(--shadow-rgb) / 0.035);
 }
 
 .dashboardPriorityDetails {
@@ -848,7 +850,7 @@ section[id] {
 .dashboardPriorityDetails div {
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--border-soft);
   background: rgba(255, 255, 255, 0.72);
 }
 
@@ -897,7 +899,7 @@ section[id] {
   border-radius: 14px;
   border: 1px solid var(--border-soft);
   background: var(--bg-card);
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 8px 18px rgb(var(--shadow-rgb) / 0.04);
 }
 
 .dashboardActionCardWide {
@@ -922,7 +924,7 @@ section[id] {
   width: fit-content;
   padding: 5px 9px;
   border-radius: 999px;
-  background: #f1f5f9;
+  background: var(--bg-subtle);
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 800;
@@ -939,7 +941,7 @@ section[id] {
   min-height: 38px;
   padding: 8px 11px;
   border-radius: 10px;
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-control);
   background: var(--bg-card);
   color: var(--text-muted);
   font-weight: 800;
@@ -947,10 +949,10 @@ section[id] {
 }
 
 .dashboardChoiceButton.isSelected {
-  border-color: #8b5cf6;
+  border-color: var(--brand-green);
   background: var(--accent-soft);
-  color: #4c1d95;
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.12);
+  color: var(--brand-green);
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 .dashboardActionImpact {
@@ -995,8 +997,8 @@ section[id] {
   align-items: center;
   padding: 16px;
   border-radius: 16px;
-  border: 1px solid #dbeafe;
-  background: linear-gradient(180deg, #eff6ff 0%, var(--bg-card) 100%);
+  border: 1px solid var(--border-soft);
+  background: var(--bg-subtle);
 }
 
 .dashboardAddRevenueCard,
@@ -1009,7 +1011,7 @@ section[id] {
   border-radius: 16px;
   border: 1px solid var(--border-soft);
   background: var(--bg-card);
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 8px 18px rgb(var(--shadow-rgb) / 0.04);
 }
 
 .premiumValueCard {
@@ -1020,13 +1022,13 @@ section[id] {
   padding: 14px 16px;
   border-radius: 16px;
   border: 1px solid #c7d2fe;
-  background: linear-gradient(180deg, #f8faff 0%, var(--bg-card) 100%);
+  background: var(--bg-subtle);
   box-shadow: 0 8px 18px rgba(79, 70, 229, 0.06);
 }
 
 .premiumValueCard h3 {
   margin: 0;
-  color: #1e1b4b;
+  color: var(--text-main);
   font-size: 16px;
 }
 
@@ -1043,15 +1045,15 @@ section[id] {
   padding: 5px 8px;
   border-radius: 999px;
   background: var(--bg-card);
-  border: 1px solid rgba(99, 102, 241, 0.14);
-  color: #3730a3;
+  border: 1px solid var(--border-soft);
+  color: var(--brand-green);
   font-size: 12px;
   font-weight: 800;
 }
 
 .premiumValueCard p {
   margin: 10px 0 0;
-  color: #4338ca;
+  color: var(--brand-green);
   font-size: 13px;
   font-weight: 800;
 }
@@ -1059,8 +1061,8 @@ section[id] {
 .dashboardProtectionCard {
   align-items: flex-start;
   margin-top: 16px;
-  border-color: #d8d4f8;
-  background: linear-gradient(180deg, #fbfaff 0%, var(--bg-card) 100%);
+  border-color: var(--border-soft);
+  background: var(--bg-subtle);
 }
 
 .dashboardProtectionCard ul {
@@ -1232,8 +1234,8 @@ section[id] {
   padding: 5px 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(59, 130, 246, 0.16);
-  color: #1e3a8a;
+  border: 1px solid var(--border-soft);
+  color: var(--text-main);
   font-size: 12px;
   font-weight: 800;
 }
@@ -1328,7 +1330,7 @@ section[id] {
 .btnGhost {
   background: transparent;
   color: var(--brand-green);
-  border: 1px solid var(--border-mid);
+  border: 1px solid var(--border-control);
 }
 
 .btnGhost:hover {
@@ -1365,27 +1367,27 @@ section[id] {
 .btnActionSecondary {
   background: var(--bg-card);
   color: var(--brand-green);
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border-control);
   font-weight: 600;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
 }
 
 .btnActionSecondary:hover {
   background: var(--bg-subtle);
-  border-color: #94a3b8;
+  border-color: var(--brand-green);
 }
 
 .btnActionUtility {
   background: transparent;
   color: var(--brand-green);
-  border: 1px solid rgba(148, 163, 184, 0.35);
+  border: 1px solid var(--border-control);
   font-weight: 500;
   box-shadow: none;
 }
 
 .btnActionUtility:hover {
-  background: rgba(148, 163, 184, 0.08);
-  border-color: rgba(100, 116, 139, 0.45);
+  background: var(--accent-soft);
+  border-color: var(--brand-green);
   box-shadow: none;
 }
 
@@ -1405,9 +1407,9 @@ section[id] {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 .btnChoice.isSelected {
-  border-color: #9fd5b4;
-  background: #f3fbf6;
-  color: #14532d;
+  border-color: var(--brand-green);
+  background: var(--accent-soft);
+  color: var(--brand-green);
 }
 .btnChoice:disabled {
   opacity: 0.6;
@@ -1429,10 +1431,10 @@ section[id] {
 /* ===== HERO SECTION ===== */
 .heroSaaS {
   padding: 34px;
-  border: 1px solid #cdeedd;
+  border: 1px solid var(--border-soft);
   border-radius: 22px;
   background: var(--bg-card);
-  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 18px 44px rgb(var(--shadow-rgb) / 0.06);
 }
 
 .heroGrid {
@@ -1461,7 +1463,7 @@ section[id] {
 
 .heroCategory {
   margin-top: 10px;
-  color: #526173;
+  color: var(--text-muted);
   font-size: 15px;
   line-height: 1.4;
   font-weight: 650;
@@ -1471,7 +1473,7 @@ section[id] {
   display: inline-block;
   width: fit-content;
   font-size: 12px;
-  color: #536273;
+  color: var(--text-muted);
   padding: 5px 9px;
   border-radius: 999px;
   border: 1px solid #dbe6ef;
@@ -1515,7 +1517,7 @@ section[id] {
 .heroActions .btnPrimary {
   background: var(--brand-orange);
   border-color: var(--brand-orange);
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 10px 22px rgb(var(--shadow-rgb) / 0.12);
 }
 
 .heroActions .btnGhost {
@@ -1529,7 +1531,7 @@ section[id] {
   border-radius: 18px;
   padding: 18px;
   background: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 14px 34px rgb(var(--shadow-rgb) / 0.05);
 }
 
 .heroPanelTitle {
@@ -1691,11 +1693,11 @@ section[id] {
   flex: 1;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid var(--border-mid);
+  border: 1px solid var(--border-control);
   outline: none;
 }
 .chatInput input:focus {
-  border-color: #bbb;
+  border-color: var(--brand-green);
 }
 
 /* ===== TYPING ANIMATION ===== */
@@ -1764,7 +1766,7 @@ section[id] {
   height: 28px;
   padding: 0 10px;
   border-radius: 999px;
-  background: rgba(124, 58, 237, 0.1);
+  background: var(--bg-subtle);
   color: var(--brand-green);
   font-size: 12px;
   font-weight: 600;
@@ -1773,7 +1775,7 @@ section[id] {
 .stepMiniTitle {
   font-size: 14px;
   font-weight: 600;
-  color: #222;
+  color: var(--text-main);
 }
 
 .choiceRow {
@@ -1821,10 +1823,10 @@ section[id] {
 
 .fiscalCard {
   padding: 20px 22px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--border-soft);
   border-radius: 20px;
   background: var(--bg-card);
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 14px 30px rgb(var(--shadow-rgb) / 0.05);
 }
 .fiscalLabel {
   font-size: 11px;
@@ -1883,7 +1885,7 @@ section[id] {
 .timelineLabel {
   font-size: 13px;
   font-weight: 600;
-  color: #555;
+  color: var(--text-muted);
 }
 .timelineValue {
   font-size: 18px;
@@ -1895,7 +1897,7 @@ section[id] {
 .timelineHint {
   font-size: 12px;
   line-height: 1.4;
-  color: #777;
+  color: var(--text-muted);
 }
 
 .timelineAction {
@@ -1917,10 +1919,10 @@ section[id] {
 
 .miniStatCard {
   background: rgba(255, 255, 255, 0.76);
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--border-soft);
   border-radius: 14px;
   padding: 11px 13px;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.025);
+  box-shadow: 0 4px 12px rgb(var(--shadow-rgb) / 0.025);
 }
 .miniStatLabel {
   font-size: 11px;
@@ -1944,11 +1946,11 @@ section[id] {
 }
 
 .smartTipCard {
-  border: 1px solid rgba(15, 23, 42, 0.07);
+  border: 1px solid var(--border-soft);
   border-radius: 16px;
   padding: 13px 15px;
   background: var(--bg-card);
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.03);
+  box-shadow: 0 6px 18px rgb(var(--shadow-rgb) / 0.03);
 }
 .smartTipTitle {
   font-weight: 700;
@@ -1970,9 +1972,9 @@ section[id] {
   margin: 14px 0 18px;
   padding: 14px 16px;
   border-radius: 16px;
-  border: 1px solid rgba(15, 23, 42, 0.07);
+  border: 1px solid var(--border-soft);
   background: var(--bg-card);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.035);
+  box-shadow: 0 8px 20px rgb(var(--shadow-rgb) / 0.035);
 }
 
 .fiscalCoachTitle {
@@ -1995,9 +1997,9 @@ section[id] {
   margin: -4px 0 18px;
   padding: 12px 14px;
   border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  background: linear-gradient(180deg, #fbfcfd 0%, #f7f9fb 100%);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.025);
+  border: 1px solid var(--border-soft);
+  background: var(--bg-subtle);
+  box-shadow: 0 6px 16px rgb(var(--shadow-rgb) / 0.025);
 }
 
 .fiscalRecommendationText {
@@ -2012,7 +2014,7 @@ section[id] {
   border-radius: 18px;
   border: 1px solid var(--border-soft);
   background: linear-gradient(135deg, var(--bg-subtle) 0%, var(--bg-card) 100%);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 12px 28px rgb(var(--shadow-rgb) / 0.05);
 }
 
 .dashboardNextStepTitle {
@@ -2054,10 +2056,10 @@ section[id] {
   min-height: 38px;
   padding: 8px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--border-soft);
   background: rgba(255, 255, 255, 0.88);
   color: var(--text-muted);
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 8px 18px rgb(var(--shadow-rgb) / 0.04);
 }
 
 .dashboardTrustPillLabel {
@@ -2096,10 +2098,10 @@ section[id] {
   min-height: 36px;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--border-soft);
   background: rgba(255, 255, 255, 0.88);
   color: var(--text-muted);
-  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 6px 14px rgb(var(--shadow-rgb) / 0.04);
 }
 
 .dashboardPremiumMiniBadge.is-inactive {
@@ -2151,7 +2153,7 @@ section[id] {
   padding: 10px 12px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.76);
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--border-soft);
 }
 
 .dashboardChecklistCard {
@@ -2159,8 +2161,8 @@ section[id] {
   padding: 12px 14px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.02);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 5px 14px rgb(var(--shadow-rgb) / 0.02);
 }
 
 .dashboardChecklistList {
@@ -2191,7 +2193,7 @@ section[id] {
   height: 18px;
   flex: 0 0 18px;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.24);
+  border: 1px solid var(--border-soft);
   background: rgba(255, 255, 255, 0.9);
   font-size: 11px;
   font-weight: 700;
@@ -2212,17 +2214,17 @@ section[id] {
   padding: 12px 14px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.02);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 5px 14px rgb(var(--shadow-rgb) / 0.02);
 }
 
 .dashboardLearningCard {
   margin: 0 0 16px;
   padding: 12px 14px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.02);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 5px 14px rgb(var(--shadow-rgb) / 0.02);
 }
 
 .dashboardLearningProgress {
@@ -2243,9 +2245,9 @@ section[id] {
   margin: 0 0 16px;
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(248, 250, 252, 0.78);
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.025);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 6px 16px rgb(var(--shadow-rgb) / 0.025);
 }
 
 .dashboardMaturityHeader {
@@ -2285,8 +2287,8 @@ section[id] {
   padding: 12px 14px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.84);
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.025);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 6px 16px rgb(var(--shadow-rgb) / 0.025);
 }
 
 .dashboardBetaFeedbackTitle {
@@ -2321,9 +2323,9 @@ section[id] {
   margin: 0 0 16px;
   padding: 12px 14px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.02);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 5px 14px rgb(var(--shadow-rgb) / 0.02);
 }
 
 .dashboardWeeklyRecapGrid {
@@ -2337,7 +2339,7 @@ section[id] {
   padding: 10px;
   border-radius: 14px;
   background: rgba(248, 250, 252, 0.92);
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--border-soft);
 }
 
 .dashboardWeeklyRecapLabel {
@@ -2360,7 +2362,7 @@ section[id] {
   border-radius: 14px;
   background: rgba(255, 250, 245, 0.82);
   border: 1px solid rgba(251, 191, 36, 0.18);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.025);
+  box-shadow: 0 6px 16px rgb(var(--shadow-rgb) / 0.025);
 }
 
 .dashboardThisWeekTitle {
@@ -2377,7 +2379,7 @@ section[id] {
   border-radius: 14px;
   background: rgba(240, 253, 244, 0.82);
   border: 1px solid rgba(34, 197, 94, 0.18);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.025);
+  box-shadow: 0 6px 16px rgb(var(--shadow-rgb) / 0.025);
 }
 
 .dashboardPositiveMomentumTitle {
@@ -2392,9 +2394,9 @@ section[id] {
   margin: 0 0 16px;
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(239, 246, 255, 0.82);
+  background: var(--accent-soft);
   border: 1px solid rgba(96, 165, 250, 0.18);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.025);
+  box-shadow: 0 6px 16px rgb(var(--shadow-rgb) / 0.025);
 }
 
 .dashboardTrackingStreakTitle {
@@ -2402,16 +2404,16 @@ section[id] {
   font-size: 13px;
   line-height: 1.45;
   font-weight: 700;
-  color: #1d4ed8;
+  color: var(--brand-green);
 }
 
 .dashboardMonthlyReflectionCard {
   margin: 0 0 16px;
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(250, 245, 255, 0.82);
+  background: var(--bg-subtle);
   border: 1px solid rgba(167, 139, 250, 0.18);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.025);
+  box-shadow: 0 6px 16px rgb(var(--shadow-rgb) / 0.025);
 }
 
 .dashboardMonthlyReflectionTitle {
@@ -2419,16 +2421,16 @@ section[id] {
   font-size: 13px;
   line-height: 1.45;
   font-weight: 700;
-  color: #6b21a8;
+  color: var(--brand-green);
 }
 
 .dashboardNextMonthCard {
   margin: 0 0 16px;
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(248, 250, 252, 0.82);
+  background: var(--bg-subtle);
   border: 1px solid rgba(125, 211, 252, 0.18);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.025);
+  box-shadow: 0 6px 16px rgb(var(--shadow-rgb) / 0.025);
 }
 
 .dashboardNextMonthTitle {
@@ -2443,18 +2445,18 @@ section[id] {
   margin: 0 0 16px;
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(248, 250, 252, 0.78);
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.025);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 6px 16px rgb(var(--shadow-rgb) / 0.025);
 }
 
 .dashboardTrustCard {
   margin: 0 0 16px;
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(248, 250, 252, 0.78);
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.025);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 6px 16px rgb(var(--shadow-rgb) / 0.025);
 }
 
 .dashboardPremiumMomentCard {
@@ -2462,8 +2464,8 @@ section[id] {
   padding: 12px 14px;
   border-radius: 14px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 250, 252, 0.88) 100%);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 8px 20px rgb(var(--shadow-rgb) / 0.03);
 }
 
 .dashboardPremiumMomentText {
@@ -2528,9 +2530,9 @@ section[id] {
   margin: 14px 0 14px;
   padding: 14px 16px;
   border-radius: 18px;
-  border: 1px solid rgba(15, 23, 42, 0.07);
+  border: 1px solid var(--border-soft);
   background: var(--bg-card);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.025);
+  box-shadow: 0 6px 16px rgb(var(--shadow-rgb) / 0.025);
 }
 
 .fiscalScoreHeader h3 {
@@ -2573,14 +2575,14 @@ section[id] {
   margin-top: 12px;
   height: 8px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #edf2f6 0%, #e7edf2 100%);
+  background: var(--accent-soft);
   overflow: hidden;
 }
 
 .fiscalScoreBarFill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #8aa1b7 0%, #6d879f 100%);
+  background: var(--brand-green);
 }
 
 .mainActionBox {
@@ -2596,7 +2598,7 @@ section[id] {
 }
 .mainActionText {
   font-size: 14px;
-  color: #555;
+  color: var(--text-muted);
   margin-bottom: 10px;
 }
 
@@ -2607,12 +2609,12 @@ section[id] {
   border: 1px solid transparent;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.62),
-    0 10px 24px rgba(15, 23, 42, 0.03);
+    0 10px 24px rgb(var(--shadow-rgb) / 0.03);
 }
 
 .dashboardSectionZoneLavender {
-  background: linear-gradient(180deg, #f6f3fb 0%, #faf8fd 100%);
-  border-color: #e6def1;
+  background: var(--bg-subtle);
+  border-color: var(--border-soft);
 }
 
 .dashboardSectionZoneMint {
@@ -2621,13 +2623,13 @@ section[id] {
 }
 
 .dashboardSectionZoneCoolNeutral {
-  background: linear-gradient(180deg, #f7fafc 0%, var(--bg-card) 100%);
-  border-color: #e1e8ef;
+  background: var(--bg-card);
+  border-color: var(--border-soft);
 }
 
 .dashboardSectionZoneSoftNeutral {
-  background: linear-gradient(180deg, #fafafa 0%, var(--bg-card) 100%);
-  border-color: #e5e7ea;
+  background: var(--bg-card);
+  border-color: var(--border-soft);
 }
 
 .dashboardSectionZoneSuccess {
@@ -2702,7 +2704,7 @@ section[id] {
   border: 1px solid var(--border-soft);
   border-radius: 16px;
   background: var(--bg-card);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.035);
+  box-shadow: 0 10px 24px rgb(var(--shadow-rgb) / 0.035);
 }
 
 .dashboardProfileCompletionCard .dashboardRecommendationActions {
@@ -2724,9 +2726,9 @@ section[id] {
   min-height: 28px;
   padding: 5px 10px;
   border-radius: 999px;
-  border: 1px solid #bfdbfe;
-  background: #eff6ff;
-  color: #1d4ed8;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-subtle);
+  color: var(--brand-green);
   font-size: 12px;
   line-height: 1.25;
   font-weight: 800;
@@ -2738,9 +2740,9 @@ section[id] {
   padding: 14px;
   border-radius: 14px;
   border: 1px solid var(--border-soft);
-  background: var(--bg-card);
+  background: var(--bg-subtle);
   color: var(--text-muted);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 8px 20px rgb(var(--shadow-rgb) / 0.04);
 }
 
 .einvoicingInfoCard {
@@ -2797,8 +2799,8 @@ section[id] {
   padding: 10px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 18px 40px rgb(var(--shadow-rgb) / 0.14);
   backdrop-filter: blur(14px);
 }
 
@@ -2864,11 +2866,11 @@ section[id] {
 }
 
 .revenueItem {
-  border: 1px solid rgba(15, 23, 42, 0.07);
+  border: 1px solid var(--border-soft);
   border-radius: 18px;
   padding: 15px 16px;
   background: var(--bg-card);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.035);
+  box-shadow: 0 8px 20px rgb(var(--shadow-rgb) / 0.035);
 }
 .revenueMain {
   display: flex;
@@ -2931,7 +2933,7 @@ section[id] {
   margin-bottom: 8px;
   padding: 5px 10px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.12);
+  background: var(--bg-subtle);
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 700;
@@ -2946,8 +2948,8 @@ section[id] {
   padding: 22px;
   border-radius: 20px;
   background: var(--bg-card);
-  border: 1px solid rgba(15, 23, 42, 0.07);
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.05);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 14px 28px rgb(var(--shadow-rgb) / 0.05);
 }
 
 .chartHeader {
@@ -2975,7 +2977,7 @@ section[id] {
   width: 100%;
   max-width: 44px;
   border-radius: 12px 12px 6px 6px;
-  background: linear-gradient(180deg, #6e8fb1 0%, #516f8c 100%);
+  background: linear-gradient(180deg, var(--brand-emerald) 0%, var(--brand-green) 100%);
   min-height: 12px;
 }
 .chartValue { font-size: 12px; font-weight: 700; color: var(--text-muted); text-align: center; }
@@ -3001,10 +3003,10 @@ section[id] {
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 14px;
   background: var(--bg-card);
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
+  box-shadow: 0 2px 10px rgb(var(--shadow-rgb) / 0.03);
   font-size: 14px;
 }
-.historyMonth { text-transform: capitalize; color: #444; }
+.historyMonth { text-transform: capitalize; color: var(--text-main); }
 .historyTotal { font-weight: 600; }
 
 .progressIndicators {
@@ -3016,7 +3018,7 @@ section[id] {
 .progressItem {
   padding: 14px 16px;
   border-radius: 16px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--border-soft);
   background: rgba(255, 255, 255, 0.82);
 }
 
@@ -3032,7 +3034,7 @@ section[id] {
 
 .progressBarPremium {
   height: 10px;
-  background: linear-gradient(180deg, #e8edf2 0%, #edf2f6 100%);
+  background: var(--accent-soft);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -3040,7 +3042,7 @@ section[id] {
 .progressBarPremium .progressFill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #8aa1b7 0%, #6d879f 100%);
+  background: linear-gradient(90deg, var(--brand-green), var(--focus));
 }
 
 /* ===== ASSISTANT SECTION ===== */
@@ -3076,7 +3078,7 @@ section[id] {
   padding: 16px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 16px;
-  background: var(--bg-card);
+  background: var(--bg-subtle);
 }
 .assistantSummaryBox h3 {
   margin: 0 0 10px;
@@ -3099,7 +3101,7 @@ section[id] {
   padding: 16px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 16px;
-  background: #fafafa;
+  background: var(--bg-subtle);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -3267,9 +3269,9 @@ section[id] {
 
 .reminderSettingsNote {
   padding: 12px 14px;
-  border: 1px solid #d8d4f8;
+  border: 1px solid var(--border-soft);
   border-radius: 14px;
-  background: #fbfaff;
+  background: var(--bg-subtle);
 }
 
 .reminderSettingsActions {
@@ -3321,7 +3323,7 @@ section[id] {
 .field input {
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid var(--border-mid);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-control);
   padding: 10px 12px;
   font-size: 1rem;
@@ -3334,7 +3336,7 @@ section[id] {
 .revenuePreview {
   margin-top: 16px;
   padding: 12px;
-  background: #f8f9fb;
+  background: var(--bg-subtle);
   border-radius: 12px;
 }
 .previewTitle {
@@ -3356,7 +3358,7 @@ section[id] {
 .securityItem {
   padding: 12px;
   border-radius: 12px;
-  background: #f8f8fb;
+  background: var(--bg-subtle);
 }
 .securityNoteBox {
   margin-top: 16px;
@@ -3381,7 +3383,7 @@ section[id] {
   border-radius: 14px;
   background: linear-gradient(180deg, #fffdf7 0%, var(--bg-subtle) 100%);
   border: 1px solid var(--border-soft);
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 8px 18px rgb(var(--shadow-rgb) / 0.04);
 }
 
 .discoveryBannerTitle {
@@ -3445,8 +3447,8 @@ section[id] {
   border-radius: 10px;
   padding: 10px;
   margin-bottom: 8px;
-  background: linear-gradient(180deg, var(--bg-subtle) 0%, #eef2ff 100%);
-  border: 1px dashed rgba(99, 102, 241, 0.28);
+  background: var(--bg-subtle);
+  border: 1px dashed var(--border-soft);
 }
 
 .priorityLockList {
@@ -3565,7 +3567,7 @@ section[id] {
   font-size: 12px;
   font-weight: 600;
   background: var(--accent-soft);
-  color: #6b46c1;
+  color: var(--brand-green);
   white-space: nowrap;
   border: 1px solid rgba(107, 70, 193, 0.12);
 }
@@ -4202,7 +4204,7 @@ section[id] {
   margin-top: 10px;
   font-size: 13px;
   line-height: 1.45;
-  color: #5f5a52;
+  color: var(--text-muted);
 }
 
 /* Progress indicators */
@@ -4461,9 +4463,9 @@ section[id] {
 
 .legalHero,
 .legalContent {
-  border: 1px solid #dbe7df;
+  border: 1px solid var(--border-soft);
   background: var(--bg-card);
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 12px 30px rgb(var(--shadow-rgb) / 0.05);
 }
 
 .legalHero {
@@ -4639,7 +4641,7 @@ section[id] {
 }
 
 .authModeButton {
-  border: 1px solid var(--border-mid);
+  border: 1px solid var(--border-control);
   background: var(--bg-subtle);
   color: var(--text-muted);
   border-radius: 12px;
@@ -4690,7 +4692,7 @@ section[id] {
 }
 
 .authLinkButton:disabled {
-  color: #94a3b8;
+  color: var(--text-muted);
   cursor: default;
 }
 
@@ -4900,7 +4902,7 @@ section[id] {
 
 .pricingCard li {
   padding: 8px 0;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-soft);
   font-size: 14px;
 }
 
@@ -4992,8 +4994,8 @@ section[id] {
   margin-bottom: 12px;
   padding: 6px 11px;
   border-radius: 999px;
-  border: 1px solid #cdeedd;
-  background: #f4fbf7;
+  border: 1px solid var(--border-soft);
+  background: var(--accent-soft);
   color: #166534;
   font-size: 13px;
   font-weight: 800;
@@ -5004,9 +5006,9 @@ section[id] {
   gap: 18px;
   padding: 28px;
   border-radius: 24px;
-  border: 1px solid #cdeedd;
-  background: linear-gradient(180deg, var(--bg-card) 0%, #f8fcfa 100%);
-  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--border-soft);
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-subtle) 100%);
+  box-shadow: 0 18px 44px rgb(var(--shadow-rgb) / 0.06);
 }
 
 .pricingBetaCard p {
@@ -5040,8 +5042,8 @@ section[id] {
 }
 
 .pricingBetaAccess {
-  border-color: #cdeedd;
-  background: #f4fbf7;
+  border-color: var(--border-soft);
+  background: var(--bg-subtle);
 }
 
 .pricingBetaActions {
@@ -5074,8 +5076,8 @@ section[id] {
   justify-content: space-between;
   align-items: center;
   gap: 20px;
-  background: #faf7ff;
-  border: 1px solid #e9ddff;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-soft);
   border-radius: 20px;
   padding: 22px 24px;
   margin-bottom: 28px;
@@ -5110,12 +5112,12 @@ section[id] {
   border: 1px solid var(--border-soft);
   border-radius: 24px;
   padding: 26px 24px 24px;
-  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.04);
+  box-shadow: 0 8px 24px rgb(var(--shadow-rgb) / 0.04);
 }
 
 .pricingCard.featured {
   border: 2px solid var(--brand-green);
-  box-shadow: 0 14px 36px rgba(124, 58, 237, 0.12);
+  box-shadow: 0 14px 36px rgb(var(--shadow-rgb) / 0.12);
 }
 
 .pricingBadge,
@@ -5204,7 +5206,7 @@ section[id] {
 }
 
 .pricingCompareTable {
-  border: 1px solid #ececf3;
+  border: 1px solid var(--border-soft);
   border-radius: 18px;
   overflow: hidden;
 }
@@ -5214,7 +5216,7 @@ section[id] {
   grid-template-columns: 2fr 1fr 1fr;
   align-items: center;
   min-height: 58px;
-  border-bottom: 1px solid #ececf3;
+  border-bottom: 1px solid var(--border-soft);
   background: var(--bg-card);
 }
 
@@ -5250,7 +5252,7 @@ section[id] {
 }
 
 .faqSection details {
-  border-top: 1px solid #ececf3;
+  border-top: 1px solid var(--border-soft);
   padding: 16px 0;
 }
 

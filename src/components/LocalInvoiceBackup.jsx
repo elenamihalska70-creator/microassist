@@ -73,7 +73,7 @@ export default function LocalInvoiceBackup({ onRestored }) {
     </details>
     {error && <p role="alert">{error}</p>}
     {message && <p role="status">{message}</p>}
-    {open && <div role="region" aria-label="Restauration locale" style={{ marginTop: 12, padding: 16, border: '1px solid #64748b', borderRadius: 8 }}>
+    {open && <div role="region" aria-label="Restauration locale" style={{ marginTop: 12, padding: 16, border: "1px solid var(--border-control)", borderRadius: 8 }}>
       <p>JSON Microassist version 1, au plus 5 Mio et 1 000 factures. Aucun remplacement : les conflits sont conservés sur cet appareil. Les anciennes entrées sans identifiant ne seront pas ajoutées.</p>
       <label className="field">Fichier de sauvegarde JSON<input ref={input} type="file" accept=".json,application/json" onChange={selectFile} disabled={reading} /></label>
       {reading && <p role="status">Lecture de la sauvegarde… Aucune écriture n’est effectuée.</p>}

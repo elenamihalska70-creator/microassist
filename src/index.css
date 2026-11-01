@@ -3,7 +3,7 @@
   line-height: 1.5;
   font-weight: 400;
   color-scheme: light;
-  color: var(--text-main, #17120d);
+  color: var(--text-main, #211c17);
   background: var(--bg-page, #f7f4ee);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -19,6 +19,8 @@ body { margin: 0; min-width: 320px; min-height: 100vh; }
 .page :where(h1, h2, h3) { font-family: Georgia, 'Times New Roman', serif; }
 .page :where(button, input, select, textarea) { font-family: inherit; }
 .page :where(input, select, textarea) { color: inherit; }
+.page :where(input, select, textarea) { background-color: var(--bg-card); border-color: var(--border-control); }
+.page :where(input[type="checkbox"], input[type="radio"]) { accent-color: var(--brand-green); }
 .page :where(a) { color: var(--brand-green); text-underline-offset: 3px; }
 .page :where(button, a, input, select, textarea, summary):focus-visible {
   outline: 3px solid var(--focus);

@@ -4,7 +4,7 @@ import process from 'node:process';
 import {revenueFixtures, setupRevenueFixture, openFixtureDashboard} from './support/revenues-mobile-fixtures.js';
 
 const before = process.env.THEME_STAGE === 'before';
-const captures = 'output/interface-20261027';
+const captures = process.env.THEME_CAPTURES_DIR || 'output/interface-20261027';
 const longName = 'Élodie François — Київ — ' + 'ClientSansEspace'.repeat(8);
 const invoices = JSON.parse(await readFile('docs/local-invoice-backup/examples/valid.json', 'utf8')).invoices;
 const fixtures = [revenueFixtures[0], {...revenueFixtures[1], rows: revenueFixtures[1].rows.map((r, i) => ({...r, client: i ? r.client : longName})), invoices}, revenueFixtures[6], revenueFixtures[7]];
