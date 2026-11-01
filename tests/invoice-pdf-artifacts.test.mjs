@@ -6,11 +6,13 @@ import { pathToFileURL } from 'node:url';
 import process from 'node:process';
 
 // Offline review tooling, installed outside the application (see review README).
+// Without it the tests are reported as skipped rather than failed, so the
+// regular unit run stays meaningful on machines without the review tooling.
 const tools = process.env.PDF_TOOLS_DIR;
-assert.ok(tools, 'Set PDF_TOOLS_DIR to the directory containing pdfjs-dist and @napi-rs/canvas');
-const canvasModule = await import(pathToFileURL(join(tools, 'node_modules/@napi-rs/canvas/index.js')));
-Object.assign(globalThis, { DOMMatrix: canvasModule.DOMMatrix, ImageData: canvasModule.ImageData, Path2D: canvasModule.Path2D });
-const pdfjs = await import(pathToFileURL(join(tools, 'node_modules/pdfjs-dist/legacy/build/pdf.mjs')));
+const skip = tools ? false : 'Set PDF_TOOLS_DIR to the directory containing pdfjs-dist and @napi-rs/canvas';
+const canvasModule = tools ? await import(pathToFileURL(join(tools, 'node_modules/@napi-rs/canvas/index.js'))) : null;
+if (canvasModule) Object.assign(globalThis, { DOMMatrix: canvasModule.DOMMatrix, ImageData: canvasModule.ImageData, Path2D: canvasModule.Path2D });
+const pdfjs = tools ? await import(pathToFileURL(join(tools, 'node_modules/pdfjs-dist/legacy/build/pdf.mjs'))) : null;
 const root = resolve(process.env.PDF_REVIEW_DIR || 'output/pdf/invoice-unicode-review');
 const summaries = {};
 const readPdf = async path => pdfjs.getDocument({ data: new Uint8Array(await readFile(path)),
@@ -18,7 +20,7 @@ const readPdf = async path => pdfjs.getDocument({ data: new Uint8Array(await rea
   useSystemFonts: false }).promise;
 
 for (const name of ['short','long','created','list']) {
-  test(`real PDF text, geometry and rendered pages: ${name}`, async () => {
+  test(`real PDF text, geometry and rendered pages: ${name}`, { skip }, async () => {
     const document = await readPdf(join(root,'fixed',`${name}.pdf`));
     const pdfBytes = await readFile(join(root,'fixed',`${name}.pdf`),'latin1');
     assert.equal((pdfBytes.match(/\/FontFile2 /g) || []).length,2,'both regular and bold TTF faces are embedded');
@@ -81,7 +83,7 @@ for (const name of ['short','long','created','list']) {
   });
 }
 
-test('baseline reproduces lost Cyrillic and note overlapping the total area',async()=>{
+test('baseline reproduces lost Cyrillic and note overlapping the total area',{ skip },async()=>{
   const document=await readPdf(join(root,'baseline','short.pdf'));
   const page=await document.getPage(1);
   const items=(await page.getTextContent()).items;
@@ -108,4 +110,4 @@ test('baseline reproduces lost Cyrillic and note overlapping the total area',asy
   await long.cleanup();
 });
 
-test.after(async()=>{await writeFile(join(root,'pdf-validation.json'),JSON.stringify(summaries,null,2));});
+test.after(async()=>{if(skip)return;await writeFile(join(root,'pdf-validation.json'),JSON.stringify(summaries,null,2));});

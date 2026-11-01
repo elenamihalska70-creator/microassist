@@ -39,38 +39,52 @@ function indexOfOrFail(source, marker, label) {
   return index;
 }
 
-test("PriorityCard renders before the founder banner", () => {
+// Since the cockpit composition (df3e14d, 6997b96) App.jsx no longer decides
+// the order by JSX text position: PriorityCard is passed to CockpitOverview as
+// `children` and every access surface through its `workspace` slot.
+// CockpitOverview then renders `children` ("À faire maintenant") before
+// `{workspace}`, so the DOM order is checked through that composition.
+const OVERVIEW_SOURCE = readFileSync(
+  new URL("../src/components/dashboard/CockpitOverview.jsx", import.meta.url),
+  "utf8",
+).replace(/\r\n/g, "\n");
+
+function assertPriorityCardRendersBefore(marker, label) {
   const source = dashboardBranchSource();
-  const priorityCardIndex = indexOfOrFail(source, "<PriorityCard", "PriorityCard");
-  const founderBannerIndex = indexOfOrFail(source, "<CockpitAccess", "founder banner");
+  const workspaceStart = indexOfOrFail(source, "workspace={<>", "workspace slot");
+  const workspaceEnd = source.indexOf("\n                </>}", workspaceStart);
+  assert.ok(workspaceEnd > workspaceStart, "workspace slot end not found");
+  const markerIndex = indexOfOrFail(source, marker, label);
   assert.ok(
-    priorityCardIndex < founderBannerIndex,
-    "PriorityCard must render before the founder banner",
+    workspaceStart < markerIndex && markerIndex < workspaceEnd,
+    `${label} must be passed through the CockpitOverview workspace slot`,
   );
+
+  const children = source.match(
+    /\n\s*>\s*\{\(hasProfileCore \|\| simpleAssistantProfile\) && priorityCardViewModel && \(\s*<PriorityCard/,
+  );
+  assert.ok(children, "PriorityCard must be the CockpitOverview children");
+  assert.ok(
+    children.index < source.indexOf("</CockpitOverview>"),
+    "PriorityCard must be rendered inside CockpitOverview",
+  );
+
+  const childrenSlot = OVERVIEW_SOURCE.indexOf("{children ||");
+  const workspaceSlot = OVERVIEW_SOURCE.indexOf("{workspace}");
+  assert.ok(childrenSlot !== -1 && workspaceSlot !== -1, "CockpitOverview slots not found");
+  assert.ok(childrenSlot < workspaceSlot, `PriorityCard must render before the ${label}`);
+}
+
+test("PriorityCard renders before the founder banner", () => {
+  assertPriorityCardRendersBefore("founder={isFounder &&", "founder banner");
 });
 
 test("PriorityCard renders before the discovery-mode banner stack", () => {
-  const source = dashboardBranchSource();
-  const priorityCardIndex = indexOfOrFail(source, "<PriorityCard", "PriorityCard");
-  const discoveryBannerIndex = indexOfOrFail(source, "<CockpitAccess", "discovery banner");
-  assert.ok(
-    priorityCardIndex < discoveryBannerIndex,
-    "PriorityCard must render before the discovery banner stack",
-  );
+  assertPriorityCardRendersBefore("discovery={", "discovery banner");
 });
 
 test("PriorityCard renders before the inline Premium promotional banner (premiumBannerContent)", () => {
-  const source = dashboardBranchSource();
-  const priorityCardIndex = indexOfOrFail(source, "<PriorityCard", "PriorityCard");
-  const premiumBannerIndex = indexOfOrFail(
-    source,
-    "billing={premiumBannerContent}",
-    "inline Premium banner",
-  );
-  assert.ok(
-    priorityCardIndex < premiumBannerIndex,
-    "PriorityCard must render before the inline Premium promotional banner",
-  );
+  assertPriorityCardRendersBefore("billing={premiumBannerContent}", "inline Premium banner");
 });
 
 test("legacy 'Action prioritaire' hero is removed from the dashboard branch", () => {

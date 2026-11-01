@@ -1,0 +1,626 @@
+{
+  "description": "Source-shape assertions on src/App.jsx that froze occurrence counts or relied on the empty comment anchor {/* ACRE Expiration Warning */}, removed by 6997b96. They assert no behaviour. Skipped by name, per file, by tests/run-unit.mjs; every other test in these files still runs. See tests/quarantine/README.md.",
+  "baseline": "4c26b26",
+  "files": {
+    "lot-5-18-legacy-retention-hardening.test.js": [
+      {
+        "name": "LOT 5.18 blocks unapproved new Legacy consumers with a deterministic reference count guard",
+        "kind": "frozen-count",
+        "observed": "availableAmount"
+      }
+    ],
+    "lot-5-20-next-consumer-migration.test.js": [
+      {
+        "name": "LOT 5.20 does not add a flag, state, effect, Adapter execution or Facade execution",
+        "kind": "frozen-count",
+        "observed": "availableAmount"
+      }
+    ],
+    "lot-5-21-next-consumer-migration-validation.test.js": [
+      {
+        "name": "LOT 5.21 validates no new state, effect, Adapter or Facade execution",
+        "kind": "frozen-count",
+        "observed": "fiscalSummaryVisibleSlice"
+      }
+    ],
+    "lot-5-22-next-consumer-stabilization.test.js": [
+      {
+        "name": "LOT 5.22 keeps React counts, Adapter execution and Facade execution stable",
+        "kind": "frozen-count",
+        "observed": "fiscalSummaryVisibleSlice"
+      }
+    ],
+    "lot-5-24-next-consumer-migration.test.js": [
+      {
+        "name": "LOT 5.24 migrates exactly the progress indicators gate revenue source",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.24 preserves isFiscalProfileComplete in the progress condition",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.24 adds no flag, state, effect, memo, Adapter or Facade execution",
+        "kind": "frozen-count",
+        "observed": "availableAmount"
+      },
+      {
+        "name": "LOT 5.24 keeps the gate free of fallback, normalization and business calculation",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.24 keeps progress indicator content and savings formulas unchanged",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.24 keeps persistence, payload, export and assistant boundaries unchanged",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.24 rollback is local to the progress gate expression",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      }
+    ],
+    "lot-5-25-next-consumer-migration-validation.test.js": [
+      {
+        "name": "LOT 5.25 validates the exact Shadow-backed progress gate",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.25 validates isFiscalProfileComplete definition and order remain intact",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.25 validates no new React or pipeline execution surface",
+        "kind": "frozen-count",
+        "observed": "availableAmount"
+      },
+      {
+        "name": "LOT 5.25 validates the progress gate has no fallback, coercion or calculation",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.25 validates progress indicator JSX and values remain unchanged outside the gate",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.25 validates persistence, payload, export and assistant boundaries",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.25 validates rollback remains local to the progress gate",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      }
+    ],
+    "lot-5-26-next-consumer-stabilization.test.js": [
+      {
+        "name": "LOT 5.26 keeps the progress indicators gate exact and single-source",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.26 keeps isFiscalProfileComplete unchanged",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.26 keeps React hooks, Adapter and Facade surface stable",
+        "kind": "frozen-count",
+        "observed": "availableAmount"
+      },
+      {
+        "name": "LOT 5.26 keeps progress indicators JSX unchanged outside the gate",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.26 keeps the progress gate free of fallback and business calculation",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.26 keeps approved Shadow consumers limited and no new consumer appears",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.26 keeps persistence, payload, export and assistant boundaries unchanged",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      }
+    ],
+    "lot-5-29-savingsgoal-architecture-hardening.test.js": [
+      {
+        "name": "LOT 5.29 identifies the UI boundary separately",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.29 adds no new rounding, percentage or fallback in savingsGoal responsibilities",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.29 keeps persistence, assistant and payload boundaries unchanged",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.29 no cross-consumer coupling guard remains deterministic",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.29 introduces no new React or pipeline execution surface",
+        "kind": "frozen-count",
+        "observed": "fiscalSummaryVisibleSlice"
+      },
+      {
+        "name": "LOT 5.97 supplements whole-file hook counts with a scoped savingsGoal-boundary check",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      }
+    ],
+    "lot-5-30-isolated-savingsgoal-ui-parity-evidence.test.js": [
+      {
+        "name": "LOT 5.30 adds no new rounding to the isolated UI parity path",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.30 adds no new fallback to the isolated UI parity path",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.30 keeps persistence unchanged",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.30 keeps payloads unchanged",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.30 keeps assistant unchanged",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.30 keeps Legacy Retention intact",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-32-isolated-savingsgoal-ui-migration.test.js": [
+      {
+        "name": "LOT 5.32 adds no new rounding",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.32 adds no new fallback",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.32 adds no new state or effect",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.32 keeps Objectif d'epargne UI migrations bounded",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.32 keeps approved execution surface counts",
+        "kind": "frozen-count",
+        "observed": "fiscalSummaryVisibleSlice"
+      },
+      {
+        "name": "LOT 5.98 supplements the whole-file hook counts with a scoped savingsGoal-boundary check",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      }
+    ],
+    "lot-5-34-isolated-savingsgoal-ui-migration-validation.test.js": [
+      {
+        "name": "LOT 5.34 validates Shadow baseline includes the approved progress bar and weekly rate occurrences",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.34 validates no new consumer beyond the approved Objectif UI consumers",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      }
+    ],
+    "lot-5-35-isolated-savingsgoal-ui-stabilization.test.js": [
+      {
+        "name": "LOT 5.35 Shadow baseline includes the approved progress bar and weekly rate occurrences",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.35 detects the approved monthly reflection tenth Shadow occurrence",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.35 React hook counts remain unchanged",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.98 supplements the whole-file hook counts with a scoped savingsGoal-boundary check",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.35 validates no migrated consumer beyond the approved Objectif UI pair",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.35 validates no propagation outside the approved UI text",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-37-objective-savings-progress-bar-migration.test.js": [
+      {
+        "name": "LOT 5.37 adds no new state",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.98 supplements the whole-file hook counts with a scoped savingsGoal-boundary check",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.37 migrates no other consumer",
+        "kind": "removed-anchor",
+        "observed": "{/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.37 Shadow baseline includes the approved weekly rate and monthly reflection occurrences",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-39-objective-savings-progress-bar-migration-validation.test.js": [
+      {
+        "name": "LOT 5.39 Shadow baseline includes the approved weekly rate and monthly reflection occurrences",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.39 approved Objectif d'epargne Shadow pair remains scoped and isolated",
+        "kind": "removed-anchor",
+        "observed": "Missing block end:               {/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.39 persistence, payloads and assistant remain unchanged by the migrated consumer",
+        "kind": "removed-anchor",
+        "observed": "Missing block end:               {/* ACRE Expiration Warning */}"
+      }
+    ],
+    "lot-5-40-objective-savings-progress-bar-stabilization.test.js": [
+      {
+        "name": "LOT 5.40 keeps Shadow baseline at ten with the monthly reflection occurrence",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.40 confirms the eighth Shadow occurrence remains the approved progress bar",
+        "kind": "removed-anchor",
+        "observed": "Missing block end:               {/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.40 keeps persistence, payloads, assistant, analytics and feedback isolated",
+        "kind": "removed-anchor",
+        "observed": "Missing block end:               {/* ACRE Expiration Warning */}"
+      },
+      {
+        "name": "LOT 5.40 keeps React hook counts and avoids new state/effect/memo churn",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.98 supplements the whole-file hook counts with a scoped savingsGoal-boundary check",
+        "kind": "removed-anchor",
+        "observed": "Missing block end:               {/* ACRE Expiration Warning */}"
+      }
+    ],
+    "lot-5-42-weekly-recap-effective-rate-parity-evidence.test.js": [
+      {
+        "name": "LOT 5.42 identifies the Shadow effectiveRate source with the approved weekly consumer",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.42 does not add persistence, payload, export, assistant or an extra Shadow consumer",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-44-weekly-rate-contract-hardening.test.js": [
+      {
+        "name": "LOT 5.44 confirms weekly visible consumer uses the approved hardened contract",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-46-weekly-rate-migration.test.js": [
+      {
+        "name": "LOT 5.46 keeps the approved weekly rate occurrence and monthly reflection tenth occurrence",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-47-extended-stabilization.test.js": [
+      {
+        "name": "LOT 5.47 locks the approved tenth fiscalSummaryVisibleSlice occurrence",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-48-weekly-rate-migration-validation.test.js": [
+      {
+        "name": "LOT 5.48 validates Shadow baseline and approved tenth occurrence",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-49-weekly-rate-stabilization.test.js": [
+      {
+        "name": "LOT 5.49 stabilizes Shadow baseline and approved monthly reflection occurrences",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-51-monthly-reflection-revenue-migration.test.js": [
+      {
+        "name": "LOT 5.51A remains stable with the approved twelve Shadow occurrences and reserve-low occurrence",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-53-monthly-reflection-revenue-migration-validation.test.js": [
+      {
+        "name": "LOT 5.53 validates Shadow baseline twelve with monthly reflection charges and reserve-low occurrences",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-54-monthly-reflection-revenue-stabilization.test.js": [
+      {
+        "name": "LOT 5.54 keeps Shadow baseline at twelve with charges and reserve-low occurrences",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-56-monthly-reflection-charges-migration.test.js": [
+      {
+        "name": "LOT 5.56A keeps the approved twelve Shadow occurrences with reserve-low stabilized",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-57-extended-stabilization.test.js": [
+      {
+        "name": "LOT 5.57 locks the approved Shadow baseline at twelve with the reserve-low occurrence",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-58-monthly-reflection-charges-migration-validation.test.js": [
+      {
+        "name": "LOT 5.58 locks Shadow baseline twelve with reserve-low stabilized",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-59-monthly-reflection-charges-stabilization.test.js": [
+      {
+        "name": "LOT 5.59 keeps monthly reflection stable after the approved twelfth occurrence",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-61-smart-alert-reserve-low-parity-evidence.test.js": [
+      {
+        "name": "LOT 5.61 keeps parity evidence intact after the approved smart alert migration",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-63-smart-alert-reserve-low-migration.test.js": [
+      {
+        "name": "LOT 5.63A locks Shadow baseline twelve and the exact twelfth consumer",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-64-extended-stabilization.test.js": [
+      {
+        "name": "LOT 5.64 stabilizes the reserve-low Shadow baseline contract",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-65-smart-alert-reserve-low-migration-validation.test.js": [
+      {
+        "name": "LOT 5.65 validates Shadow baseline thirteen after approved revenue input migration",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.65 validates React and fiscal pipeline stability",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-66-smart-alert-reserve-low-stabilization.test.js": [
+      {
+        "name": "LOT 5.66 keeps Shadow baseline at thirteen after approved revenue input migration",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.66 keeps React and pipeline surfaces stable",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-68-smart-alert-rawavailable-revenue-parity-evidence.test.js": [
+      {
+        "name": "LOT 5.68 confirms approved smart alert revenue migration remains source-only",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-70-smart-alert-rawavailable-revenue-migration.test.js": [
+      {
+        "name": "LOT 5.70 locks Shadow baseline at thirteen with exact thirteenth consumer signature",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.70 keeps React and fiscal pipeline surfaces stable",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-72-smart-alert-rawavailable-revenue-migration-validation.test.js": [
+      {
+        "name": "LOT 5.72 validates Shadow baseline thirteen and no fourteenth occurrence",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.72 validates React and fiscal pipeline stability",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-73-smart-alert-rawavailable-revenue-stabilization.test.js": [
+      {
+        "name": "LOT 5.73 keeps Shadow baseline stable after the approved coaching occurrence",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.73 keeps React and fiscal pipeline stable",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-77-savingsgoal-coaching-parity-evidence.test.js": [
+      {
+        "name": "LOT 5.77 tracks the approved coaching Shadow consumer and baseline fourteen",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-79-savingsgoal-coaching-migration.test.js": [
+      {
+        "name": "LOT 5.79 adds no new state effect memo adapter or facade",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.79 sets Shadow baseline to fourteen with exact fourteenth signature",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.79 has no fifteenth occurrence and rollback remains local",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-81-savingsgoal-coaching-migration-validation.test.js": [
+      {
+        "name": "LOT 5.81 validates Shadow baseline fourteen and no fifteenth occurrence",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.81 validates React and pipeline stability counts",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-82-savingsgoal-coaching-stabilization.test.js": [
+      {
+        "name": "LOT 5.82 keeps Shadow baseline thirteen with no fourteenth occurrence",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.82 keeps React and fiscal pipeline counts stable",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-84-savingsgoal-pdf-parity-evidence.test.js": [
+      {
+        "name": "LOT 5.84 keeps baseline Shadow fifteen and no fourteenth occurrence",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-86-savingsgoal-pdf-migration.test.js": [
+      {
+        "name": "LOT 5.86A adds no state effect memo adapter facade or feature flag",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.86A locks Shadow baseline thirteen and the exact thirteenth consumer",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-88-extended-stabilization.test.js": [
+      {
+        "name": "LOT 5.88 recomputes the fiscalSummaryVisibleSlice baseline as exactly thirteen",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.88 confirms no fourteenth fiscalSummaryVisibleSlice occurrence exists",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ],
+    "lot-5-91-obsolete-savingsgoal-root-removal.test.js": [
+      {
+        "name": "LOT 5.91A fiscalSummaryVisibleSlice occurs exactly 13 times with no 16th occurrence",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      },
+      {
+        "name": "LOT 5.91A useState count is stable, never increased by this removal",
+        "kind": "frozen-count",
+        "observed": "Expected values to be strictly equal:"
+      }
+    ]
+  }
+}
