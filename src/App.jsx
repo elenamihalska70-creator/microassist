@@ -86,6 +86,7 @@ import {
 } from "./application/profile/profileDraftState.js";
 import { normalizeDateValue, pickProfileField, normalizeProfileConflictValue } from "./application/profile/profileNormalization.js";
 import { readLocalDraftPayload as readStoredLocalDraftPayload, readProfileConflictStrategy as readStoredProfileConflictStrategy, writeLocalDraftPayload } from "./application/profile/profileStorage.js";
+import { updateBillingIdentity } from "./application/profile/billingIdentityRepository.js";
 import AppShell from "./shell/AppShell.jsx";
 import PriorityCard from "./components/dashboard/PriorityCard.jsx";
 import { buildPriorityCardViewModel } from "./components/dashboard/buildPriorityCardViewModel.js";
@@ -3775,32 +3776,17 @@ const handleRecoveryComplete = useCallback(() => {
       return false;
     }
 
-    const profilePayload = buildProfilePayload(user, userProfile, {
-      billing_identity: nextBillingIdentity,
-    });
-
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .upsert(profilePayload, { onConflict: "id" })
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Billing identity save error:", error.message);
-        showSaveNotice("Impossible d’enregistrer l’identité de facturation.", 4000);
-        return false;
-      }
-
-      setUserProfile(data || profilePayload);
+      const savedProfile = await updateBillingIdentity(supabase, user.id, nextBillingIdentity);
+      setUserProfile(savedProfile);
       showSaveNotice("Identité de facturation enregistrée ✅", 3000);
       return true;
     } catch (error) {
-      console.error("Unexpected billing identity save error:", error);
+      console.error("Billing identity save error:", error?.message || error);
       showSaveNotice("Impossible d’enregistrer l’identité de facturation.", 4000);
       return false;
     }
-  }, [billingIdentityDraft, showSaveNotice, user, userProfile]);
+  }, [billingIdentityDraft, showSaveNotice, user?.id]);
 
 const refreshSubscriptionRecord = useCallback(async () => {
   if (!SUBSCRIPTIONS_TABLE_ENABLED) {
