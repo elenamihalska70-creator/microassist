@@ -9418,6 +9418,10 @@ function clearLocalStorageKeys(keys) {
       }
     }
 
+    // Invoices exist only in this browser: restarting the profile journey must
+    // never delete them. "Tout réinitialiser" stays the explicit way to do so.
+    explicitKeys.delete(GUEST_INVOICES_KEY);
+
     return Array.from(explicitKeys);
   }
 
@@ -9653,7 +9657,7 @@ useEffect(() => {
     setTvaConfigDraft("unknown");
     setRevenues([]);
     setInvoices([]);
-    setGuestInvoices([]);
+    setGuestInvoices(readLocalInvoices(() => localStorage.getItem(GUEST_INVOICES_KEY)).items);
     setReminderPrefs(DEFAULT_REMINDER_PREFS);
     setSelectedMonth("all");
     setDashboardRemindersDismissed(false);
